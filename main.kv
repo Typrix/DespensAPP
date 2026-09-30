@@ -28,6 +28,51 @@ ScreenManager:
                 size_hint_y: 1
                 radius: [20,]
                 elevation: 1
+                padding: "20dp"
+                MDScrollView:
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        adaptive_height: True
+                        spacing: "20dp"
+                        
+                        MDBoxLayout:
+                            adaptive_height: True
+                            spacing: "15dp"
+                            MDIcon:
+                                icon: "circle-outline"
+                            MDLabel:
+                                text: "2L de Leche Entera"
+                                bold: True
+                            MDLabel:
+                                text: "$2.500"
+                                halign: "right"
+                                theme_text_color: "Hint"
+                        
+                        MDBoxLayout:
+                            adaptive_height: True
+                            spacing: "15dp"
+                            MDIcon:
+                                icon: "circle-outline"
+                            MDLabel:
+                                text: "1kg de Arroz"
+                                bold: True
+                            MDLabel:
+                                text: "$1.200"
+                                halign: "right"
+                                theme_text_color: "Hint"
+                                
+                        MDBoxLayout:
+                            adaptive_height: True
+                            spacing: "15dp"
+                            MDIcon:
+                                icon: "circle-outline"
+                            MDLabel:
+                                text: "Huevos (Docena)"
+                                bold: True
+                            MDLabel:
+                                text: "$3.000"
+                                halign: "right"
+                                theme_text_color: "Hint"
 
             MDCard:
                 size_hint: None, None
@@ -96,6 +141,60 @@ ScreenManager:
                 size_hint_y: 1
                 radius: [20,]
                 elevation: 1
+                padding: "20dp"
+                MDScrollView:
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        adaptive_height: True
+                        spacing: "20dp"
+                        
+                        MDBoxLayout:
+                            adaptive_height: True
+                            spacing: "15dp"
+                            MDIcon:
+                                icon: "food-apple"
+                                theme_text_color: "Custom"
+                                text_color: "green"
+                            MDLabel:
+                                text: "Frijoles (500g)"
+                                bold: True
+                            MDLabel:
+                                text: "Suficiente"
+                                halign: "right"
+                                theme_text_color: "Custom"
+                                text_color: "green"
+                                
+                        MDBoxLayout:
+                            adaptive_height: True
+                            spacing: "15dp"
+                            MDIcon:
+                                icon: "bottle-wine"
+                                theme_text_color: "Custom"
+                                text_color: "orange"
+                            MDLabel:
+                                text: "Aceite de Oliva"
+                                bold: True
+                            MDLabel:
+                                text: "1 Botella"
+                                halign: "right"
+                                theme_text_color: "Custom"
+                                text_color: "orange"
+                                
+                        MDBoxLayout:
+                            adaptive_height: True
+                            spacing: "15dp"
+                            MDIcon:
+                                icon: "shaker"
+                                theme_text_color: "Custom"
+                                text_color: "red"
+                            MDLabel:
+                                text: "Sal Común"
+                                bold: True
+                            MDLabel:
+                                text: "Por agotarse"
+                                halign: "right"
+                                theme_text_color: "Custom"
+                                text_color: "red"
 
             MDCard:
                 size_hint: None, None
@@ -162,21 +261,81 @@ ScreenManager:
 
             MDCard:
                 size_hint_y: None
-                height: "120dp"
+                height: "100dp"
                 radius: [20,]
-                elevation: 2
+                elevation: 1
+                padding: "20dp"
+                MDBoxLayout:
+                    spacing: "15dp"
+                    MDIcon:
+                        icon: "currency-usd"
+                        font_size: "48sp"
+                        pos_hint: {"center_y": .5}
+                        theme_text_color: "Custom"
+                        text_color: "green"
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        pos_hint: {"center_y": .5}
+                        MDLabel:
+                            text: "Gasto Semanal"
+                            theme_text_color: "Hint"
+                        MDLabel:
+                            text: "$ 45.000"
+                            font_style: "Headline"
+                            role: "small"
+                            bold: True
 
             MDCard:
                 size_hint_y: None
-                height: "120dp"
+                height: "100dp"
                 radius: [20,]
-                elevation: 2
+                elevation: 1
+                padding: "20dp"
+                MDBoxLayout:
+                    spacing: "15dp"
+                    MDIcon:
+                        icon: "alert-circle-outline"
+                        font_size: "48sp"
+                        pos_hint: {"center_y": .5}
+                        theme_text_color: "Custom"
+                        text_color: "red"
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        pos_hint: {"center_y": .5}
+                        MDLabel:
+                            text: "Por Caducar"
+                            theme_text_color: "Hint"
+                        MDLabel:
+                            text: "Leche (Mañana)"
+                            font_style: "Title"
+                            role: "medium"
+                            bold: True
 
             MDCard:
                 size_hint_y: None
-                height: "120dp"
+                height: "100dp"
                 radius: [20,]
-                elevation: 2
+                elevation: 1
+                padding: "20dp"
+                MDBoxLayout:
+                    spacing: "15dp"
+                    MDIcon:
+                        icon: "chef-hat"
+                        font_size: "48sp"
+                        pos_hint: {"center_y": .5}
+                        theme_text_color: "Custom"
+                        text_color: "orange"
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        pos_hint: {"center_y": .5}
+                        MDLabel:
+                            text: "Receta Sugerida"
+                            theme_text_color: "Hint"
+                        MDLabel:
+                            text: "Arroz con Huevo"
+                            font_style: "Title"
+                            role: "medium"
+                            bold: True
 
             MDCard:
                 size_hint: None, None
@@ -245,6 +404,50 @@ ScreenManager:
                 size_hint_y: 1
                 radius: [20,]
                 elevation: 1
+                padding: "20dp"
+                MDScrollView:
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        adaptive_height: True
+                        spacing: "20dp"
+                        
+                        MDBoxLayout:
+                            adaptive_height: True
+                            spacing: "15dp"
+                            MDIcon:
+                                icon: "format-list-bulleted"
+                                theme_text_color: "Custom"
+                                text_color: "blue"
+                            MDBoxLayout:
+                                orientation: "vertical"
+                                MDLabel:
+                                    text: "Compra Quincenal"
+                                    bold: True
+                                MDLabel:
+                                    text: "15 Artículos"
+                                    theme_text_color: "Hint"
+                            MDIcon:
+                                icon: "chevron-right"
+                                theme_text_color: "Hint"
+                                
+                        MDBoxLayout:
+                            adaptive_height: True
+                            spacing: "15dp"
+                            MDIcon:
+                                icon: "cake-variant"
+                                theme_text_color: "Custom"
+                                text_color: "pink"
+                            MDBoxLayout:
+                                orientation: "vertical"
+                                MDLabel:
+                                    text: "Cena de Cumpleaños"
+                                    bold: True
+                                MDLabel:
+                                    text: "8 Artículos"
+                                    theme_text_color: "Hint"
+                            MDIcon:
+                                icon: "chevron-right"
+                                theme_text_color: "Hint"
 
             MDCard:
                 size_hint: None, None
@@ -313,6 +516,47 @@ ScreenManager:
                 size_hint_y: 1
                 radius: [20,]
                 elevation: 1
+                padding: "20dp"
+                MDScrollView:
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        adaptive_height: True
+                        spacing: "30dp"
+                        
+                        MDBoxLayout:
+                            adaptive_height: True
+                            spacing: "15dp"
+                            MDIcon:
+                                icon: "account"
+                            MDLabel:
+                                text: "Perfil de Usuario"
+                                bold: True
+                            MDIcon:
+                                icon: "chevron-right"
+                                
+                        MDBoxLayout:
+                            adaptive_height: True
+                            spacing: "15dp"
+                            MDIcon:
+                                icon: "bell-outline"
+                            MDLabel:
+                                text: "Notificaciones"
+                                bold: True
+                            MDSwitch:
+                                active: True
+                                pos_hint: {"center_y": .5}
+                                
+                        MDBoxLayout:
+                            adaptive_height: True
+                            spacing: "15dp"
+                            MDIcon:
+                                icon: "theme-light-dark"
+                            MDLabel:
+                                text: "Tema Oscuro"
+                                bold: True
+                            MDSwitch:
+                                active: False
+                                pos_hint: {"center_y": .5}
 
             MDCard:
                 size_hint: None, None
