@@ -1,0 +1,358 @@
+#:import FadeTransition kivy.uix.screenmanager.FadeTransition
+
+ScreenManager:
+    id: screen_manager
+    transition: FadeTransition(duration=0.2) # duration controla qué tan rápido es (en segundos)
+
+    # =========================================================
+    # 1. PANTALLA: CARRITO / COMPRAS RÁPIDAS (cart)
+    # =========================================================
+    MDScreen:
+        name: "cart"
+        md_bg_color: self.theme_cls.backgroundColor
+
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "20dp"
+            spacing: "15dp"
+
+            MDLabel:
+                text: "Carrito de Compras"
+                font_style: "Headline"
+                role: "medium"
+                halign: "center"
+                size_hint_y: None
+                height: "50dp"
+
+            MDCard:
+                size_hint_y: 1
+                radius: [20,]
+                elevation: 1
+
+            MDCard:
+                size_hint: None, None
+                size: "275dp", "60dp"
+                pos_hint: {"center_x": 0.5}
+                radius: [30,]
+                elevation: 2
+                padding: "8dp"
+
+                MDBoxLayout:
+                    orientation: "horizontal"
+                    spacing: "15dp"
+                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                    MDIconButton:
+                        icon: "cart"
+                        style: "tonal"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cart")
+
+                    MDIconButton:
+                        icon: "cupboard"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cupboard")
+
+                    MDIconButton:
+                        icon: "home"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("home")
+
+                    MDIconButton:
+                        icon: "clipboard-list"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("clipboard-list")
+
+                    MDIconButton:
+                        icon: "cog"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cog")
+
+    # =========================================================
+    # 2. PANTALLA: DESPENSA / INVENTARIO (cupboard)
+    # =========================================================
+    MDScreen:
+        name: "cupboard"
+        md_bg_color: self.theme_cls.backgroundColor
+
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "20dp"
+            spacing: "15dp"
+
+            MDLabel:
+                text: "Inventario de Despensa"
+                font_style: "Headline"
+                role: "medium"
+                halign: "center"
+                size_hint_y: None
+                height: "50dp"
+
+            MDCard:
+                size_hint_y: 1
+                radius: [20,]
+                elevation: 1
+
+            MDCard:
+                size_hint: None, None
+                size: "275dp", "60dp"
+                pos_hint: {"center_x": 0.5}
+                radius: [30,]
+                elevation: 2
+                padding: "8dp"
+
+                MDBoxLayout:
+                    orientation: "horizontal"
+                    spacing: "15dp"
+                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                    MDIconButton:
+                        icon: "cart"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cart")
+
+                    MDIconButton:
+                        icon: "cupboard"
+                        style: "tonal"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cupboard")
+
+                    MDIconButton:
+                        icon: "home"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("home")
+
+                    MDIconButton:
+                        icon: "clipboard-list"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("clipboard-list")
+
+                    MDIconButton:
+                        icon: "cog"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cog")
+
+    # =========================================================
+    # 3. PANTALLA: INICIO (home - Tu diseño original)
+    # =========================================================
+    MDScreen:
+        name: "home"
+        md_bg_color: self.theme_cls.backgroundColor
+
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "20dp"
+            spacing: "15dp"
+            
+            Image:
+                source: "despensapp_logo_example.jpg"
+                size_hint: None, None
+                size: "230dp", "100dp"
+                allow_stretch: True
+                keep_ratio: True
+                pos_hint: {"center_x": 0.5}
+
+            MDCard:
+                size_hint_y: None
+                height: "120dp"
+                radius: [20,]
+                elevation: 2
+
+            MDCard:
+                size_hint_y: None
+                height: "120dp"
+                radius: [20,]
+                elevation: 2
+
+            MDCard:
+                size_hint_y: None
+                height: "120dp"
+                radius: [20,]
+                elevation: 2
+
+            MDCard:
+                size_hint: None, None
+                size: "275dp", "60dp"
+                pos_hint: {"center_x": 0.5}
+                radius: [30,]
+                elevation: 2
+                padding: "8dp"
+
+                MDBoxLayout:
+                    orientation: "horizontal"
+                    spacing: "15dp"
+                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                    MDIconButton:
+                        icon: "cart"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cart")
+
+                    MDIconButton:
+                        icon: "cupboard"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cupboard")
+
+                    MDIconButton:
+                        icon: "home"
+                        style: "tonal"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("home")
+
+                    MDIconButton:
+                        icon: "clipboard-list"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("clipboard-list")
+
+                    MDIconButton:
+                        icon: "cog"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cog")
+
+    # =========================================================
+    # 4. PANTALLA: LISTA DE SUPERMERCADO (clipboard-list)
+    # =========================================================
+    MDScreen:
+        name: "clipboard-list"
+        md_bg_color: self.theme_cls.backgroundColor
+
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "20dp"
+            spacing: "15dp"
+
+            MDLabel:
+                text: "Lista del Supermercado"
+                font_style: "Headline"
+                role: "medium"
+                halign: "center"
+                size_hint_y: None
+                height: "50dp"
+
+            MDCard:
+                size_hint_y: 1
+                radius: [20,]
+                elevation: 1
+
+            MDCard:
+                size_hint: None, None
+                size: "275dp", "60dp"
+                pos_hint: {"center_x": 0.5}
+                radius: [30,]
+                elevation: 2
+                padding: "8dp"
+
+                MDBoxLayout:
+                    orientation: "horizontal"
+                    spacing: "15dp"
+                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                    MDIconButton:
+                        icon: "cart"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cart")
+
+                    MDIconButton:
+                        icon: "cupboard"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cupboard")
+
+                    MDIconButton:
+                        icon: "home"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("home")
+
+                    MDIconButton:
+                        icon: "clipboard-list"
+                        style: "tonal"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("clipboard-list")
+
+                    MDIconButton:
+                        icon: "cog"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cog")
+
+    # =========================================================
+    # 5. PANTALLA: CONFIGURACIÓN (cog)
+    # =========================================================
+    MDScreen:
+        name: "cog"
+        md_bg_color: self.theme_cls.backgroundColor
+
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "20dp"
+            spacing: "15dp"
+
+            MDLabel:
+                text: "Configuración"
+                font_style: "Headline"
+                role: "medium"
+                halign: "center"
+                size_hint_y: None
+                height: "50dp"
+
+            MDCard:
+                size_hint_y: 1
+                radius: [20,]
+                elevation: 1
+
+            MDCard:
+                size_hint: None, None
+                size: "275dp", "60dp"
+                pos_hint: {"center_x": 0.5}
+                radius: [30,]
+                elevation: 2
+                padding: "8dp"
+
+                MDBoxLayout:
+                    orientation: "horizontal"
+                    spacing: "15dp"
+                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                    MDIconButton:
+                        icon: "cart"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cart")
+
+                    MDIconButton:
+                        icon: "cupboard"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cupboard")
+
+                    MDIconButton:
+                        icon: "home"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("home")
+
+                    MDIconButton:
+                        icon: "clipboard-list"
+                        style: "standard"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("clipboard-list")
+
+                    MDIconButton:
+                        icon: "cog"
+                        style: "tonal"
+                        pos_hint: {"center_y": 0.5}
+                        on_release: app.cambiar_pantalla("cog")
