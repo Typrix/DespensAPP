@@ -555,8 +555,10 @@ ScreenManager:
                                 text: "Tema Oscuro"
                                 bold: True
                             MDSwitch:
+                                id: switch_tema
                                 active: False
                                 pos_hint: {"center_y": .5}
+                                on_active: app.cambiar_tema(self.active)
 
             MDCard:
                 size_hint: None, None

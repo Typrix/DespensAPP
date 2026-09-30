@@ -24,6 +24,8 @@ class MainApp(MDApp):
 
         self.root.current = name_option
 
+    def cambiar_tema(self, valor_activo):
+        self.theme_cls.theme_style = "Dark" if valor_activo else "Light"
 
 #-------------------------------------------------#
 
