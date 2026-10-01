@@ -31,8 +31,8 @@ from kivy.graphics import Color, RoundedRectangle, Line, Ellipse
 class CustomProgressBar(Widget):
     """Barra de progreso moderna con bordes redondeados y colores configurables."""
     value = NumericProperty(0.5)
-    track_color = ListProperty([0.792, 0.843, 0.784, 1])
-    fill_color = ListProperty([0.192, 0.357, 0.243, 1])
+    track_color = ListProperty([0.890, 0.914, 0.945, 1])  # Azul muy claro para la pista
+    fill_color = ListProperty([0.157, 0.431, 0.831, 1])   # Azul principal vibrante para el relleno
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -89,7 +89,7 @@ class CartItemRow(ButtonBehavior, BoxLayout):
 
 
 class AddCircleButton(ButtonBehavior, AnchorLayout):
-    """Botón circular verde con icono '+' perfectamente centrado."""
+    """Botón circular con icono '+' perfectamente centrado."""
     pass
 
 
@@ -119,63 +119,63 @@ class MainApp(MDApp):
     # Referencia al modal de perfil
     profile_modal = None
 
-    # Paleta de Colores Modo Claro (Predeterminado)
+    # Paleta de Colores Modo Claro - Tonos Azules Profesionales y Limpios
     COLOR_LIGHT = {
-        "bg": [0.965, 0.969, 0.949, 1],                # #F6F7F2
-        "sage_container": [0.875, 0.910, 0.867, 1],    # #DFE8DD
-        "card_white": [1.0, 1.0, 1.0, 1],              # #FFFFFF
-        "text_primary": [0.118, 0.227, 0.145, 1],      # #1E3A25
-        "text_secondary": [0.416, 0.498, 0.439, 1],    # #6A7F70
-        "category_tag": [0.353, 0.478, 0.392, 1],      # #5A7A64
-        "accent_green": [0.192, 0.357, 0.243, 1],      # #315B3E
-        "active_pill": [0.835, 0.898, 0.824, 1],       # #D5E5D2
-        "divider": [0.792, 0.843, 0.784, 1],           # #CAD7C8
-        "leaf_badge_bg": [0.847, 0.910, 0.839, 1],     # #D8E8D6
-        "avatar_border": [0.192, 0.357, 0.243, 1],     # #315B3E
-        "chart_card_dark": [0.192, 0.357, 0.243, 1],   # #315B3E
-        "chart_card_text_dim": [0.718, 0.843, 0.749, 1], # #B7D7BF
-        "progress_track": [0.792, 0.843, 0.784, 1],    # #CAD7C8
-        "icon_badge_pink": [0.969, 0.867, 0.847, 1],   # #F7DDD8
-        "icon_badge_amber": [0.961, 0.910, 0.816, 1],  # #F5E8D0
+        "bg": [0.949, 0.965, 0.984, 1],                 # #F2F5FB (Fondo azul grisáceo muy claro y limpio)
+        "sage_container": [0.890, 0.918, 0.957, 1],     # #E3EAF5 (Contenedor azul suave)
+        "card_white": [1.0, 1.0, 1.0, 1],               # #FFFFFF (Tarjetas blancas)
+        "text_primary": [0.086, 0.149, 0.251, 1],       # #162640 (Texto principal azul marino muy oscuro)
+        "text_secondary": [0.380, 0.471, 0.592, 1],     # #617897 (Texto secundario azul grisáceo medio)
+        "category_tag": [0.157, 0.431, 0.831, 1],       # #286ED3 (Etiquetas en azul vibrante)
+        "accent_green": [0.157, 0.431, 0.831, 1],       # #286ED3 (Acento azul principal)
+        "active_pill": [0.835, 0.886, 0.957, 1],        # #D5E2F5 (Píldora de navegación activa azul suave)
+        "divider": [0.851, 0.882, 0.925, 1],            # #D9E1EC (Líneas divisorias sutiles)
+        "leaf_badge_bg": [0.875, 0.910, 0.961, 1],      # #DFE8F5 (Fondo de insignias azul tenue)
+        "avatar_border": [0.157, 0.431, 0.831, 1],      # #286ED3 (Borde del avatar)
+        "chart_card_dark": [0.110, 0.184, 0.306, 1],    # #1C2F4E (Tarjeta de estadísticas en azul marino profundo)
+        "chart_card_text_dim": [0.776, 0.835, 0.910, 1],# #C6D5E8 (Texto tenue sobre tarjeta oscura)
+        "progress_track": [0.890, 0.914, 0.945, 1],     # #E3E9F5 (Barra de progreso fondo azul claro)
+        "icon_badge_pink": [0.835, 0.886, 0.957, 1],    # #D5E2F5 (Insignia azul suave)
+        "icon_badge_amber": [0.890, 0.918, 0.957, 1],   # #E3EAF5 (Insignia secundaria azul)
     }
 
-    # Paleta de Colores Modo Oscuro
+    # Paleta de Colores Modo Oscuro - Tonos Azules Noche y Neón
     COLOR_DARK = {
-        "bg": [0.082, 0.106, 0.090, 1],                # #151B17
-        "sage_container": [0.133, 0.176, 0.145, 1],    # #222D25
-        "card_white": [0.173, 0.227, 0.188, 1],        # #2C3A30
-        "text_primary": [0.910, 0.945, 0.918, 1],      # #E8F1EA
-        "text_secondary": [0.616, 0.690, 0.631, 1],    # #9DB0A1
-        "category_tag": [0.518, 0.671, 0.549, 1],      # #84AB8C
-        "accent_green": [0.380, 0.675, 0.455, 1],      # #61AC74
-        "active_pill": [0.184, 0.259, 0.200, 1],       # #2F4233
-        "divider": [0.204, 0.267, 0.220, 1],           # #344438
-        "leaf_badge_bg": [0.184, 0.259, 0.200, 1],     # #2F4233
-        "avatar_border": [0.380, 0.675, 0.455, 1],     # #61AC74
-        "chart_card_dark": [0.114, 0.157, 0.125, 1],   # #1D2820
-        "chart_card_text_dim": [0.616, 0.690, 0.631, 1],
-        "progress_track": [0.235, 0.306, 0.251, 1],    # #3C4E40
-        "icon_badge_pink": [0.306, 0.204, 0.204, 1],
-        "icon_badge_amber": [0.306, 0.267, 0.184, 1],
+        "bg": [0.059, 0.086, 0.133, 1],                 # #0F1622 (Fondo azul noche profundo)
+        "sage_container": [0.114, 0.161, 0.239, 1],     # #1D293D (Contenedores oscuros azulados)
+        "card_white": [0.161, 0.220, 0.314, 1],         # #293850 (Tarjetas elevadas azul medianoche)
+        "text_primary": [0.902, 0.941, 0.988, 1],       # #E6F0FC (Texto claro azulado)
+        "text_secondary": [0.584, 0.675, 0.792, 1],     # #95ACCB (Texto secundario legible)
+        "category_tag": [0.353, 0.608, 0.941, 1],       # #5A9BF0 (Etiquetas azul brillante)
+        "accent_green": [0.392, 0.651, 0.980, 1],       # #64A6FA (Acento azul luminoso)
+        "active_pill": [0.165, 0.275, 0.435, 1],        # #2A466F (Píldora activa con tono azul medio)
+        "divider": [0.200, 0.267, 0.365, 1],            # #33445D (Divisores)
+        "leaf_badge_bg": [0.165, 0.275, 0.435, 1],      # #2A466F (Fondo insignias)
+        "avatar_border": [0.392, 0.651, 0.980, 1],      # #64A6FA (Borde avatar)
+        "chart_card_dark": [0.082, 0.125, 0.192, 1],    # #152031 (Tarjeta de estadísticas oscura)
+        "chart_card_text_dim": [0.651, 0.745, 0.863, 1],
+        "progress_track": [0.200, 0.267, 0.365, 1],     # #33445D (Progreso fondo)
+        "icon_badge_pink": [0.216, 0.345, 0.529, 1],    # #375887
+        "icon_badge_amber": [0.137, 0.196, 0.286, 1],   # #233248
     }
 
     # Propiedades reactivas de color expuestas a KV
-    bg_color = ListProperty([0.965, 0.969, 0.949, 1])
-    sage_container_color = ListProperty([0.875, 0.910, 0.867, 1])
+    bg_color = ListProperty([0.949, 0.965, 0.984, 1])
+    sage_container_color = ListProperty([0.890, 0.918, 0.957, 1])
     card_white_color = ListProperty([1.0, 1.0, 1.0, 1])
-    text_primary_color = ListProperty([0.118, 0.227, 0.145, 1])
-    text_secondary_color = ListProperty([0.416, 0.498, 0.439, 1])
-    category_tag_color = ListProperty([0.353, 0.478, 0.392, 1])
-    accent_green_color = ListProperty([0.192, 0.357, 0.243, 1])
-    active_pill_color = ListProperty([0.835, 0.898, 0.824, 1])
-    divider_color = ListProperty([0.792, 0.843, 0.784, 1])
-    leaf_badge_bg_color = ListProperty([0.847, 0.910, 0.839, 1])
-    avatar_border_color = ListProperty([0.192, 0.357, 0.243, 1])
-    chart_card_dark_color = ListProperty([0.192, 0.357, 0.243, 1])
-    chart_card_text_dim_color = ListProperty([0.718, 0.843, 0.749, 1])
-    progress_track_color = ListProperty([0.792, 0.843, 0.784, 1])
-    icon_badge_pink_color = ListProperty([0.969, 0.867, 0.847, 1])
-    icon_badge_amber_color = ListProperty([0.961, 0.910, 0.816, 1])
+    text_primary_color = ListProperty([0.086, 0.149, 0.251, 1])
+    text_secondary_color = ListProperty([0.380, 0.471, 0.592, 1])
+    category_tag_color = ListProperty([0.157, 0.431, 0.831, 1])
+    accent_green_color = ListProperty([0.157, 0.431, 0.831, 1])
+    active_pill_color = ListProperty([0.835, 0.886, 0.957, 1])
+    divider_color = ListProperty([0.851, 0.882, 0.925, 1])
+    leaf_badge_bg_color = ListProperty([0.875, 0.910, 0.961, 1])
+    avatar_border_color = ListProperty([0.157, 0.431, 0.831, 1])
+    chart_card_dark_color = ListProperty([0.110, 0.184, 0.306, 1])
+    chart_card_text_dim_color = ListProperty([0.776, 0.835, 0.910, 1])
+    progress_track_color = ListProperty([0.890, 0.914, 0.945, 1])
+    icon_badge_pink_color = ListProperty([0.835, 0.886, 0.957, 1])
+    icon_badge_amber_color = ListProperty([0.890, 0.918, 0.957, 1])
 
     TAGS_MAP = {
         "home": "INICIO",
@@ -187,7 +187,7 @@ class MainApp(MDApp):
 
     def build(self):
         self.theme_cls.theme_style = "Light"
-        self.theme_cls.primary_palette = "Green"
+        self.theme_cls.primary_palette = "Blue"
         self._aplicar_tema(False)
         return None
 
