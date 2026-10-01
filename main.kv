@@ -326,14 +326,14 @@ BoxLayout:
     # -------------------------------------------------
     BoxLayout:
         size_hint_y: None
-        height: "62dp"
-        padding: ["16dp", "8dp", "16dp", "4dp"]
-        spacing: "12dp"
+        height: "110dp"
+        padding: ["16dp", "10dp", "16dp", "10dp"]
+        spacing: "15dp"
 
-        # Insignia Hoja (Logo DespensAPP)
+        # Logo Principal DespensAPP con Recuadro Azul
         AnchorLayout:
             size_hint: None, None
-            size: "46dp", "46dp"
+            size: "90dp", "90dp"
             pos_hint: {"center_y": 0.5}
             canvas.before:
                 Color:
@@ -341,12 +341,15 @@ BoxLayout:
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
-                    radius: [14, 14, 14, 14]
-            MDIcon:
-                icon: "leaf"
-                theme_text_color: "Custom"
-                text_color: app.accent_green_color
+                    radius: [22, 22, 22, 22]
+            Image:
+                source: "despensapp_logo.png"
+                size_hint: None, None
+                size: "140dp", "140dp"
                 pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                allow_stretch: True
+                keep_ratio: True
+                mipmap: True
 
         # Título y Subtítulo de Pantalla
         BoxLayout:
