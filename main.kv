@@ -1,795 +1,1563 @@
 #:import FadeTransition kivy.uix.screenmanager.FadeTransition
 
-ScreenManager:
-    id: screen_manager
-    transition: FadeTransition(duration=0.2) # duration controla qué tan rápido es (en segundos)
+# =========================================================
+# Plantillas y Componentes de Interfaz
+# =========================================================
 
-    # =========================================================
-    # 1. PANTALLA: CARRITO / COMPRAS RÁPIDAS (cart)
-    # =========================================================
-    MDScreen:
-        name: "cart"
-        md_bg_color: self.theme_cls.backgroundColor
+<BottomNavButton>:
+    orientation: "vertical"
+    size_hint_y: 1
+    padding: ["4dp", "4dp", "4dp", "4dp"]
+    spacing: "2dp"
+    on_release: app.cambiar_pantalla(root.screen_target)
 
-        MDBoxLayout:
-            orientation: "vertical"
-            padding: "20dp"
-            spacing: "15dp"
+    canvas.before:
+        Color:
+            rgba: app.active_pill_color if root.is_active else (0, 0, 0, 0)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [16, 16, 16, 16]
 
-            MDLabel:
-                text: "Carrito de Compras"
-                font_style: "Headline"
-                role: "medium"
-                halign: "center"
-                size_hint_y: None
-                height: "50dp"
+    AnchorLayout:
+        size_hint_y: 0.6
+        MDIcon:
+            icon: root.icon_name
+            theme_text_color: "Custom"
+            text_color: app.accent_green_color if root.is_active else app.text_secondary_color
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-            MDCard:
-                size_hint_y: 1
-                radius: [20,]
-                elevation: 1
-                padding: "20dp"
-                MDScrollView:
-                    MDBoxLayout:
-                        orientation: "vertical"
-                        adaptive_height: True
-                        spacing: "20dp"
-                        
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "circle-outline"
-                            MDLabel:
-                                text: "2L de Leche Entera"
-                                bold: True
-                            MDLabel:
-                                text: "$2.500"
-                                halign: "right"
-                                theme_text_color: "Hint"
-                        
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "circle-outline"
-                            MDLabel:
-                                text: "1kg de Arroz"
-                                bold: True
-                            MDLabel:
-                                text: "$1.200"
-                                halign: "right"
-                                theme_text_color: "Hint"
-                                
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "circle-outline"
-                            MDLabel:
-                                text: "Huevos (Docena)"
-                                bold: True
-                            MDLabel:
-                                text: "$3.000"
-                                halign: "right"
-                                theme_text_color: "Hint"
+    Label:
+        text: root.label_text
+        size_hint_y: 0.4
+        font_size: "10.5sp"
+        bold: root.is_active
+        color: app.accent_green_color if root.is_active else app.text_secondary_color
+        halign: "center"
+        valign: "middle"
+        text_size: self.size
 
-            MDCard:
+
+<AddCircleButton>:
+    size_hint: None, None
+    size: "40dp", "40dp"
+    anchor_x: "center"
+    anchor_y: "center"
+
+    canvas.before:
+        Color:
+            rgba: app.accent_green_color
+        Ellipse:
+            pos: self.pos
+            size: self.size
+
+    MDIcon:
+        icon: "plus"
+        theme_text_color: "Custom"
+        text_color: [1, 1, 1, 1]
+
+
+<AvatarCircleButton>:
+    size_hint: None, None
+    size: "42dp", "42dp"
+    anchor_x: "center"
+    anchor_y: "center"
+
+    canvas.before:
+        Color:
+            rgba: app.card_white_color
+        Ellipse:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: app.avatar_border_color
+        Line:
+            circle: (self.center_x, self.center_y, 20)
+            width: 1.4
+
+    Label:
+        text: "SO"
+        font_size: "13sp"
+        bold: True
+        color: app.text_primary_color
+
+
+<CartItemRow>:
+    size_hint_y: None
+    height: "54dp"
+    spacing: "14dp"
+    padding: ["0dp", "4dp", "0dp", "4dp"]
+
+    AnchorLayout:
+        size_hint: None, None
+        size: "30dp", "46dp"
+        MDIcon:
+            icon: "check-circle" if root.checked else "circle-outline"
+            theme_text_color: "Custom"
+            text_color: app.accent_green_color if root.checked else app.text_secondary_color
+
+    BoxLayout:
+        orientation: "vertical"
+        size_hint_x: 1
+        pos_hint: {"center_y": 0.5}
+        Label:
+            text: root.title
+            font_size: "14sp"
+            bold: True
+            color: app.text_primary_color
+            halign: "left"
+            valign: "middle"
+            text_size: self.size
+        Label:
+            text: root.subtitle
+            font_size: "11sp"
+            color: app.text_secondary_color
+            halign: "left"
+            valign: "middle"
+            text_size: self.size
+
+    Label:
+        text: root.price_str
+        size_hint_x: None
+        width: "70dp"
+        font_size: "14.5sp"
+        color: app.text_primary_color
+        halign: "right"
+        valign: "middle"
+        text_size: self.size
+
+
+# =========================================================
+# Modal de Perfil Flotante (Sin bloquear toques cuando cierra)
+# =========================================================
+
+<ProfileModalView>:
+    size_hint: None, None
+    size: "264dp", "230dp"
+    pos_hint: {"top": 0.90, "right": 0.96}
+    background_color: [0, 0, 0, 0.25]
+    background: ""
+    auto_dismiss: True
+
+    BoxLayout:
+        orientation: "vertical"
+        size_hint: 1, 1
+        padding: ["16dp", "14dp", "16dp", "14dp"]
+        spacing: "8dp"
+
+        canvas.before:
+            Color:
+                rgba: [0, 0, 0, 0.12] if not app.modo_oscuro else [0, 0, 0, 0.4]
+            RoundedRectangle:
+                pos: [self.x - 2, self.y - 2]
+                size: [self.width + 4, self.height + 4]
+                radius: [22, 22, 22, 22]
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [20, 20, 20, 20]
+
+        # Encabezado Perfil: Avatar + Nombre + Email
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            spacing: "12dp"
+
+            AnchorLayout:
                 size_hint: None, None
-                size: "275dp", "60dp"
-                pos_hint: {"center_x": 0.5}
-                radius: [30,]
-                elevation: 2
-                padding: "8dp"
+                size: "38dp", "38dp"
+                pos_hint: {"center_y": 0.5}
+                canvas.before:
+                    Color:
+                        rgba: app.leaf_badge_bg_color
+                    Ellipse:
+                        pos: self.pos
+                        size: self.size
+                    Color:
+                        rgba: app.avatar_border_color
+                    Line:
+                        circle: (self.center_x, self.center_y, 19)
+                        width: 1.2
+                Label:
+                    text: "SO"
+                    font_size: "12.5sp"
+                    bold: True
+                    color: app.text_primary_color
 
-                MDBoxLayout:
-                    orientation: "horizontal"
-                    spacing: "15dp"
-                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+            BoxLayout:
+                orientation: "vertical"
+                pos_hint: {"center_y": 0.5}
+                Label:
+                    text: "Sofía Martínez"
+                    font_size: "14sp"
+                    bold: True
+                    color: app.text_primary_color
+                    halign: "left"
+                    text_size: self.size
+                Label:
+                    text: "sofia@despensapp.com"
+                    font_size: "10.5sp"
+                    color: app.text_secondary_color
+                    halign: "left"
+                    text_size: self.size
 
-                    MDIconButton:
-                        icon: "cart"
-                        style: "tonal"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cart")
+        # Línea Divisoria
+        Widget:
+            size_hint_y: None
+            height: "1dp"
+            canvas:
+                Color:
+                    rgba: app.divider_color
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
 
-                    MDIconButton:
-                        icon: "cupboard"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cupboard")
+        # Opción 1: Mi perfil
+        BoxLayout:
+            size_hint_y: None
+            height: "32dp"
+            spacing: "12dp"
+            MDIcon:
+                icon: "cog-outline"
+                theme_text_color: "Custom"
+                text_color: app.text_primary_color
+                pos_hint: {"center_y": 0.5}
+            Label:
+                text: "Mi perfil"
+                font_size: "13sp"
+                color: app.text_primary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+            MDIcon:
+                icon: "chevron-right"
+                theme_text_color: "Custom"
+                text_color: app.text_secondary_color
+                pos_hint: {"center_y": 0.5}
 
-                    MDIconButton:
-                        icon: "home"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("home")
+        # Opción 2: Notificaciones
+        BoxLayout:
+            size_hint_y: None
+            height: "32dp"
+            spacing: "12dp"
+            MDIcon:
+                icon: "clock-outline"
+                theme_text_color: "Custom"
+                text_color: app.text_primary_color
+                pos_hint: {"center_y": 0.5}
+            Label:
+                text: "Notificaciones"
+                font_size: "13sp"
+                color: app.text_primary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+            MDIcon:
+                icon: "chevron-right"
+                theme_text_color: "Custom"
+                text_color: app.text_secondary_color
+                pos_hint: {"center_y": 0.5}
 
-                    MDIconButton:
-                        icon: "clipboard-list"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("clipboard-list")
+        # Opción 3: Modo oscuro (con Switch)
+        BoxLayout:
+            size_hint_y: None
+            height: "36dp"
+            spacing: "12dp"
+            MDIcon:
+                icon: "weather-night"
+                theme_text_color: "Custom"
+                text_color: app.text_primary_color
+                pos_hint: {"center_y": 0.5}
+            Label:
+                text: "Modo oscuro"
+                font_size: "13sp"
+                color: app.text_primary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+            MDSwitch:
+                active: app.modo_oscuro
+                pos_hint: {"center_y": 0.5}
+                on_active: app.cambiar_tema(self.active)
 
-                    MDIconButton:
-                        icon: "cog"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cog")
+        # Opción 4: Preferencias
+        BoxLayout:
+            size_hint_y: None
+            height: "32dp"
+            spacing: "12dp"
+            MDIcon:
+                icon: "cog-outline"
+                theme_text_color: "Custom"
+                text_color: app.text_primary_color
+                pos_hint: {"center_y": 0.5}
+            Label:
+                text: "Preferencias"
+                font_size: "13sp"
+                color: app.text_primary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+            MDIcon:
+                icon: "chevron-right"
+                theme_text_color: "Custom"
+                text_color: app.text_secondary_color
+                pos_hint: {"center_y": 0.5}
 
-    # =========================================================
-    # 2. PANTALLA: DESPENSA / INVENTARIO (cupboard)
-    # =========================================================
-    MDScreen:
-        name: "cupboard"
-        md_bg_color: self.theme_cls.backgroundColor
 
-        MDBoxLayout:
+# =========================================================
+# Raíz de la Aplicación (Estructura Limpia y 100% Interactiva)
+# =========================================================
+
+BoxLayout:
+    orientation: "vertical"
+    size_hint: 1, 1
+
+    canvas.before:
+        Color:
+            rgba: app.bg_color
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    # -------------------------------------------------
+    # Encabezado Superior (Logo + Título + Avatar "SO")
+    # -------------------------------------------------
+    BoxLayout:
+        size_hint_y: None
+        height: "62dp"
+        padding: ["16dp", "8dp", "16dp", "4dp"]
+        spacing: "12dp"
+
+        # Insignia Hoja (Logo DespensAPP)
+        AnchorLayout:
+            size_hint: None, None
+            size: "46dp", "46dp"
+            pos_hint: {"center_y": 0.5}
+            canvas.before:
+                Color:
+                    rgba: app.leaf_badge_bg_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [14, 14, 14, 14]
+            MDIcon:
+                icon: "leaf"
+                theme_text_color: "Custom"
+                text_color: app.accent_green_color
+                pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+        # Título y Subtítulo de Pantalla
+        BoxLayout:
             orientation: "vertical"
-            padding: "20dp"
-            spacing: "15dp"
+            size_hint_x: 1
+            pos_hint: {"center_y": 0.5}
+            Label:
+                text: "DespensAPP"
+                font_size: "20sp"
+                bold: True
+                color: app.text_primary_color
+                halign: "left"
+                valign: "bottom"
+                text_size: self.size
+            Label:
+                text: app.screen_header_tag
+                font_size: "10sp"
+                bold: True
+                color: app.category_tag_color
+                halign: "left"
+                valign: "top"
+                text_size: self.size
 
-            MDLabel:
-                text: "Inventario de Despensa"
-                font_style: "Headline"
-                role: "medium"
-                halign: "center"
-                size_hint_y: None
-                height: "50dp"
+        # Avatar Circular de Usuario ("SO")
+        AvatarCircleButton:
+            pos_hint: {"center_y": 0.5}
+            on_release: app.toggle_menu_perfil()
 
-            MDCard:
-                size_hint_y: 1
-                radius: [20,]
-                elevation: 1
-                padding: "20dp"
-                MDScrollView:
-                    MDBoxLayout:
-                        orientation: "vertical"
-                        adaptive_height: True
-                        spacing: "20dp"
-                        
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "food-apple"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-                            MDLabel:
-                                text: "Frijoles (500g)"
-                                bold: True
-                            MDLabel:
-                                text: "Suficiente"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-                                
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "bottle-wine"
-                                theme_text_color: "Custom"
-                                text_color: "orange"
-                            MDLabel:
-                                text: "Aceite de Oliva"
-                                bold: True
-                            MDLabel:
-                                text: "1 Botella"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "orange"
-                                
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "shaker"
-                                theme_text_color: "Custom"
-                                text_color: "red"
-                            MDLabel:
-                                text: "Sal Común"
-                                bold: True
-                            MDLabel:
-                                text: "Por agotarse"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "red"
+    # -------------------------------------------------
+    # Contenedor Principal (Tarjeta Sabia Redondeada)
+    # -------------------------------------------------
+    BoxLayout:
+        orientation: "vertical"
+        size_hint: 1, 1
+        padding: ["14dp", "4dp", "14dp", "8dp"]
 
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "cup"
-                                theme_text_color: "Custom"
-                                text_color: "red"
-                            MDLabel:
-                                text: "Yogurt Natural"
-                                bold: True
-                            MDLabel:
-                                text: "Vence en 2 días"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "red"
-
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "cheese"
-                                theme_text_color: "Custom"
-                                text_color: "red"
-                            MDLabel:
-                                text: "Queso Gauda (250g)"
-                                bold: True
-                            MDLabel:
-                                text: "Vence mañana"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "red"
-
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "noodles"
-                                theme_text_color: "Custom"
-                                text_color: "orange"
-                            MDLabel:
-                                text: "Fideos Spaghetti"
-                                bold: True
-                            MDLabel:
-                                text: "1 Paquete"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "orange"
-
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "barley"
-                                theme_text_color: "Custom"
-                                text_color: "orange"
-                            MDLabel:
-                                text: "Avena Instantánea"
-                                bold: True
-                            MDLabel:
-                                text: "Medio paquete"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "orange"
-
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "cube-outline"
-                                theme_text_color: "Custom"
-                                text_color: "orange"
-                            MDLabel:
-                                text: "Azúcar Rubia (1kg)"
-                                bold: True
-                            MDLabel:
-                                text: "Poco stock"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "orange"
-
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "rice"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-                            MDLabel:
-                                text: "Arroz Grado 1"
-                                bold: True
-                            MDLabel:
-                                text: "Suficiente"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "package-variant-closed"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-                            MDLabel:
-                                text: "Atún en Lomitos"
-                                bold: True
-                            MDLabel:
-                                text: "3 Latas"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "coffee"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-                            MDLabel:
-                                text: "Café de Grano"
-                                bold: True
-                            MDLabel:
-                                text: "Suficiente"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "tea"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-                            MDLabel:
-                                text: "Té en Bolsitas"
-                                bold: True
-                            MDLabel:
-                                text: "Caja 50 un."
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "grain"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-                            MDLabel:
-                                text: "Lentejas (1kg)"
-                                bold: True
-                            MDLabel:
-                                text: "Suficiente"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "food-drumstick"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-                            MDLabel:
-                                text: "Salsa de Tomates"
-                                bold: True
-                            MDLabel:
-                                text: "4 Cajas"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "baguette"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-                            MDLabel:
-                                text: "Harina sin Polvos"
-                                bold: True
-                            MDLabel:
-                                text: "2 Bolsas"
-                                halign: "right"
-                                theme_text_color: "Custom"
-                                text_color: "green"
-
-            MDCard:
-                size_hint: None, None
-                size: "275dp", "60dp"
-                pos_hint: {"center_x": 0.5}
-                radius: [30,]
-                elevation: 2
-                padding: "8dp"
-
-                MDBoxLayout:
-                    orientation: "horizontal"
-                    spacing: "15dp"
-                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
-
-                    MDIconButton:
-                        icon: "cart"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cart")
-
-                    MDIconButton:
-                        icon: "cupboard"
-                        style: "tonal"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cupboard")
-
-                    MDIconButton:
-                        icon: "home"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("home")
-
-                    MDIconButton:
-                        icon: "clipboard-list"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("clipboard-list")
-
-                    MDIconButton:
-                        icon: "cog"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cog")
-    # =========================================================
-    # 3. PANTALLA: INICIO (home)
-    # =========================================================
-    MDScreen:
-        name: "home"
-        md_bg_color: self.theme_cls.backgroundColor
-
-        MDBoxLayout:
+        BoxLayout:
             orientation: "vertical"
-            padding: "20dp"
-            spacing: "15dp"
-            
-            Image:
-                source: "despensapp_logo.png"
-                size_hint: None, None
-                size: "500dp", "190dp"
-                allow_stretch: True
-                keep_ratio: True
-                pos_hint: {"center_x": 0.5}
+            size_hint: 1, 1
+            padding: ["16dp", "16dp", "16dp", "16dp"]
+            spacing: "10dp"
 
-            MDCard:
-                size_hint_y: None
-                height: "100dp"
-                radius: [20,]
-                elevation: 1
-                padding: "20dp"
-                MDBoxLayout:
-                    spacing: "15dp"
-                    MDIcon:
-                        icon: "currency-usd"
-                        font_size: "48sp"
-                        pos_hint: {"center_y": .5}
-                        theme_text_color: "Custom"
-                        text_color: "green"
-                    MDBoxLayout:
-                        orientation: "vertical"
-                        pos_hint: {"center_y": .5}
-                        MDLabel:
-                            text: "Gasto Semanal"
-                            theme_text_color: "Hint"
-                        MDLabel:
-                            text: "$ 45.000"
-                            font_style: "Headline"
-                            role: "small"
-                            bold: True
+            canvas.before:
+                Color:
+                    rgba: app.sage_container_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [28, 28, 28, 28]
 
-            MDCard:
-                size_hint_y: None
-                height: "100dp"
-                radius: [20,]
-                elevation: 1
-                padding: "20dp"
-                MDBoxLayout:
-                    spacing: "15dp"
-                    MDIcon:
-                        icon: "alert-circle-outline"
-                        font_size: "48sp"
-                        pos_hint: {"center_y": .5}
-                        theme_text_color: "Custom"
-                        text_color: "red"
-                    MDBoxLayout:
-                        orientation: "vertical"
-                        pos_hint: {"center_y": .5}
-                        MDLabel:
-                            text: "Por Caducar"
-                            theme_text_color: "Hint"
-                        MDLabel:
-                            text: "Leche (Mañana)"
-                            font_style: "Title"
-                            role: "medium"
-                            bold: True
+            # =========================================
+            # Administrador de Pantallas
+            # =========================================
+            ScreenManager:
+                id: screen_manager
+                transition: FadeTransition(duration=0.15)
 
-            MDCard:
-                size_hint_y: None
-                height: "100dp"
-                radius: [20,]
-                elevation: 1
-                padding: "20dp"
-                MDBoxLayout:
-                    spacing: "15dp"
-                    MDIcon:
-                        icon: "chef-hat"
-                        font_size: "48sp"
-                        pos_hint: {"center_y": .5}
-                        theme_text_color: "Custom"
-                        text_color: "orange"
-                    MDBoxLayout:
-                        orientation: "vertical"
-                        pos_hint: {"center_y": .5}
-                        MDLabel:
-                            text: "Receta Sugerida"
-                            theme_text_color: "Hint"
-                        MDLabel:
-                            text: "Arroz con Huevo"
-                            font_style: "Title"
-                            role: "medium"
-                            bold: True
+                # -------------------------------------
+                # 1. PANTALLA: ESTADÍSTICAS (stats)
+                # -------------------------------------
+                MDScreen:
+                    name: "stats"
 
-            MDCard:
-                size_hint: None, None
-                size: "275dp", "60dp"
-                pos_hint: {"center_x": 0.5}
-                radius: [30,]
-                elevation: 2
-                padding: "8dp"
+                    MDScrollView:
+                        do_scroll_x: False
+                        bar_width: 0
 
-                MDBoxLayout:
-                    orientation: "horizontal"
-                    spacing: "15dp"
-                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
-
-                    MDIconButton:
-                        icon: "cart"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cart")
-
-                    MDIconButton:
-                        icon: "cupboard"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cupboard")
-
-                    MDIconButton:
-                        icon: "home"
-                        style: "tonal"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("home")
-
-                    MDIconButton:
-                        icon: "clipboard-list"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("clipboard-list")
-
-                    MDIconButton:
-                        icon: "cog"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cog")
-
-    # =========================================================
-    # 4. PANTALLA: LISTA DE SUPERMERCADO (clipboard-list)
-    # =========================================================
-    MDScreen:
-        name: "clipboard-list"
-        md_bg_color: self.theme_cls.backgroundColor
-
-        MDBoxLayout:
-            orientation: "vertical"
-            padding: "20dp"
-            spacing: "15dp"
-
-            MDLabel:
-                text: "Lista del Supermercado"
-                font_style: "Headline"
-                role: "medium"
-                halign: "center"
-                size_hint_y: None
-                height: "50dp"
-
-            MDCard:
-                size_hint_y: 1
-                radius: [20,]
-                elevation: 1
-                padding: "20dp"
-                MDScrollView:
-                    MDBoxLayout:
-                        orientation: "vertical"
-                        adaptive_height: True
-                        spacing: "20dp"
-                        
                         MDBoxLayout:
+                            orientation: "vertical"
                             adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "format-list-bulleted"
-                                theme_text_color: "Custom"
-                                text_color: "blue"
-                            MDBoxLayout:
+                            spacing: "14dp"
+
+                            # Encabezado de Sección
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "46dp"
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    size_hint_x: 1
+                                    Label:
+                                        text: "ÚLTIMOS 30 DÍAS"
+                                        font_size: "10sp"
+                                        bold: True
+                                        color: app.category_tag_color
+                                        halign: "left"
+                                        valign: "middle"
+                                        text_size: self.size
+                                    Label:
+                                        text: "Tus estadísticas"
+                                        font_size: "22sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        valign: "middle"
+                                        text_size: self.size
+
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "38dp", "38dp"
+                                    pos_hint: {"center_y": 0.5}
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.card_white_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [12, 12, 12, 12]
+                                    MDIcon:
+                                        icon: "finance"
+                                        theme_text_color: "Custom"
+                                        text_color: app.accent_green_color
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                            # Tarjetas Resumen (Lado a Lado)
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "105dp"
+                                spacing: "10dp"
+
+                                # Tarjeta Verde Bosque
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    padding: ["14dp", "12dp", "14dp", "12dp"]
+                                    spacing: "4dp"
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.chart_card_dark_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [18, 18, 18, 18]
+
+                                    Label:
+                                        text: "Gasto mensual"
+                                        font_size: "11sp"
+                                        color: app.chart_card_text_dim_color
+                                        halign: "left"
+                                        text_size: self.size
+                                    Label:
+                                        text: "$182.400"
+                                        font_size: "20sp"
+                                        bold: True
+                                        color: [1, 1, 1, 1]
+                                        halign: "left"
+                                        text_size: self.size
+                                    Label:
+                                        text: "8% menos que el mes pasado"
+                                        font_size: "9.5sp"
+                                        color: app.chart_card_text_dim_color
+                                        halign: "left"
+                                        text_size: self.size
+
+                                # Tarjeta Blanca Productos
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    padding: ["14dp", "12dp", "14dp", "12dp"]
+                                    spacing: "4dp"
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.card_white_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [18, 18, 18, 18]
+
+                                    Label:
+                                        text: "Productos comprados"
+                                        font_size: "10.5sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                    Label:
+                                        text: "47"
+                                        font_size: "23sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                    Label:
+                                        text: "En 6 compras"
+                                        font_size: "9.5sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+
+                            # Subtítulo: Lo Más Comprado
+                            Label:
+                                text: "LO MÁS COMPRADO"
+                                size_hint_y: None
+                                height: "22dp"
+                                font_size: "10sp"
+                                bold: True
+                                color: app.category_tag_color
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+
+                            # Item 01: Leche entera
+                            BoxLayout:
                                 orientation: "vertical"
-                                MDLabel:
-                                    text: "Compra Quincenal"
-                                    bold: True
-                                MDLabel:
-                                    text: "15 Artículos"
-                                    theme_text_color: "Hint"
-                            MDIcon:
-                                icon: "chevron-right"
-                                theme_text_color: "Hint"
-                                
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "cake-variant"
-                                theme_text_color: "Custom"
-                                text_color: "pink"
-                            MDBoxLayout:
+                                size_hint_y: None
+                                height: "38dp"
+                                spacing: "6dp"
+                                BoxLayout:
+                                    Label:
+                                        text: "01   "
+                                        size_hint_x: None
+                                        width: "28dp"
+                                        font_size: "12sp"
+                                        color: app.text_secondary_color
+                                    Label:
+                                        text: "Leche entera"
+                                        font_size: "13.5sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                    Label:
+                                        text: "8 veces"
+                                        size_hint_x: None
+                                        width: "60dp"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "right"
+                                        text_size: self.size
+                                CustomProgressBar:
+                                    value: 0.82
+                                    track_color: app.progress_track_color
+                                    fill_color: app.accent_green_color
+
+                            # Item 02: Huevos
+                            BoxLayout:
                                 orientation: "vertical"
-                                MDLabel:
-                                    text: "Cena de Cumpleaños"
+                                size_hint_y: None
+                                height: "38dp"
+                                spacing: "6dp"
+                                BoxLayout:
+                                    Label:
+                                        text: "02   "
+                                        size_hint_x: None
+                                        width: "28dp"
+                                        font_size: "12sp"
+                                        color: app.text_secondary_color
+                                    Label:
+                                        text: "Huevos"
+                                        font_size: "13.5sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                        valign: "middle"
+                                    Label:
+                                        text: "6 veces"
+                                        size_hint_x: None
+                                        width: "60dp"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "right"
+                                        text_size: self.size
+                                        valign: "middle"
+                                CustomProgressBar:
+                                    value: 0.62
+                                    track_color: app.progress_track_color
+                                    fill_color: app.accent_green_color
+
+                            # Item 03: Arroz
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: "38dp"
+                                spacing: "6dp"
+                                BoxLayout:
+                                    Label:
+                                        text: "03   "
+                                        size_hint_x: None
+                                        width: "28dp"
+                                        font_size: "12sp"
+                                        color: app.text_secondary_color
+                                    Label:
+                                        text: "Arroz"
+                                        font_size: "13.5sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                        valign: "middle"
+                                    Label:
+                                        text: "5 veces"
+                                        size_hint_x: None
+                                        width: "60dp"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "right"
+                                        text_size: self.size
+                                        valign: "middle"
+                                CustomProgressBar:
+                                    value: 0.50
+                                    track_color: app.progress_track_color
+                                    fill_color: app.accent_green_color
+
+                            # Tarjeta Inferior "Buen progreso"
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "68dp"
+                                padding: ["14dp", "10dp", "14dp", "10dp"]
+                                spacing: "12dp"
+                                canvas.before:
+                                    Color:
+                                        rgba: app.card_white_color
+                                    RoundedRectangle:
+                                        pos: self.pos
+                                        size: self.size
+                                        radius: [18, 18, 18, 18]
+
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "36dp", "46dp"
+                                    MDIcon:
+                                        icon: "leaf"
+                                        theme_text_color: "Custom"
+                                        text_color: app.accent_green_color
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    pos_hint: {"center_y": 0.5}
+                                    Label:
+                                        text: "Buen progreso"
+                                        font_size: "13.5sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                    Label:
+                                        text: "Has aprovechado un 14% mejor tus alimentos este mes."
+                                        font_size: "10.5sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+
+                # -------------------------------------
+                # 2. PANTALLA: LISTAS (lists)
+                # -------------------------------------
+                MDScreen:
+                    name: "lists"
+
+                    MDScrollView:
+                        do_scroll_x: False
+                        bar_width: 0
+
+                        MDBoxLayout:
+                            orientation: "vertical"
+                            adaptive_height: True
+                            spacing: "14dp"
+
+                            # Encabezado de Sección
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "46dp"
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    size_hint_x: 1
+                                    Label:
+                                        text: "ORGANIZACIÓN"
+                                        font_size: "10sp"
+                                        bold: True
+                                        color: app.category_tag_color
+                                        halign: "left"
+                                        valign: "middle"
+                                        text_size: self.size
+                                    Label:
+                                        text: "Mis listas"
+                                        font_size: "22sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        valign: "middle"
+                                        text_size: self.size
+
+                                AddCircleButton:
+                                    pos_hint: {"center_y": 0.5}
+                                    on_release: app.accion_agregar()
+
+                            # Tarjeta 1: Compra quincenal
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "76dp"
+                                padding: ["14dp", "12dp", "14dp", "12dp"]
+                                spacing: "12dp"
+                                canvas.before:
+                                    Color:
+                                        rgba: app.card_white_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [20, 20, 20, 20]
+
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "42dp", "42dp"
+                                    pos_hint: {"center_y": 0.5}
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.leaf_badge_bg_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [12, 12, 12, 12]
+                                    MDIcon:
+                                        icon: "clipboard-text-outline"
+                                        theme_text_color: "Custom"
+                                        text_color: app.accent_green_color
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    pos_hint: {"center_y": 0.5}
+                                    Label:
+                                        text: "Compra quincenal"
+                                        font_size: "14.5sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                    Label:
+                                        text: "8 pendientes · 12 productos"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+
+                                MDIcon:
+                                    icon: "chevron-right"
+                                    theme_text_color: "Custom"
+                                    text_color: app.text_secondary_color
+                                    pos_hint: {"center_y": 0.5}
+
+                            # Tarjeta 2: Cena de cumpleaños
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "76dp"
+                                padding: ["14dp", "12dp", "14dp", "12dp"]
+                                spacing: "12dp"
+                                canvas.before:
+                                    Color:
+                                        rgba: app.card_white_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [20, 20, 20, 20]
+
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "42dp", "42dp"
+                                    pos_hint: {"center_y": 0.5}
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.icon_badge_pink_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [12, 12, 12, 12]
+                                    MDIcon:
+                                        icon: "clipboard-text-outline"
+                                        theme_text_color: "Custom"
+                                        text_color: [0.72, 0.35, 0.30, 1]
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    pos_hint: {"center_y": 0.5}
+                                    Label:
+                                        text: "Cena de cumpleaños"
+                                        font_size: "14.5sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                    Label:
+                                        text: "Sábado 24 · 6 productos"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+
+                                MDIcon:
+                                    icon: "chevron-right"
+                                    theme_text_color: "Custom"
+                                    text_color: app.text_secondary_color
+                                    pos_hint: {"center_y": 0.5}
+
+                            # Tarjeta 3: Limpieza del hogar
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "76dp"
+                                padding: ["14dp", "12dp", "14dp", "12dp"]
+                                spacing: "12dp"
+                                canvas.before:
+                                    Color:
+                                        rgba: app.card_white_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [20, 20, 20, 20]
+
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "42dp", "42dp"
+                                    pos_hint: {"center_y": 0.5}
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.icon_badge_amber_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [12, 12, 12, 12]
+                                    MDIcon:
+                                        icon: "clipboard-text-outline"
+                                        theme_text_color: "Custom"
+                                        text_color: [0.65, 0.48, 0.16, 1]
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    pos_hint: {"center_y": 0.5}
+                                    Label:
+                                        text: "Limpieza del hogar"
+                                        font_size: "14.5sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                    Label:
+                                        text: "Sin fecha · 4 productos"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+
+                                MDIcon:
+                                    icon: "chevron-right"
+                                    theme_text_color: "Custom"
+                                    text_color: app.text_secondary_color
+                                    pos_hint: {"center_y": 0.5}
+
+                # -------------------------------------
+                # 3. PANTALLA: DESPENSA (cupboard)
+                # -------------------------------------
+                MDScreen:
+                    name: "cupboard"
+
+                    MDScrollView:
+                        do_scroll_x: False
+                        bar_width: 0
+
+                        MDBoxLayout:
+                            orientation: "vertical"
+                            adaptive_height: True
+                            spacing: "10dp"
+
+                            # Encabezado de Sección
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "46dp"
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    size_hint_x: 1
+                                    Label:
+                                        text: "INVENTARIO"
+                                        font_size: "10sp"
+                                        bold: True
+                                        color: app.category_tag_color
+                                        halign: "left"
+                                        valign: "middle"
+                                        text_size: self.size
+                                    Label:
+                                        text: "Mi despensa"
+                                        font_size: "22sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        valign: "middle"
+                                        text_size: self.size
+
+                                AddCircleButton:
+                                    pos_hint: {"center_y": 0.5}
+                                    on_release: app.accion_agregar()
+
+                            Widget:
+                                size_hint_y: None
+                                height: "6dp"
+
+                            # Item 1: Frijoles
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "50dp"
+                                spacing: "12dp"
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "38dp", "38dp"
+                                    pos_hint: {"center_y": 0.5}
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.leaf_badge_bg_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [12, 12, 12, 12]
+                                    MDIcon:
+                                        icon: "leaf"
+                                        theme_text_color: "Custom"
+                                        text_color: app.accent_green_color
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    pos_hint: {"center_y": 0.5}
+                                    Label:
+                                        text: "Frijoles"
+                                        font_size: "14.5sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                        valign: "middle"
+                                    Label:
+                                        text: "500 g"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                        valign: "middle"
+                                Label:
+                                    text: "Suficiente"
+                                    size_hint_x: None
+                                    width: "80dp"
+                                    font_size: "12sp"
                                     bold: True
-                                MDLabel:
-                                    text: "8 Artículos"
-                                    theme_text_color: "Hint"
-                            MDIcon:
-                                icon: "chevron-right"
-                                theme_text_color: "Hint"
+                                    color: [0.18, 0.44, 0.25, 1]
+                                    halign: "right"
+                                    valign: "middle"
+                                    text_size: self.size
 
-            MDCard:
-                size_hint: None, None
-                size: "275dp", "60dp"
-                pos_hint: {"center_x": 0.5}
-                radius: [30,]
-                elevation: 2
-                padding: "8dp"
+                            # Divisor
+                            Widget:
+                                size_hint_y: None
+                                height: "1dp"
+                                canvas:
+                                    Color:
+                                        rgba: app.divider_color
+                                    Rectangle:
+                                        pos: self.pos
+                                        size: self.size
 
-                MDBoxLayout:
-                    orientation: "horizontal"
-                    spacing: "15dp"
-                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                            # Item 2: Aceite de oliva
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "50dp"
+                                spacing: "12dp"
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "38dp", "38dp"
+                                    pos_hint: {"center_y": 0.5}
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.leaf_badge_bg_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [12, 12, 12, 12]
+                                    MDIcon:
+                                        icon: "leaf"
+                                        theme_text_color: "Custom"
+                                        text_color: app.accent_green_color
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    pos_hint: {"center_y": 0.5}
+                                    Label:
+                                        text: "Aceite de oliva"
+                                        font_size: "14.5sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                        valign: "middle"
+                                    Label:
+                                        text: "1 botella"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                        valign: "middle"
+                                Label:
+                                    text: "Reponer"
+                                    size_hint_x: None
+                                    width: "80dp"
+                                    font_size: "12sp"
+                                    bold: True
+                                    color: [0.72, 0.42, 0.12, 1]
+                                    halign: "right"
+                                    valign: "middle"
+                                    text_size: self.size
 
-                    MDIconButton:
-                        icon: "cart"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cart")
+                            # Divisor
+                            Widget:
+                                size_hint_y: None
+                                height: "1dp"
+                                canvas:
+                                    Color:
+                                        rgba: app.divider_color
+                                    Rectangle:
+                                        pos: self.pos
+                                        size: self.size
 
-                    MDIconButton:
-                        icon: "cupboard"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cupboard")
+                            # Item 3: Sal común
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "50dp"
+                                spacing: "12dp"
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "38dp", "38dp"
+                                    pos_hint: {"center_y": 0.5}
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.leaf_badge_bg_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [12, 12, 12, 12]
+                                    MDIcon:
+                                        icon: "leaf"
+                                        theme_text_color: "Custom"
+                                        text_color: app.accent_green_color
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    pos_hint: {"center_y": 0.5}
+                                    Label:
+                                        text: "Sal común"
+                                        font_size: "14.5sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                        valign: "middle"
+                                    Label:
+                                        text: "Poco contenido"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                        valign: "middle"
+                                Label:
+                                    text: "Por agotarse"
+                                    size_hint_x: None
+                                    width: "85dp"
+                                    font_size: "12sp"
+                                    bold: True
+                                    color: [0.66, 0.25, 0.17, 1]
+                                    halign: "right"
+                                    valign: "middle"
+                                    text_size: self.size
 
-                    MDIconButton:
-                        icon: "home"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("home")
+                            # Divisor
+                            Widget:
+                                size_hint_y: None
+                                height: "1dp"
+                                canvas:
+                                    Color:
+                                        rgba: app.divider_color
+                                    Rectangle:
+                                        pos: self.pos
+                                        size: self.size
 
-                    MDIconButton:
-                        icon: "clipboard-list"
-                        style: "tonal"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("clipboard-list")
+                            # Item 4: Pasta
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "50dp"
+                                spacing: "12dp"
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "38dp", "38dp"
+                                    pos_hint: {"center_y": 0.5}
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.leaf_badge_bg_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [12, 12, 12, 12]
+                                    MDIcon:
+                                        icon: "leaf"
+                                        theme_text_color: "Custom"
+                                        text_color: app.accent_green_color
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    pos_hint: {"center_y": 0.5}
+                                    Label:
+                                        text: "Pasta"
+                                        font_size: "14.5sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                        valign: "middle"
+                                    Label:
+                                        text: "2 paquetes"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                        valign: "middle"
+                                Label:
+                                    text: "Suficiente"
+                                    size_hint_x: None
+                                    width: "80dp"
+                                    font_size: "12sp"
+                                    bold: True
+                                    color: [0.18, 0.44, 0.25, 1]
+                                    halign: "right"
+                                    valign: "middle"
+                                    text_size: self.size
 
-                    MDIconButton:
-                        icon: "cog"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cog")
+                # -------------------------------------
+                # 4. PANTALLA: COMPRAS (cart)
+                # -------------------------------------
+                MDScreen:
+                    name: "cart"
 
-    # =========================================================
-    # 5. PANTALLA: CONFIGURACIÓN (cog)
-    # =========================================================
-    MDScreen:
-        name: "cog"
-        md_bg_color: self.theme_cls.backgroundColor
+                    MDScrollView:
+                        do_scroll_x: False
+                        bar_width: 0
 
-        MDBoxLayout:
-            orientation: "vertical"
-            padding: "20dp"
-            spacing: "15dp"
-
-            MDLabel:
-                text: "Configuración"
-                font_style: "Headline"
-                role: "medium"
-                halign: "center"
-                size_hint_y: None
-                height: "50dp"
-
-            MDCard:
-                size_hint_y: 1
-                radius: [20,]
-                elevation: 1
-                padding: "20dp"
-                MDScrollView:
-                    MDBoxLayout:
-                        orientation: "vertical"
-                        adaptive_height: True
-                        spacing: "30dp"
-                        
                         MDBoxLayout:
+                            orientation: "vertical"
                             adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "account"
-                            MDLabel:
-                                text: "Perfil de Usuario"
-                                bold: True
-                            MDIcon:
-                                icon: "chevron-right"
-                                
+                            spacing: "10dp"
+
+                            # Encabezado de Sección
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "46dp"
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    size_hint_x: 1
+                                    Label:
+                                        text: "COMPRA ACTUAL"
+                                        font_size: "10sp"
+                                        bold: True
+                                        color: app.category_tag_color
+                                        halign: "left"
+                                        valign: "middle"
+                                        text_size: self.size
+                                    Label:
+                                        text: "Carrito de compras"
+                                        font_size: "22sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        valign: "middle"
+                                        text_size: self.size
+
+                                AddCircleButton:
+                                    pos_hint: {"center_y": 0.5}
+                                    on_release: app.accion_agregar()
+
+                            Widget:
+                                size_hint_y: None
+                                height: "6dp"
+
+                            # Item 1: Leche entera
+                            CartItemRow:
+                                title: "Leche entera"
+                                subtitle: "Lista quincenal"
+                                price_str: "$2.500"
+                                price_val: 2500
+
+                            Widget:
+                                size_hint_y: None
+                                height: "1dp"
+                                canvas:
+                                    Color:
+                                        rgba: app.divider_color
+                                    Rectangle:
+                                        pos: self.pos
+                                        size: self.size
+
+                            # Item 2: Arroz integral
+                            CartItemRow:
+                                title: "Arroz integral"
+                                subtitle: "Lista quincenal"
+                                price_str: "$1.200"
+                                price_val: 1200
+
+                            Widget:
+                                size_hint_y: None
+                                height: "1dp"
+                                canvas:
+                                    Color:
+                                        rgba: app.divider_color
+                                    Rectangle:
+                                        pos: self.pos
+                                        size: self.size
+
+                            # Item 3: Huevos · docena
+                            CartItemRow:
+                                title: "Huevos · docena"
+                                subtitle: "Lista quincenal"
+                                price_str: "$3.000"
+                                price_val: 3000
+
+                            Widget:
+                                size_hint_y: None
+                                height: "1dp"
+                                canvas:
+                                    Color:
+                                        rgba: app.divider_color
+                                    Rectangle:
+                                        pos: self.pos
+                                        size: self.size
+
+                            # Item 4: Pan de molde
+                            CartItemRow:
+                                title: "Pan de molde"
+                                subtitle: "Lista quincenal"
+                                price_str: "$2.100"
+                                price_val: 2100
+
+                            Widget:
+                                size_hint_y: None
+                                height: "1dp"
+                                canvas:
+                                    Color:
+                                        rgba: app.divider_color
+                                    Rectangle:
+                                        pos: self.pos
+                                        size: self.size
+
+                            Widget:
+                                size_hint_y: None
+                                height: "16dp"
+
+                            # Fila de Total Estimado
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "36dp"
+                                Label:
+                                    text: "Total estimado"
+                                    font_size: "13sp"
+                                    color: app.text_secondary_color
+                                    halign: "left"
+                                    valign: "middle"
+                                    text_size: self.size
+                                Label:
+                                    text: app.total_carrito_str
+                                    font_size: "24sp"
+                                    bold: True
+                                    color: app.text_primary_color
+                                    halign: "right"
+                                    valign: "middle"
+                                    text_size: self.size
+
+                # -------------------------------------
+                # 5. PANTALLA: INICIO (home)
+                # -------------------------------------
+                MDScreen:
+                    name: "home"
+
+                    MDScrollView:
+                        do_scroll_x: False
+                        bar_width: 0
+
                         MDBoxLayout:
+                            orientation: "vertical"
                             adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "bell-outline"
-                            MDLabel:
-                                text: "Notificaciones"
-                                bold: True
-                            MDSwitch:
-                                active: True
-                                pos_hint: {"center_y": .5}
-                                
-                        MDBoxLayout:
-                            adaptive_height: True
-                            spacing: "15dp"
-                            MDIcon:
-                                icon: "theme-light-dark"
-                            MDLabel:
-                                text: "Tema Oscuro"
-                                bold: True
-                            MDSwitch:
-                                id: switch_tema
-                                active: False
-                                pos_hint: {"center_y": .5}
-                                on_active: app.cambiar_tema(self.active)
+                            spacing: "14dp"
 
-            MDCard:
-                size_hint: None, None
-                size: "275dp", "60dp"
-                pos_hint: {"center_x": 0.5}
-                radius: [30,]
-                elevation: 2
-                padding: "8dp"
+                            # Encabezado de Sección
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "46dp"
 
-                MDBoxLayout:
-                    orientation: "horizontal"
-                    spacing: "15dp"
-                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    size_hint_x: 1
+                                    Label:
+                                        text: "RESUMEN GENERAL"
+                                        font_size: "10sp"
+                                        bold: True
+                                        color: app.category_tag_color
+                                        halign: "left"
+                                        valign: "middle"
+                                        text_size: self.size
+                                    Label:
+                                        text: "Bienvenida, Sofía"
+                                        font_size: "22sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        valign: "middle"
+                                        text_size: self.size
 
-                    MDIconButton:
-                        icon: "cart"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cart")
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "38dp", "38dp"
+                                    pos_hint: {"center_y": 0.5}
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.card_white_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [12, 12, 12, 12]
+                                    MDIcon:
+                                        icon: "bell-outline"
+                                        theme_text_color: "Custom"
+                                        text_color: app.accent_green_color
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-                    MDIconButton:
-                        icon: "cupboard"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cupboard")
+                            # Tarjeta 1: Gasto semanal
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "76dp"
+                                padding: ["14dp", "12dp", "14dp", "12dp"]
+                                spacing: "12dp"
+                                canvas.before:
+                                    Color:
+                                        rgba: app.card_white_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [20, 20, 20, 20]
 
-                    MDIconButton:
-                        icon: "home"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("home")
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "42dp", "42dp"
+                                    pos_hint: {"center_y": 0.5}
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.leaf_badge_bg_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [12, 12, 12, 12]
+                                    MDIcon:
+                                        icon: "currency-usd"
+                                        theme_text_color: "Custom"
+                                        text_color: app.accent_green_color
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-                    MDIconButton:
-                        icon: "clipboard-list"
-                        style: "standard"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("clipboard-list")
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    pos_hint: {"center_y": 0.5}
+                                    Label:
+                                        text: "Gasto semanal actual"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                    Label:
+                                        text: "$45.000"
+                                        font_size: "18sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
 
-                    MDIconButton:
-                        icon: "cog"
-                        style: "tonal"
-                        pos_hint: {"center_y": 0.5}
-                        on_release: app.cambiar_pantalla("cog")
+                            # Tarjeta 2: Por Caducar
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "76dp"
+                                padding: ["14dp", "12dp", "14dp", "12dp"]
+                                spacing: "12dp"
+                                canvas.before:
+                                    Color:
+                                        rgba: app.icon_badge_pink_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [20, 20, 20, 20]
+
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "42dp", "42dp"
+                                    pos_hint: {"center_y": 0.5}
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.icon_badge_pink_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [12, 12, 12, 12]
+                                    MDIcon:
+                                        icon: "alert-circle-outline"
+                                        theme_text_color: "Custom"
+                                        text_color: [0.72, 0.35, 0.30, 1]
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    pos_hint: {"center_y": 0.5}
+                                    Label:
+                                        text: "Por caducar pronto"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                    Label:
+                                        text: "Leche entera (Mañana)"
+                                        font_size: "15sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+
+                            # Tarjeta 3: Receta Sugerida
+                            BoxLayout:
+                                size_hint_y: None
+                                height: "76dp"
+                                padding: ["14dp", "12dp", "14dp", "12dp"]
+                                spacing: "12dp"
+                                canvas.before:
+                                    Color:
+                                        rgba: app.card_white_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [20, 20, 20, 20]
+
+                                AnchorLayout:
+                                    size_hint: None, None
+                                    size: "42dp", "42dp"
+                                    pos_hint: {"center_y": 0.5}
+                                    canvas.before:
+                                        Color:
+                                            rgba: app.icon_badge_amber_color
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [12, 12, 12, 12]
+                                    MDIcon:
+                                        icon: "chef-hat"
+                                        theme_text_color: "Custom"
+                                        text_color: [0.65, 0.48, 0.16, 1]
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    pos_hint: {"center_y": 0.5}
+                                    Label:
+                                        text: "Receta recomendada hoy"
+                                        font_size: "11sp"
+                                        color: app.text_secondary_color
+                                        halign: "left"
+                                        text_size: self.size
+                                    Label:
+                                        text: "Arroz con huevo y verduras"
+                                        font_size: "14.5sp"
+                                        bold: True
+                                        color: app.text_primary_color
+                                        halign: "left"
+                                        text_size: self.size
+
+    # -------------------------------------------------
+    # Barra de Navegación Inferior (5 Pestañas)
+    # -------------------------------------------------
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint_y: None
+        height: "64dp"
+        padding: ["10dp", "4dp", "10dp", "4dp"]
+        spacing: "6dp"
+
+        canvas.before:
+            Color:
+                rgba: app.bg_color
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        BottomNavButton:
+            icon_name: "home-outline"
+            label_text: "Inicio"
+            screen_target: "home"
+            is_active: app.current_screen_name == "home"
+
+        BottomNavButton:
+            icon_name: "cart-outline"
+            label_text: "Compras"
+            screen_target: "cart"
+            is_active: app.current_screen_name == "cart"
+
+        BottomNavButton:
+            icon_name: "cupboard-outline"
+            label_text: "Despensa"
+            screen_target: "cupboard"
+            is_active: app.current_screen_name == "cupboard"
+
+        BottomNavButton:
+            icon_name: "clipboard-text-outline"
+            label_text: "Listas"
+            screen_target: "lists"
+            is_active: app.current_screen_name == "lists"
+
+        BottomNavButton:
+            icon_name: "finance"
+            label_text: "Estadísticas"
+            screen_target: "stats"
+            is_active: app.current_screen_name == "stats"
