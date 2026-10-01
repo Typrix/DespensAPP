@@ -48,23 +48,3 @@
 
 3. **Verificación**:
    - Se ejecutó prueba interactiva de toques y despacho de eventos con 100% de éxito: navegación inmediata entre las 5 pestañas, apertura/cierre del modal de perfil, interacción con las casillas del carrito y scroll activo en todas las vistas.
-
----
-
-## Entrada / Prompt del Usuario (Alineación de Botones Circulares)
-> "quiero que acomodes los botones de agregar ya que estan separados los circulos de los iconos"
-
----
-
-## Diagnóstico y Corrección Realizada
-
-1. **Causa raíz de la desalineación**:
-   - Los botones de agregar (`+`) y el avatar (`SO`) estaban implementados como widgets base `Button` que contenían `MDIcon` o `Label` como hijos con propiedades `pos_hint`. En Kivy, la clase `Button` es un widget atómico básico (no un Layout gestor de posiciones), por lo que ignora el `pos_hint` de sus hijos y los sitúa en las coordenadas predeterminadas `(0, 0)`, provocando que el círculo del fondo quedase en la barra superior mientras que el icono `+` quedaba desplazado en otra posición.
-
-2. **Solución implementada**:
-   - Se crearon las clases especializadas `AddCircleButton` y `AvatarCircleButton` en [main.py](file:///c:/Users/sebas/Documents/GitHub/DespensAPP/main.py), heredando de `ButtonBehavior` y `AnchorLayout`.
-   - Al ser `AnchorLayout`, el contenedor centra automáticamente sus elementos hijos (`anchor_x: "center"`, `anchor_y: "center"`), fijando el icono `+` y el texto `SO` exactamente en el centro geométrico de sus círculos respectivos en [main.kv](file:///c:/Users/sebas/Documents/GitHub/DespensAPP/main.kv).
-   - Se reemplazaron todas las instancias de botones en las pantallas `Listas`, `Despensa`, `Compras` y en el encabezado.
-
-3. **Verificación**:
-   - Se validó mediante pruebas automáticas que los iconos y etiquetas residen centrados dentro de sus círculos en todas las pantallas con 0 errores de renderizado.
