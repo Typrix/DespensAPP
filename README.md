@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="despensapp_logo.png" alt="DespensAPP Logo" width="160"/>
+  <img src="docs/despensapp_logo.png" alt="DespensAPP Logo" width="160"/>
 </p>
 
 <h1 align="center">DespensAPP</h1>
@@ -22,7 +22,7 @@
 
 **DespensAPP** es una aplicación móvil desarrollada en Python con **Kivy** y **KivyMD**, concebida para resolver una problemática cotidiana frecuente: el desperdicio de alimentos por olvido de fechas de vencimiento y la falta de control presupuestario al momento de realizar compras en el supermercado.
 
-El diseño y la arquitectura de la aplicación están respaldados por una **investigación empírica de UX/UI** aplicada a usuarios reales (para más detalle, consultar [FUNDAMENTACION-UX-UI.md](FUNDAMENTACION-UX-UI.md)), identificando patrones de consumo, necesidades de accesibilidad y prioridades funcionales.
+El diseño y la arquitectura de la aplicación están respaldados por una **investigación empírica de UX/UI** aplicada a usuarios reales (para más detalle, consultar [FUNDAMENTACION-UX-UI.md](docs/FUNDAMENTACION-UX-UI.md)), identificando patrones de consumo, necesidades de accesibilidad y prioridades funcionales.
 
 ---
 
@@ -52,13 +52,17 @@ El diseño y la arquitectura de la aplicación están respaldados por una **inve
 ```text
 DespensAPP/
 │
-├── main.py                   # Punto de entrada de la aplicación y lógica de controladores
-├── main.kv                   # Definición de layouts, widgets y estilos gráficos en Kivy
-├── FUNDAMENTACION-UX-UI.md   # Informe y matriz de hallazgos UX/UI (muestra n=32)
-├── uso_ia.md                 # Registro de prompts, asistencia de IA y resolución de bugs
-├── despensapp_logo.png       # Logotipo oficial de la aplicación
-├── README.md                 # Documentación general del proyecto
-└── venv/                     # Entorno virtual de desarrollo
+├── main.py                             # Punto de entrada de la aplicación y lógica de controladores
+├── main.kv                             # Definición de layouts, widgets y estilos gráficos en Kivy
+├── README.md                           # Documentación principal del proyecto
+│
+├── docs/                               # Documentación técnica, diseño y recursos
+│   ├── despensapp_logo.png             # Logotipo oficial de la aplicación
+│   ├── FUNDAMENTACION-UX-UI.md         # Informe y matriz de hallazgos UX/UI (muestra n=32)
+│   ├── uso_ia.md                       # Registro de prompts, asistencia de IA y resolución de bugs
+│   └── DespensAPP - Presentación Oral E2.pdf # Diapositivas de la Presentación Oral (Entrega 2)
+│
+└── venv/                               # Entorno virtual de desarrollo
 ```
 
 ---
@@ -108,7 +112,14 @@ La aplicación fue desarrollada siguiendo un enfoque centrado en el usuario (*Hu
 2. **Decisiones cromáticas:** Paleta con tono azul dominante (elegido por el 57.1% de los encuestados) complementado con soporte obligatorio de Modo Oscuro (solicitado por el 50% de la muestra).
 3. **Carga cognitiva mínima:** Alertas por códigos cromáticos (verde, naranja, rojo) para lectura inmediata sin sobrecarga de texto.
 
-Para leer el desglose completo de la investigación, revisa el archivo [FUNDAMENTACION-UX-UI.md](FUNDAMENTACION-UX-UI.md).
+Para leer el informe completo, consulta [FUNDAMENTACION-UX-UI.md](docs/FUNDAMENTACION-UX-UI.md).
+
+---
+
+## 📑 Documentación Adicional
+
+* 📊 **Presentación:** Las diapositivas del proyecto se encuentran en [DespensAPP - Presentación Oral E2.pdf](docs/DespensAPP%20-%20Presentación%20Oral%20E2.pdf).
+* 🤖 **Transparencia y Uso de IA:** Consulta el registro detallado de prompts y soluciones en [uso_ia.md](docs/uso_ia.md).
 
 ---
 

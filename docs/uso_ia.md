@@ -48,3 +48,23 @@
 
 3. **Verificación**:
    - Se ejecutó prueba interactiva de toques y despacho de eventos con 100% de éxito: navegación inmediata entre las 5 pestañas, apertura/cierre del modal de perfil, interacción con las casillas del carrito y scroll activo en todas las vistas.
+
+---
+
+## Entrada / Prompt del Usuario (Documentación y Reestructuración de Repositorio)
+> "necesito que me escribas el readme.md dime que tipo de informacion necestias y te la doy"
+> "proyecto universitario, se uso python 3.12.10 con kivy kivymd kivy[base], sin licencia y los autores son los de la foto y Braulio Palma brauliodeus"
+> "quiero q organices un poco la estructura y uso de ia, el pdf y el logo junto a la documentacion vayan dentro de una carpeta llamada docs"
+
+---
+
+## Acciones Realizadas
+
+1. **Elaboración de Documentación Central (README.md)**:
+   - Se redactó una guía completa con insignias dinámicas, síntesis de la propuesta de valor, descripción funcional de las 5 pantallas, stack tecnológico (Python 3.12.10, Kivy, KivyMD) y guía de instalación paso a paso con entornos virtuales.
+   - Se incorporó la tabla de autores y enlaces a la fundamentación de diseño.
+
+2. **Reorganización Estructural (`/docs`)**:
+   - Se centralizó la documentación y recursos complementarios dentro de la carpeta `docs/` (`docs/FUNDAMENTACION-UX-UI.md`, `docs/uso_ia.md`, `docs/despensapp_logo.png` y `docs/DespensAPP - Presentación Oral E2.pdf`).
+   - Se actualizaron las referencias relativas en `main.kv` y los enlaces cruzados en el `README.md` para garantizar la consistencia del proyecto y la integridad visual de la aplicación.
+
