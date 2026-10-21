@@ -5,7 +5,7 @@
 
 ## ⚡ Guía Rápida para Presentación Universitaria (Plug & Play)
 
-Este proyecto está diseñado para ser **100% portable y autónomo**. Si descargas o clonas el proyecto en cualquier computadora de la universidad que no tenga nada instalado previamente, solo necesitas **Python 3.10 o superior**.
+Este proyecto está diseñado para ser **100% portable y autónomo**. Si descargas o clonas el proyecto en cualquier computadora que no tenga nada instalado previamente, solo necesitas **Python 3.10 o superior**.
 
 ### Opción 1: Un Solo Clic (Recomendada en Windows)
 Haz doble clic en el archivo:
