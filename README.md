@@ -58,9 +58,9 @@ python main.py
 **No te preocupes por XAMPP ni MySQL:**
 - **Si XAMPP está encendido:** El sistema se conectará a MySQL (`despensapp_db`) en el puerto `3306`.
 - **Si XAMPP NO está instalado o está apagado:** El sistema activa automáticamente el **modo local SQLite** (`despensapp_local.db`).
-  - Crea todas las tablas en milisegundos.
+  - Crea todas las tablas automáticamente.
   - Inserta los datos iniciales de demostración.
-  - Registra las métricas de telemetría sin ningún error.
+  - Registra las métricas de telemetría.
 
 ### Credenciales de Usuario Demo
 - **Usuario:** `sofia@despensapp.com`
