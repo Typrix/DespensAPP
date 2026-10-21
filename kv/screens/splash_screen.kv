@@ -1,0 +1,112 @@
+# -*- coding: utf-8 -*-
+# =========================================================
+# Pantalla de Carga (Splash Screen) - DespensAPP
+# =========================================================
+
+<SplashScreen@MDScreen>:
+    name: "splash"
+
+    canvas.before:
+        Color:
+            rgba: app.bg_color
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    AnchorLayout:
+        anchor_x: "center"
+        anchor_y: "center"
+        size_hint: 1, 1
+
+        BoxLayout:
+            orientation: "vertical"
+            size_hint: None, None
+            size: "340dp", "480dp"
+            spacing: "16dp"
+            padding: ["20dp", "24dp", "20dp", "24dp"]
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+            # Contenedor del Logo
+            AnchorLayout:
+                size_hint_y: None
+                height: "120dp"
+
+                AnchorLayout:
+                    size_hint: None, None
+                    size: "110dp", "110dp"
+                    canvas.before:
+                        Color:
+                            rgba: app.leaf_badge_bg_color
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [28, 28, 28, 28]
+
+                    Image:
+                        source: "docs/despensapp_logo.png"
+                        size_hint: None, None
+                        size: "150dp", "150dp"
+                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+            # Nombre y Lema
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_y: None
+                height: "64dp"
+                spacing: "4dp"
+
+                Label:
+                    text: "DespensAPP"
+                    font_size: "26sp"
+                    bold: True
+                    color: app.text_primary_color
+                    halign: "center"
+                    valign: "middle"
+                    text_size: self.size
+
+                Label:
+                    text: "Tu despensa inteligente y organizada"
+                    font_size: "12sp"
+                    color: app.text_secondary_color
+                    halign: "center"
+                    valign: "middle"
+                    text_size: self.size
+
+            # Espaciador central
+            Widget:
+                size_hint_y: 1
+
+            # Barra de Progreso y Estado de Carga
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_y: None
+                height: "48dp"
+                spacing: "8dp"
+                padding: ["24dp", "0dp", "24dp", "0dp"]
+
+                CustomProgressBar:
+                    value: app.splash_progress
+                    track_color: app.progress_track_color
+                    fill_color: app.accent_green_color
+                    size_hint_y: None
+                    height: "6dp"
+
+                Label:
+                    text: app.splash_status_text
+                    font_size: "11sp"
+                    color: app.category_tag_color
+                    halign: "center"
+                    valign: "middle"
+                    bold: True
+                    text_size: self.size
+
+            # Pie de versión sutil
+            Label:
+                text: "v1.0 · Conectado y seguro"
+                size_hint_y: None
+                height: "20dp"
+                font_size: "9.5sp"
+                color: app.text_secondary_color
+                halign: "center"
+                valign: "middle"
+                text_size: self.size

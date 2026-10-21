@@ -1,0 +1,1074 @@
+# -*- coding: utf-8 -*-
+# ========================================================
+# Diálogos y Modales Visuales para DespensAPP
+# ========================================================
+
+<BaseFormModal>:
+    size_hint: None, None
+    width: "350dp"
+    background_color: [0, 0, 0, 0.45]
+    background: ""
+    auto_dismiss: True
+
+<CustomInputField@BoxLayout>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: "56dp"
+    spacing: "4dp"
+    label_text: ""
+    hint_text: ""
+    input_text: ""
+    input_filter: None
+
+    Label:
+        text: root.label_text
+        font_size: "11sp"
+        bold: True
+        color: app.text_secondary_color
+        size_hint_y: None
+        height: "16dp"
+        halign: "left"
+        text_size: self.size
+
+    AnchorLayout:
+        size_hint_y: None
+        height: "36dp"
+        canvas.before:
+            Color:
+                rgba: app.sage_container_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [10, 10, 10, 10]
+            Color:
+                rgba: app.divider_color
+            Line:
+                rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
+                width: 1.0
+
+        TextInput:
+            id: text_input
+            text: root.input_text
+            hint_text: root.hint_text
+            input_filter: root.input_filter
+            multiline: False
+            font_size: "13.5sp"
+            padding: ["10dp", "8dp", "10dp", "8dp"]
+            background_color: [0, 0, 0, 0]
+            cursor_color: app.accent_green_color
+            foreground_color: app.input_text_color
+            hint_text_color: app.input_placeholder_color
+
+
+# --------------------------------------------------------
+# 1. Modal: Añadir al Carrito
+# --------------------------------------------------------
+<AddCartItemModal>:
+    height: "360dp"
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: ["20dp", "18dp", "20dp", "18dp"]
+        spacing: "12dp"
+        canvas.before:
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [24, 24, 24, 24]
+
+        # Encabezado
+        BoxLayout:
+            size_hint_y: None
+            height: "32dp"
+            Label:
+                text: "Añadir al Carrito"
+                font_size: "17sp"
+                bold: True
+                color: app.text_primary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+        # Campo: Nombre del producto
+        CustomInputField:
+            id: field_title
+            label_text: "PRODUCTO"
+            hint_text: "Ej: Queso gouda, Manzanas..."
+
+        # Fila: Precio y Categoría/Lista
+        BoxLayout:
+            size_hint_y: None
+            height: "56dp"
+            spacing: "10dp"
+
+            CustomInputField:
+                id: field_price
+                label_text: "PRECIO ($)"
+                hint_text: "Ej: 2500"
+                input_filter: "float"
+
+            CustomInputField:
+                id: field_subtitle
+                label_text: "LISTA / CATEGORÍA"
+                hint_text: "Ej: Despensa, Frutas..."
+
+        Widget:
+            size_hint_y: 1
+
+        # Botones de Acción
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            spacing: "10dp"
+
+            Button:
+                text: "Cancelar"
+                font_size: "13.5sp"
+                color: app.text_secondary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.dismiss()
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [14, 14, 14, 14]
+
+            Button:
+                text: "Agregar"
+                font_size: "13.5sp"
+                bold: True
+                color: [1, 1, 1, 1]
+                background_color: [0, 0, 0, 0]
+                on_release: root.submit()
+                canvas.before:
+                    Color:
+                        rgba: app.accent_green_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [14, 14, 14, 14]
+
+
+# --------------------------------------------------------
+# 2. Modal: Añadir a la Despensa (Con Umbrales y Fecha de Vencimiento)
+# --------------------------------------------------------
+<AddPantryItemModal>:
+    height: "530dp"
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: ["20dp", "18dp", "20dp", "18dp"]
+        spacing: "10dp"
+        canvas.before:
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [24, 24, 24, 24]
+
+        # Encabezado
+        BoxLayout:
+            size_hint_y: None
+            height: "32dp"
+            Label:
+                text: "Añadir a Despensa"
+                font_size: "17sp"
+                bold: True
+                color: app.text_primary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+        # Campo: Nombre del producto
+        CustomInputField:
+            id: field_name
+            label_text: "NOMBRE DEL PRODUCTO"
+            hint_text: "Ej: Leche descremada, Arroz, Sal..."
+
+        # Fila: Cantidad Actual y Unidad
+        BoxLayout:
+            size_hint_y: None
+            height: "56dp"
+            spacing: "10dp"
+
+            CustomInputField:
+                id: field_quantity
+                label_text: "CANTIDAD ACTUAL"
+                hint_text: "Ej: 2, 500..."
+                input_filter: "float"
+
+            CustomInputField:
+                id: field_unit
+                label_text: "UNIDAD"
+                hint_text: "un., kg, g, L"
+
+        # Campo: Umbral Mínimo Numérico (Para clasificar alerta)
+        CustomInputField:
+            id: field_threshold
+            label_text: "CANTIDAD MÍNIMA (ALERTA)"
+            hint_text: "Si baja de este número, alertará"
+            input_filter: "float"
+
+        # Campo: Fecha de Vencimiento
+        CustomInputField:
+            id: field_expiration
+            label_text: "FECHA DE VENCIMIENTO"
+            hint_text: "AAAA-MM-DD (ej: 2026-11-20)"
+
+        # Botón / Toggle: Sin fecha de vencimiento
+        BoxLayout:
+            size_hint_y: None
+            height: "32dp"
+
+            Button:
+                text: "✓ Sin fecha de vencimiento (no perecible)" if root.has_no_expiration else "Marcar como 'Sin fecha de vencimiento'"
+                font_size: "11sp"
+                bold: root.has_no_expiration
+                color: app.accent_green_color if root.has_no_expiration else app.text_secondary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.toggle_no_expiration()
+                canvas.before:
+                    Color:
+                        rgba: [0.88, 0.96, 0.90, 1.0] if root.has_no_expiration else app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [10, 10, 10, 10]
+
+        Widget:
+            size_hint_y: 1
+
+        # Botones de Acción
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            spacing: "10dp"
+
+            Button:
+                text: "Cancelar"
+                font_size: "13.5sp"
+                color: app.text_secondary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.dismiss()
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [14, 14, 14, 14]
+
+            Button:
+                text: "Guardar"
+                font_size: "13.5sp"
+                bold: True
+                color: [1, 1, 1, 1]
+                background_color: [0, 0, 0, 0]
+                on_release: root.submit()
+                canvas.before:
+                    Color:
+                        rgba: app.accent_green_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [14, 14, 14, 14]
+
+
+# --------------------------------------------------------
+# 2B. Modal: Gestionar Producto de Despensa (Stock, Vencimiento, Eliminar)
+# --------------------------------------------------------
+<PantryItemDetailModal>:
+    height: "320dp"
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: ["20dp", "18dp", "20dp", "18dp"]
+        spacing: "10dp"
+        canvas.before:
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [24, 24, 24, 24]
+
+        Label:
+            text: root.item_name
+            font_size: "17sp"
+            bold: True
+            color: app.text_primary_color
+            size_hint_y: None
+            height: "26dp"
+            halign: "left"
+            text_size: self.size
+
+        Label:
+            text: f"Stock actual: {root.item_qty_str}"
+            font_size: "13sp"
+            color: app.text_secondary_color
+            size_hint_y: None
+            height: "20dp"
+            halign: "left"
+            text_size: self.size
+
+        # Fila de ajuste de cantidad
+        BoxLayout:
+            size_hint_y: None
+            height: "42dp"
+            spacing: "12dp"
+
+            Label:
+                text: "Ajustar cantidad:"
+                font_size: "13sp"
+                color: app.text_primary_color
+                size_hint_x: 1
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+            Button:
+                text: "-1"
+                font_size: "16sp"
+                bold: True
+                size_hint: None, None
+                size: "44dp", "38dp"
+                color: app.text_primary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.change_qty(-1)
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [10, 10, 10, 10]
+
+            Button:
+                text: "+1"
+                font_size: "16sp"
+                bold: True
+                size_hint: None, None
+                size: "44dp", "38dp"
+                color: [1, 1, 1, 1]
+                background_color: [0, 0, 0, 0]
+                on_release: root.change_qty(+1)
+                canvas.before:
+                    Color:
+                        rgba: app.accent_green_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [10, 10, 10, 10]
+
+        # Fila de Vencimiento
+        BoxLayout:
+            size_hint_y: None
+            height: "36dp"
+            spacing: "8dp"
+
+            Label:
+                text: f"Vencimiento: {root.expiration_str}"
+                font_size: "12sp"
+                color: app.text_secondary_color
+                size_hint_x: 1
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+            Button:
+                text: "Cambiar"
+                font_size: "11sp"
+                size_hint: None, None
+                size: "70dp", "32dp"
+                color: app.accent_green_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.edit_expiration()
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [8, 8, 8, 8]
+
+        Widget:
+            size_hint_y: 1
+
+        # Botones de Acción
+        BoxLayout:
+            size_hint_y: None
+            height: "40dp"
+            spacing: "10dp"
+
+            Button:
+                text: "Eliminar producto"
+                font_size: "12.5sp"
+                color: [0.85, 0.25, 0.25, 1.0]
+                background_color: [0, 0, 0, 0]
+                on_release: root.delete_item()
+                canvas.before:
+                    Color:
+                        rgba: [0.98, 0.88, 0.88, 1.0]
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12, 12, 12, 12]
+
+            Button:
+                text: "Listo"
+                font_size: "12.5sp"
+                bold: True
+                color: app.text_primary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.dismiss()
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12, 12, 12, 12]
+
+
+# --------------------------------------------------------
+# 2C. Modal: Edición Genérica de Texto (Nombre o Fecha)
+# --------------------------------------------------------
+<EditItemModal>:
+    height: "230dp"
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: ["20dp", "18dp", "20dp", "18dp"]
+        spacing: "12dp"
+        canvas.before:
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [24, 24, 24, 24]
+
+        Label:
+            text: root.title_text
+            font_size: "14.5sp"
+            bold: True
+            color: app.text_primary_color
+            size_hint_y: None
+            height: "26dp"
+            halign: "left"
+            text_size: self.size
+
+        CustomInputField:
+            id: field_edit
+            label_text: "NUEVO VALOR"
+            hint_text: "Escribe aquí..."
+
+        Widget:
+            size_hint_y: 1
+
+        BoxLayout:
+            size_hint_y: None
+            height: "40dp"
+            spacing: "10dp"
+
+            Button:
+                text: "Cancelar"
+                font_size: "13sp"
+                color: app.text_secondary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.dismiss()
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12, 12, 12, 12]
+
+            Button:
+                text: "Guardar"
+                font_size: "13sp"
+                bold: True
+                color: [1, 1, 1, 1]
+                background_color: [0, 0, 0, 0]
+                on_release: root.submit()
+                canvas.before:
+                    Color:
+                        rgba: app.accent_green_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12, 12, 12, 12]
+
+
+# --------------------------------------------------------
+# 3. Modal: Nueva Lista de Compras (Con Productos Iniciales)
+# --------------------------------------------------------
+<AddShoppingListModal>:
+    height: "440dp"
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: ["20dp", "18dp", "20dp", "18dp"]
+        spacing: "10dp"
+        canvas.before:
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [24, 24, 24, 24]
+
+        # Encabezado
+        BoxLayout:
+            size_hint_y: None
+            height: "30dp"
+            Label:
+                text: "Nueva Lista de Compras"
+                font_size: "17sp"
+                bold: True
+                color: app.text_primary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+        # Campo: Nombre de la lista
+        CustomInputField:
+            id: field_name
+            label_text: "NOMBRE DE LA LISTA"
+            hint_text: "Ej: Supermercado Lunes, Asado, Verdulería..."
+
+        # Campo opcional: Productos iniciales
+        CustomInputField:
+            id: field_initial_items
+            label_text: "PRODUCTOS INICIALES (OPCIONAL)"
+            hint_text: "Ej: Leche, Pan, Huevos, Café (separados por coma)"
+
+        # Selector de Color para el Icono
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: "60dp"
+            spacing: "6dp"
+
+            Label:
+                text: "COLOR DEL ICONO"
+                font_size: "11sp"
+                bold: True
+                color: app.text_secondary_color
+                size_hint_y: None
+                height: "16dp"
+                halign: "left"
+                text_size: self.size
+
+            BoxLayout:
+                id: color_chips_box
+                size_hint_y: None
+                height: "36dp"
+                spacing: "10dp"
+
+        Widget:
+            size_hint_y: 1
+
+        # Botones de Acción
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            spacing: "10dp"
+
+            Button:
+                text: "Cancelar"
+                font_size: "13.5sp"
+                color: app.text_secondary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.dismiss()
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [14, 14, 14, 14]
+
+            Button:
+                text: "Crear Lista"
+                font_size: "13.5sp"
+                bold: True
+                color: [1, 1, 1, 1]
+                background_color: [0, 0, 0, 0]
+                on_release: root.submit()
+                canvas.before:
+                    Color:
+                        rgba: app.accent_green_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [14, 14, 14, 14]
+
+
+# --------------------------------------------------------
+# 3B. Fila de Producto Anotado en Lista de Supermercado
+# --------------------------------------------------------
+<ShoppingListItemRow>:
+    size_hint_y: None
+    height: "46dp"
+    spacing: "8dp"
+    padding: ["10dp", "4dp", "10dp", "4dp"]
+    canvas.before:
+        Color:
+            rgba: [0.95, 0.96, 0.95, 1.0] if not root.is_checked else [0.91, 0.92, 0.91, 0.7]
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [10, 10, 10, 10]
+
+    # Botón Circular de Check / Tachado
+    Button:
+        size_hint: None, None
+        size: "28dp", "28dp"
+        pos_hint: {"center_y": 0.5}
+        text: "✓" if root.is_checked else ""
+        font_size: "14sp"
+        bold: True
+        color: [1, 1, 1, 1] if root.is_checked else [0, 0, 0, 0]
+        background_color: [0, 0, 0, 0]
+        on_release: root.toggle()
+        canvas.before:
+            Color:
+                rgba: app.accent_green_color if root.is_checked else [0.75, 0.78, 0.76, 1.0]
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [14, 14, 14, 14]
+
+    # Nombre del Producto (con tachado si ya se compró)
+    Label:
+        text: f"[s]{root.name}[/s]" if root.is_checked else root.name
+        markup: True
+        font_size: "13.5sp"
+        color: [0.55, 0.55, 0.55, 1.0] if root.is_checked else app.text_primary_color
+        size_hint_x: 1
+        halign: "left"
+        valign: "middle"
+        text_size: self.size
+
+    # Botón de Edición Rápida (para corregir errores tipográficos)
+    Button:
+        text: "✎"
+        font_size: "14sp"
+        size_hint: None, None
+        size: "30dp", "30dp"
+        pos_hint: {"center_y": 0.5}
+        color: app.text_secondary_color
+        background_color: [0, 0, 0, 0]
+        on_release: root.edit()
+
+    # Botón Eliminar Producto
+    Button:
+        text: "✕"
+        font_size: "13sp"
+        size_hint: None, None
+        size: "30dp", "30dp"
+        pos_hint: {"center_y": 0.5}
+        color: [0.85, 0.3, 0.3, 1.0]
+        background_color: [0, 0, 0, 0]
+        on_release: root.delete()
+
+
+# --------------------------------------------------------
+# 3C. Modal: Detalle de Lista de Supermercado (Estilo Papel)
+# --------------------------------------------------------
+<ShoppingListDetailModal>:
+    width: "360dp"
+    height: "560dp"
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: ["20dp", "18dp", "20dp", "18dp"]
+        spacing: "10dp"
+        canvas.before:
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [24, 24, 24, 24]
+
+        # Cabecera de la Lista
+        BoxLayout:
+            size_hint_y: None
+            height: "36dp"
+            spacing: "8dp"
+
+            # Indicador circular de color
+            Widget:
+                size_hint: None, None
+                size: "14dp", "14dp"
+                pos_hint: {"center_y": 0.5}
+                canvas.before:
+                    Color:
+                        rgba: root.icon_color_rgba
+                    Ellipse:
+                        pos: self.pos
+                        size: self.size
+
+            Label:
+                text: root.list_name
+                font_size: "17sp"
+                bold: True
+                color: app.text_primary_color
+                size_hint_x: 1
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+            Button:
+                text: "✎"
+                font_size: "15sp"
+                size_hint: None, None
+                size: "32dp", "32dp"
+                color: app.text_secondary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.edit_list_name()
+
+            Button:
+                text: "🗑"
+                font_size: "14sp"
+                size_hint: None, None
+                size: "32dp", "32dp"
+                color: [0.85, 0.3, 0.3, 1.0]
+                background_color: [0, 0, 0, 0]
+                on_release: root.delete_this_list()
+
+        # Subtítulo (contador de items y tachados)
+        Label:
+            text: root.subtitle_info
+            font_size: "12sp"
+            color: app.text_secondary_color
+            size_hint_y: None
+            height: "18dp"
+            halign: "left"
+            text_size: self.size
+
+        # Fila para Anotar Producto Rápido (Estilo Papel)
+        BoxLayout:
+            size_hint_y: None
+            height: "40dp"
+            spacing: "8dp"
+
+            AnchorLayout:
+                size_hint_x: 1
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12, 12, 12, 12]
+                    Color:
+                        rgba: app.divider_color
+                    Line:
+                        rounded_rectangle: (self.x, self.y, self.width, self.height, 12)
+                        width: 1.0
+
+                TextInput:
+                    id: new_item_input
+                    hint_text: "Anotar producto (ej: Huevos)..."
+                    multiline: False
+                    font_size: "13sp"
+                    padding: ["10dp", "8dp", "10dp", "8dp"]
+                    background_color: [0, 0, 0, 0]
+                    cursor_color: app.accent_green_color
+                    foreground_color: app.input_text_color
+                    hint_text_color: app.input_placeholder_color
+                    on_text_validate: root.add_item()
+
+            Button:
+                text: "+"
+                font_size: "20sp"
+                bold: True
+                size_hint: None, None
+                size: "40dp", "40dp"
+                color: [1, 1, 1, 1]
+                background_color: [0, 0, 0, 0]
+                on_release: root.add_item()
+                canvas.before:
+                    Color:
+                        rgba: app.accent_green_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12, 12, 12, 12]
+
+        # Separador sutil
+        Widget:
+            size_hint_y: None
+            height: "1dp"
+            canvas.before:
+                Color:
+                    rgba: app.divider_color
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+        # Lista Scrollable de Productos Anotados
+        ScrollView:
+            size_hint: 1, 1
+            do_scroll_x: False
+            do_scroll_y: True
+
+            BoxLayout:
+                id: items_list_box
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: "6dp"
+
+        # Pie / Botón Cerrar
+        Button:
+            size_hint_y: None
+            height: "40dp"
+            text: "Cerrar"
+            font_size: "13sp"
+            bold: True
+            color: app.text_primary_color
+            background_color: [0, 0, 0, 0]
+            on_release: root.dismiss()
+            canvas.before:
+                Color:
+                    rgba: app.sage_container_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [12, 12, 12, 12]
+
+
+# --------------------------------------------------------
+# 4. Modal: Cuenta de Usuario (Inicio de Sesión y Registro)
+# --------------------------------------------------------
+<AuthModal>:
+    height: "530dp"
+    auto_dismiss: root.can_cancel
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: ["20dp", "18dp", "20dp", "18dp"]
+        spacing: "10dp"
+        canvas.before:
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [24, 24, 24, 24]
+
+        # Encabezado con Título
+        BoxLayout:
+            size_hint_y: None
+            height: "28dp"
+            Label:
+                text: "Bienvenido/a a DespensAPP"
+                font_size: "16.5sp"
+                bold: True
+                color: app.text_primary_color
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+
+        # Selector de Pestaña: Iniciar Sesión / Crear Cuenta
+        BoxLayout:
+            size_hint_y: None
+            height: "38dp"
+            spacing: "6dp"
+            canvas.before:
+                Color:
+                    rgba: app.sage_container_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [14, 14, 14, 14]
+
+            Button:
+                id: btn_tab_login
+                text: "Iniciar Sesión"
+                bold: True
+                font_size: "12.5sp"
+                color: app.accent_green_color if root.is_login_mode else app.text_secondary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.set_mode(True)
+                canvas.before:
+                    Color:
+                        rgba: app.card_white_color if root.is_login_mode else [0, 0, 0, 0]
+                    RoundedRectangle:
+                        pos: [self.x + 3, self.y + 3]
+                        size: [self.width - 6, self.height - 6]
+                        radius: [12, 12, 12, 12]
+
+            Button:
+                id: btn_tab_register
+                text: "Crear Cuenta"
+                bold: True
+                font_size: "12.5sp"
+                color: app.accent_green_color if not root.is_login_mode else app.text_secondary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.set_mode(False)
+                canvas.before:
+                    Color:
+                        rgba: app.card_white_color if not root.is_login_mode else [0, 0, 0, 0]
+                    RoundedRectangle:
+                        pos: [self.x + 3, self.y + 3]
+                        size: [self.width - 6, self.height - 6]
+                        radius: [12, 12, 12, 12]
+
+        # Campo: Nombre (Solo en modo registro)
+        BoxLayout:
+            id: box_name
+            orientation: "vertical"
+            size_hint_y: None
+            height: "56dp" if not root.is_login_mode else "0dp"
+            opacity: 1 if not root.is_login_mode else 0
+            disabled: root.is_login_mode
+
+            Label:
+                text: "NOMBRE COMPLETO"
+                font_size: "11sp"
+                bold: True
+                color: app.text_secondary_color
+                size_hint_y: None
+                height: "16dp" if not root.is_login_mode else "0dp"
+                halign: "left"
+                text_size: self.size
+
+            AnchorLayout:
+                size_hint_y: None
+                height: "36dp" if not root.is_login_mode else "0dp"
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [10, 10, 10, 10]
+                    Color:
+                        rgba: app.divider_color
+                    Line:
+                        rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
+                        width: 1.0
+
+                TextInput:
+                    id: field_auth_name
+                    hint_text: "Tu nombre o apodo"
+                    multiline: False
+                    font_size: "13.5sp"
+                    padding: ["10dp", "8dp", "10dp", "8dp"]
+                    background_color: [0, 0, 0, 0]
+                    cursor_color: app.accent_green_color
+                    foreground_color: app.input_text_color
+                    hint_text_color: app.input_placeholder_color
+
+        # Campo: Correo Electrónico
+        CustomInputField:
+            id: field_auth_email
+            label_text: "CORREO ELECTRÓNICO"
+            hint_text: "usuario@ejemplo.com"
+
+        # Campo: Contraseña
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: "56dp"
+            spacing: "4dp"
+
+            Label:
+                text: "CONTRASEÑA"
+                font_size: "11sp"
+                bold: True
+                color: app.text_secondary_color
+                size_hint_y: None
+                height: "16dp"
+                halign: "left"
+                text_size: self.size
+
+            AnchorLayout:
+                size_hint_y: None
+                height: "36dp"
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [10, 10, 10, 10]
+                    Color:
+                        rgba: app.divider_color
+                    Line:
+                        rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
+                        width: 1.0
+
+                TextInput:
+                    id: field_auth_password
+                    hint_text: "Mínimo 4 caracteres"
+                    password: True
+                    multiline: False
+                    font_size: "13.5sp"
+                    padding: ["10dp", "8dp", "10dp", "8dp"]
+                    background_color: [0, 0, 0, 0]
+                    cursor_color: app.accent_green_color
+                    foreground_color: app.input_text_color
+                    hint_text_color: app.input_placeholder_color
+
+        # Etiqueta de Notificaciones / Errores
+        Label:
+            id: label_auth_msg
+            text: root.message_text
+            font_size: "11.5sp"
+            color: [0.85, 0.20, 0.25, 1.0] if "error" in root.message_text.lower() or "incorrect" in root.message_text.lower() or "campo" in root.message_text.lower() else app.accent_green_color
+            size_hint_y: None
+            height: "22dp"
+            halign: "center"
+            text_size: self.size
+
+        # Botón Principal de Acción
+        Button:
+            size_hint_y: None
+            height: "44dp"
+            text: "Entrar a mi Cuenta" if root.is_login_mode else "Crear mi Cuenta"
+            font_size: "14sp"
+            bold: True
+            color: [1, 1, 1, 1]
+            background_color: [0, 0, 0, 0]
+            on_release: root.submit()
+            canvas.before:
+                Color:
+                    rgba: app.accent_green_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [14, 14, 14, 14]
+
+        # Botón de demostración rápida
+        Button:
+            size_hint_y: None
+            height: "30dp"
+            text: "Usar cuenta demo (Sofía Martínez)"
+            font_size: "11sp"
+            color: app.category_tag_color
+            background_color: [0, 0, 0, 0]
+            on_release: root.fill_demo()
+
+        # Botón para cerrar (solo disponible si el usuario ya inició sesión previamente)
+        Button:
+            size_hint_y: None
+            height: "28dp" if root.can_cancel else "0dp"
+            opacity: 1 if root.can_cancel else 0
+            disabled: not root.can_cancel
+            text: "Cerrar"
+            font_size: "12sp"
+            color: app.text_secondary_color
+            background_color: [0, 0, 0, 0]
+            on_release: root.dismiss()

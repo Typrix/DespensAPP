@@ -1,0 +1,453 @@
+# -*- coding: utf-8 -*-
+# =========================================================
+# Componentes Visuales Reutilizables - DespensAPP
+# =========================================================
+
+<BottomNavButton>:
+    orientation: "vertical"
+    size_hint_y: 1
+    padding: ["4dp", "4dp", "4dp", "4dp"]
+    spacing: "2dp"
+    on_release: app.cambiar_pantalla(root.screen_target)
+
+    canvas.before:
+        Color:
+            rgba: app.active_pill_color if root.is_active else (0, 0, 0, 0)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [16, 16, 16, 16]
+
+    AnchorLayout:
+        size_hint_y: 0.6
+        MDIcon:
+            icon: root.icon_name
+            theme_text_color: "Custom"
+            text_color: app.accent_green_color if root.is_active else app.text_secondary_color
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+    Label:
+        text: root.label_text
+        size_hint_y: 0.4
+        font_size: "10.5sp"
+        bold: root.is_active
+        color: app.accent_green_color if root.is_active else app.text_secondary_color
+        halign: "center"
+        valign: "middle"
+        text_size: self.size
+
+
+<AddCircleButton>:
+    size_hint: None, None
+    size: "40dp", "40dp"
+    anchor_x: "center"
+    anchor_y: "center"
+
+    canvas.before:
+        Color:
+            rgba: app.accent_green_color
+        Ellipse:
+            pos: self.pos
+            size: self.size
+
+    MDIcon:
+        icon: "plus"
+        theme_text_color: "Custom"
+        text_color: [1, 1, 1, 1]
+
+
+<AvatarCircleButton>:
+    size_hint: None, None
+    size: "42dp", "42dp"
+    anchor_x: "center"
+    anchor_y: "center"
+
+    canvas.before:
+        Color:
+            rgba: app.card_white_color
+        Ellipse:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: app.avatar_border_color
+        Line:
+            circle: (self.center_x, self.center_y, 20)
+            width: 1.4
+
+    Label:
+        text: app.user_initials_str
+        font_size: "13sp"
+        bold: True
+        color: app.text_primary_color
+
+
+# ---------------------------------------------------------
+# Fila de Artículo del Carrito de Compras
+# ---------------------------------------------------------
+<CartItemRow>:
+    size_hint_y: None
+    height: "54dp"
+    spacing: "10dp"
+    padding: ["0dp", "4dp", "0dp", "4dp"]
+
+    # Checkbox interactivo
+    AnchorLayout:
+        size_hint: None, None
+        size: "30dp", "46dp"
+        pos_hint: {"center_y": 0.5}
+        Button:
+            background_color: [0, 0, 0, 0]
+            size_hint: 1, 1
+            on_release: root.toggle_check()
+            MDIcon:
+                icon: "check-circle" if root.checked else "circle-outline"
+                theme_text_color: "Custom"
+                text_color: app.accent_green_color if root.checked else app.text_secondary_color
+                pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+    # Título y Subtítulo
+    BoxLayout:
+        orientation: "vertical"
+        size_hint_x: 1
+        pos_hint: {"center_y": 0.5}
+        Label:
+            text: root.title
+            font_size: "14sp"
+            bold: True
+            color: app.text_primary_color if not root.checked else app.text_secondary_color
+            halign: "left"
+            valign: "middle"
+            text_size: self.size
+        Label:
+            text: root.subtitle
+            font_size: "11sp"
+            color: app.text_secondary_color
+            halign: "left"
+            valign: "middle"
+            text_size: self.size
+
+    # Precio Formateado
+    Label:
+        text: root.price_str
+        size_hint_x: None
+        width: "65dp"
+        font_size: "14.5sp"
+        bold: True
+        color: app.text_primary_color if not root.checked else app.text_secondary_color
+        halign: "right"
+        valign: "middle"
+        text_size: self.size
+
+    # Botón Eliminar
+    Button:
+        size_hint: None, None
+        size: "26dp", "26dp"
+        pos_hint: {"center_y": 0.5}
+        background_color: [0, 0, 0, 0]
+        on_release: root.delete_self()
+        MDIcon:
+            icon: "trash-can-outline"
+            theme_text_color: "Custom"
+            text_color: [0.85, 0.35, 0.35, 0.5]
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+
+# ---------------------------------------------------------
+# Fila de Artículo de la Despensa (Con Clasificación)
+# ---------------------------------------------------------
+<PantryItemRow>:
+    size_hint_y: None
+    height: "54dp"
+    spacing: "12dp"
+    on_release: root.open_detail()
+
+    # Icono Hoja / Producto
+    AnchorLayout:
+        size_hint: None, None
+        size: "38dp", "38dp"
+        pos_hint: {"center_y": 0.5}
+        canvas.before:
+            Color:
+                rgba: app.leaf_badge_bg_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [12, 12, 12, 12]
+        MDIcon:
+            icon: "leaf"
+            theme_text_color: "Custom"
+            text_color: app.accent_green_color
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+    # Nombre, Cantidad y Fecha de Vencimiento
+    BoxLayout:
+        orientation: "vertical"
+        size_hint_x: 1
+        pos_hint: {"center_y": 0.5}
+        spacing: "2dp"
+        Label:
+            text: root.name
+            font_size: "14.5sp"
+            bold: True
+            color: app.text_primary_color
+            halign: "left"
+            valign: "middle"
+            text_size: self.size
+        BoxLayout:
+            size_hint_y: None
+            height: "16dp"
+            spacing: "6dp"
+            Label:
+                text: root.quantity_str
+                font_size: "11sp"
+                color: app.text_secondary_color
+                size_hint_x: None
+                width: self.texture_size[0]
+                halign: "left"
+                valign: "middle"
+            Label:
+                text: f"· {root.expiration_str}" if root.expiration_str else ""
+                font_size: "10.5sp"
+                color: root.expiration_color
+                size_hint_x: 1
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+    # Píldora de Estado: Suficiente / Por agotarse / Reponer
+    Label:
+        text: root.status_str
+        size_hint_x: None
+        width: "84dp"
+        font_size: "12sp"
+        bold: True
+        color: root.status_color
+        halign: "right"
+        valign: "middle"
+        text_size: self.size
+
+
+# ---------------------------------------------------------
+# Tarjeta de Lista de Compras (Color Personalizado)
+# ---------------------------------------------------------
+<ShoppingListCard>:
+    size_hint_y: None
+    height: "76dp"
+    padding: ["14dp", "12dp", "14dp", "12dp"]
+    spacing: "12dp"
+    on_release: root.open_detail()
+
+    canvas.before:
+        Color:
+            rgba: app.card_white_color
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [20, 20, 20, 20]
+
+    # Insignia de Icono con Color Personalizado
+    AnchorLayout:
+        size_hint: None, None
+        size: "42dp", "42dp"
+        pos_hint: {"center_y": 0.5}
+        canvas.before:
+            Color:
+                rgba: root.badge_bg_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [12, 12, 12, 12]
+        MDIcon:
+            icon: root.icon_name
+            theme_text_color: "Custom"
+            text_color: root.icon_color_rgba
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+    # Información de la Lista
+    BoxLayout:
+        orientation: "vertical"
+        size_hint_x: 1
+        pos_hint: {"center_y": 0.5}
+        Label:
+            text: root.list_name
+            font_size: "14.5sp"
+            bold: True
+            color: app.text_primary_color
+            halign: "left"
+            text_size: self.size
+        Label:
+            text: root.info_subtitle
+            font_size: "11sp"
+            color: app.text_secondary_color
+            halign: "left"
+            text_size: self.size
+
+    MDIcon:
+        icon: "chevron-right"
+        theme_text_color: "Custom"
+        text_color: app.text_secondary_color
+        pos_hint: {"center_y": 0.5}
+
+
+# =========================================================
+# Modal de Perfil Flotante
+# =========================================================
+<ProfileModalView>:
+    size_hint: None, None
+    size: "270dp", "222dp"
+    pos_hint: {"top": 0.90, "right": 0.96}
+    background_color: [0, 0, 0, 0.25]
+    background: ""
+    auto_dismiss: True
+
+    BoxLayout:
+        orientation: "vertical"
+        size_hint: 1, 1
+        padding: ["16dp", "14dp", "16dp", "14dp"]
+        spacing: "8dp"
+
+        canvas.before:
+            Color:
+                rgba: [0, 0, 0, 0.12] if not app.modo_oscuro else [0, 0, 0, 0.4]
+            RoundedRectangle:
+                pos: [self.x - 2, self.y - 2]
+                size: [self.width + 4, self.height + 4]
+                radius: [22, 22, 22, 22]
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [20, 20, 20, 20]
+
+        # Encabezado Perfil: Avatar + Nombre + Email
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            spacing: "12dp"
+
+            AnchorLayout:
+                size_hint: None, None
+                size: "38dp", "38dp"
+                pos_hint: {"center_y": 0.5}
+                canvas.before:
+                    Color:
+                        rgba: app.leaf_badge_bg_color
+                    Ellipse:
+                        pos: self.pos
+                        size: self.size
+                    Color:
+                        rgba: app.avatar_border_color
+                    Line:
+                        circle: (self.center_x, self.center_y, 19)
+                        width: 1.2
+                Label:
+                    text: app.user_initials_str
+                    font_size: "12.5sp"
+                    bold: True
+                    color: app.text_primary_color
+
+            BoxLayout:
+                orientation: "vertical"
+                pos_hint: {"center_y": 0.5}
+                Label:
+                    text: app.user_name_str
+                    font_size: "13.5sp"
+                    bold: True
+                    color: app.text_primary_color
+                    halign: "left"
+                    text_size: self.size
+                Label:
+                    text: app.user_email_str
+                    font_size: "10.5sp"
+                    color: app.text_secondary_color
+                    halign: "left"
+                    text_size: self.size
+
+        # Línea Divisoria
+        Widget:
+            size_hint_y: None
+            height: "1dp"
+            canvas:
+                Color:
+                    rgba: app.divider_color
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+        # Opción 1: Cuenta / Iniciar Sesión
+        Button:
+            size_hint_y: None
+            height: "32dp"
+            background_color: [0, 0, 0, 0]
+            on_release:
+                app.cerrar_menu_perfil()
+                app.abrir_modal_auth()
+            BoxLayout:
+                size: self.parent.size
+                pos: self.parent.pos
+                spacing: "12dp"
+                MDIcon:
+                    icon: "account-circle-outline"
+                    theme_text_color: "Custom"
+                    text_color: app.text_primary_color
+                    pos_hint: {"center_y": 0.5}
+                Label:
+                    text: "Cuenta de usuario"
+                    font_size: "13sp"
+                    color: app.text_primary_color
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+                MDIcon:
+                    icon: "chevron-right"
+                    theme_text_color: "Custom"
+                    text_color: app.text_secondary_color
+                    pos_hint: {"center_y": 0.5}
+
+        # Opción 3: Modo oscuro (con Switch)
+        BoxLayout:
+            size_hint_y: None
+            height: "36dp"
+            spacing: "12dp"
+            MDIcon:
+                icon: "weather-night"
+                theme_text_color: "Custom"
+                text_color: app.text_primary_color
+                pos_hint: {"center_y": 0.5}
+            Label:
+                text: "Modo oscuro"
+                font_size: "13sp"
+                color: app.text_primary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+            MDSwitch:
+                active: app.modo_oscuro
+                pos_hint: {"center_y": 0.5}
+                on_active: app.cambiar_tema(self.active)
+
+        # Opción 4: Cerrar Sesión
+        Button:
+            size_hint_y: None
+            height: "32dp"
+            background_color: [0, 0, 0, 0]
+            on_release:
+                app.cerrar_menu_perfil()
+                app.cerrar_sesion_usuario()
+            BoxLayout:
+                size: self.parent.size
+                pos: self.parent.pos
+                spacing: "12dp"
+                MDIcon:
+                    icon: "logout"
+                    theme_text_color: "Custom"
+                    text_color: [0.85, 0.35, 0.35, 1.0]
+                    pos_hint: {"center_y": 0.5}
+                Label:
+                    text: "Cerrar sesión"
+                    font_size: "13sp"
+                    color: [0.85, 0.35, 0.35, 1.0]
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size

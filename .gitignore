@@ -1,4 +1,81 @@
+# ========================================================
+# .gitignore - DespensAPP
+# Solo sube código fuente, assets y configuración esencial
+# ========================================================
+
+# --- 1. Entorno Virtual y Dependencias Locales ---
 venv/
+env/
+ENV/
+.env
+.venv/
+env.bak/
+venv.bak/
+
+# --- 2. Archivos de Configuración Local y Sesión del Usuario ---
+session.json
+db_config.json
+.env*
+*.key
+*.pem
+*.cert
+credentials.json
+secrets.json
+*.tmp
+scratch/
+scratch_*.py
+
+# --- 3. Bases de Datos Locales SQLite (Generadas automáticamente) ---
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+
+# --- 4. Byte-compiled / Caché de Python ---
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- 5. Logs y Archivos Temporales de Kivy ---
 .kivy/
+*.log
+
+# --- 6. Editores de Código e IDEs (VS Code, JetBrains, etc.) ---
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# --- 7. Archivos del Sistema Operativo ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- 8. Reglas Locales y Archivos de Agentes/IA ---
+AGENTS.md
+SKILL.md
+.gemini/
+.agents/

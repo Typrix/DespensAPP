@@ -1,0 +1,80 @@
+# -*- coding: utf-8 -*-
+# =========================================================
+# Pantalla: Carrito de Compras (cart) - DespensAPP
+# =========================================================
+
+<CartScreen@MDScreen>:
+    name: "cart"
+
+    MDScrollView:
+        do_scroll_x: False
+        bar_width: 0
+
+        MDBoxLayout:
+            orientation: "vertical"
+            adaptive_height: True
+            spacing: "10dp"
+
+            # Encabezado de Sección
+            BoxLayout:
+                size_hint_y: None
+                height: "46dp"
+
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_x: 1
+                    Label:
+                        text: "COMPRA ACTUAL"
+                        font_size: "10sp"
+                        bold: True
+                        color: app.category_tag_color
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+                    Label:
+                        text: "Carrito de compras"
+                        font_size: "22sp"
+                        bold: True
+                        color: app.text_primary_color
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+
+                AddCircleButton:
+                    pos_hint: {"center_y": 0.5}
+                    on_release: app.accion_agregar()
+
+            Widget:
+                size_hint_y: None
+                height: "6dp"
+
+            # Contenedor Dinámico de Artículos del Carrito
+            MDBoxLayout:
+                id: cart_items_container
+                orientation: "vertical"
+                adaptive_height: True
+                spacing: "4dp"
+
+            Widget:
+                size_hint_y: None
+                height: "16dp"
+
+            # Fila de Total Estimado
+            BoxLayout:
+                size_hint_y: None
+                height: "36dp"
+                Label:
+                    text: "Total estimado"
+                    font_size: "13sp"
+                    color: app.text_secondary_color
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+                Label:
+                    text: app.total_carrito_str
+                    font_size: "24sp"
+                    bold: True
+                    color: app.text_primary_color
+                    halign: "right"
+                    valign: "middle"
+                    text_size: self.size
