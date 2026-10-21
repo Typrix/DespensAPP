@@ -3,9 +3,9 @@
 
 ---
 
-## ⚡ Guía Rápida para Presentación Universitaria (Plug & Play)
+## 📊 Guía Rápida para ejecutar el proyecto
 
-Este proyecto está diseñado para ser **100% portable y autónomo**. Si descargas o clonas el proyecto en cualquier computadora que no tenga nada instalado previamente, solo necesitas **Python 3.10 o superior**.
+Este proyecto está diseñado para ser **100% portable y autónomo**. Si descargas o clonas el proyecto en cualquier computadora que no tenga nada instalado previamente, solo necesitas **Python 3.10 o superior, y OJO, solo es recomendable tener como máximo instalada la versión 3.12.X de Python, ya que Kivy suele dar problemas con versiones más actuales**.
 
 ### Opción 1: Un Solo Clic (Recomendada en Windows)
 Haz doble clic en el archivo:
