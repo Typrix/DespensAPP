@@ -68,3 +68,27 @@
    - Se centralizó la documentación y recursos complementarios dentro de la carpeta `docs/` (`docs/FUNDAMENTACION-UX-UI.md`, `docs/uso_ia.md`, `docs/despensapp_logo.png` y `docs/DespensAPP - Presentación Oral E2.pdf`).
    - Se actualizaron las referencias relativas en `main.kv` y los enlaces cruzados en el `README.md` para garantizar la consistencia del proyecto y la integridad visual de la aplicación.
 
+---
+
+## Entrada / Prompt del Usuario (Modularización en Modelo-Vista-Controlador)
+> "puedes ordenar el codigo modularmente?"
+> "quiero que sea en modelo vista controlador"
+> "si quieres puedes separar todo los modelos y dejar cada uno con un archibo y asi con todos los otros, tambien controlador y vista"
+
+---
+
+## Acciones Realizadas
+
+1. **Arquitectura MVC Granular por Archivo**:
+   - **Modelos (`models/`)**: Entidades individuales en archivos separados (`user.py`, `cart_item.py`, `pantry_item.py`, `shopping_list.py`), persistencia resiliente MySQL + SQLite (`database.py`) y unificación en `__init__.py`.
+   - **Vistas (`views/`)**: Separación en diseño de temas (`views/theme.py`), componentes interactivos (`views/widgets/`: `progress_bar.py`, `nav_button.py`, `cart_row.py`, `pantry_row.py`, `list_card.py`, `buttons.py`, `profile_modal.py`), controladores de formularios (`views/dialogs/`: `base.py`, `cart_dialog.py`, `pantry_dialog.py`, `list_dialog.py`, `auth_dialog.py`) con carga automática y robusta de plantillas KV.
+   - **Controladores (`controllers/`)**: Dominio y servicios desacoplados por módulo (`auth_controller.py`, `analytics_controller.py`, `sync_controller.py`, `cart_controller.py`, `pantry_controller.py`, `list_controller.py`) orquestados por `main_controller.py` (`MainController`).
+   - **Punto de Entrada (`main.py`)**: Reescrito para orquestar la aplicación delegando lógica y estado en `MainController` y las vistas modulares.
+   - **Retrocompatibilidad**: Wrappers raíz en `models.py`, `database.py`, `auth_manager.py`, `analytics_manager.py`, `sync_manager.py`, `theme.py`, `widgets.py` y `dialogs.py` para asegurar que scripts legados, `iniciar.bat` y `admin_dashboard/server.py` sigan funcionando de forma transparente.
+
+2. **Validación y Pruebas**:
+   - Instalación completa de dependencias en el entorno virtual local de Windows (`venv`).
+   - Compilación sintáctica exitosa con `compileall` (0 errores).
+   - Pruebas automatizadas de importación y ejecución de lógica de negocio (`MainController`, fallback SQLite y telemetría) con 100% de éxito.
+
+

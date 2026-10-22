@@ -20,19 +20,17 @@ from kivy.properties import (
 )
 from kivy.graphics import Color, Rectangle
 
-from database import DatabaseManager
-from auth_manager import AuthManager
-from analytics_manager import AnalyticsManager
-from sync_manager import SyncManager
-from dialogs import (
-    AddCartItemModal,
-    AddPantryItemModal,
-    PantryItemDetailModal,
-    AddShoppingListModal,
-    AuthModal,
+from models import DatabaseManager
+from controllers import (
+    MainController,
+    AuthController,
+    AnalyticsController,
+    SyncController,
 )
-from theme import COLOR_LIGHT, COLOR_DARK, TAGS_MAP
-from widgets import (
+from views import (
+    COLOR_LIGHT,
+    COLOR_DARK,
+    TAGS_MAP,
     CustomProgressBar,
     BottomNavButton,
     CartItemRow,
@@ -41,6 +39,11 @@ from widgets import (
     AddCircleButton,
     AvatarCircleButton,
     ProfileModalView,
+    AddCartItemModal,
+    AddPantryItemModal,
+    PantryItemDetailModal,
+    AddShoppingListModal,
+    AuthModal,
 )
 
 
@@ -138,13 +141,17 @@ class MainApp(MDApp):
         Clock.schedule_once(self._splash_paso_bd, 0.25)
 
     def _splash_paso_bd(self, dt):
-        """Paso 1: Conexión con base de datos, autenticación y telemetría."""
+        """Paso 1: Conexión con base de datos, autenticación y telemetría mediante MainController."""
         self.splash_progress = 0.35
         self.splash_status_text = "Conectando con la base de datos..."
-        self.db = DatabaseManager()
-        self.auth = AuthManager(self.db)
-        self.analytics = AnalyticsManager(self.db)
-        self.sync = SyncManager(self.db)
+        self.controller = MainController()
+        self.db = self.controller.db
+        self.auth = self.controller.auth
+        self.analytics = self.controller.analytics
+        self.sync = self.controller.sync
+        self.cart_ctrl = self.controller.cart
+        self.pantry_ctrl = self.controller.pantry
+        self.list_ctrl = self.controller.lists
         user_id = self.auth.current_user.id if self.auth.current_user else None
         self.analytics.start_session(user_id=user_id, platform="Windows")
         Clock.schedule_once(self._splash_paso_datos, 0.35)
@@ -374,134 +381,40 @@ class MainApp(MDApp):
             container.add_widget(card)
 
     def actualizar_inicio(self):
-        """Actualiza la pantalla de inicio con datos 100% reales de la base de datos."""
+        """Actualiza la pantalla de inicio delegando el cálculo al controlador MVC."""
         self._sincronizar_datos_usuario()
-        if not self.auth.current_user:
-            self.home_spent_str = "$0"
-            self.home_alert_title_str = "Despensa"
-            self.home_alert_desc_str = "Inicia sesión para ver tu inventario"
-            self.home_recipe_str = "Añade alimentos para sugerir recetas"
-            return
+        uid = self.auth.current_user.id if (hasattr(self, 'auth') and self.auth and self.auth.current_user) else None
+        summary = self.controller.get_home_summary(uid) if hasattr(self, 'controller') else {}
 
-        stats = self.db.get_user_statistics(self.auth.current_user.id)
-
-        # 1. Gasto actual del carrito
-        cart_total = stats["cart_total"]
-        if cart_total > 0:
-            self.home_spent_str = f"${int(cart_total):,}".replace(",", ".")
-        else:
-            self.home_spent_str = "$0"
-
-        # 2. Alerta de vencimiento / reposición
-        first_venc = stats.get("first_vencido")
-        first_por_venc = stats.get("first_por_vencer")
-        first_rep = stats.get("first_reponer")
-        first_agot = stats.get("first_por_agotar")
-
-        if first_venc:
-            self.home_alert_title_str = "Alimento vencido"
-            self.home_alert_desc_str = f"{first_venc.name} ({first_venc.expiration_status})"
-        elif first_por_venc:
-            self.home_alert_title_str = "Por caducar pronto"
-            self.home_alert_desc_str = f"{first_por_venc.name} ({first_por_venc.expiration_status})"
-        elif first_rep:
-            self.home_alert_title_str = "Por reponer urgente"
-            self.home_alert_desc_str = f"{first_rep.name} (Stock en 0 {first_rep.unit})"
-        elif first_agot:
-            self.home_alert_title_str = "Por agotarse pronto"
-            self.home_alert_desc_str = f"{first_agot.name} ({first_agot.formatted_quantity})"
-        elif stats["pantry_items_count"] > 0:
-            self.home_alert_title_str = "Despensa al día"
-            self.home_alert_desc_str = f"{stats['suficiente_count']} productos con buen stock"
-        else:
-            self.home_alert_title_str = "Despensa vacía"
-            self.home_alert_desc_str = "Agrega productos a tu inventario"
-
-        # 3. Receta recomendada dinámica
-        self.home_recipe_str = stats["suggested_recipe"]
+        self.home_spent_str = summary.get("spent_str", "$0")
+        self.home_alert_title_str = summary.get("alert_title", "Despensa")
+        self.home_alert_desc_str = summary.get("alert_desc", "Sin productos")
+        self.home_recipe_str = summary.get("recipe_str", "Añade alimentos para sugerir recetas")
 
     def actualizar_estadisticas(self):
-        """Calcula dinámicamente las métricas de estadísticas con datos reales de la BD."""
-        if not self.auth.current_user:
-            self.stats_products_str = "0"
-            self.stats_purchases_str = "0 listas"
-            self.stats_spent_str = "$0"
-            self.stats_spent_sub = "Sin gastos registrados"
-            self.stats_p1_name = "Sin registrar"
-            self.stats_p1_lbl = "0 veces"
-            self.stats_p1_pct = 0.0
-            self.stats_p2_name = "Sin registrar"
-            self.stats_p2_lbl = "0 veces"
-            self.stats_p2_pct = 0.0
-            self.stats_p3_name = "Sin registrar"
-            self.stats_p3_lbl = "0 veces"
-            self.stats_p3_pct = 0.0
-            self.stats_status_title = "Bienvenido"
-            self.stats_status_desc = "Inicia sesión para ver estadísticas reales de tu despensa."
-            return
+        """Calcula dinámicamente las métricas de estadísticas delegando en el controlador MVC."""
+        uid = self.auth.current_user.id if (hasattr(self, 'auth') and self.auth and self.auth.current_user) else None
+        stats = self.controller.get_stats_summary(uid) if hasattr(self, 'controller') else {}
 
-        stats = self.db.get_user_statistics(self.auth.current_user.id)
+        self.stats_spent_str = stats.get("spent_str", "$0")
+        self.stats_spent_sub = stats.get("spent_sub", "Sin gastos registrados")
+        self.stats_products_str = stats.get("products_str", "0")
+        self.stats_purchases_str = stats.get("purchases_str", "0 listas")
 
-        # 1. Gasto mensual / total
-        cart_total = stats["cart_total"]
-        if cart_total > 0:
-            self.stats_spent_str = f"${int(cart_total):,}".replace(",", ".")
-            self.stats_spent_sub = f"En {stats['cart_items_count']} producto(s) en lista"
-        else:
-            self.stats_spent_str = "$0"
-            self.stats_spent_sub = "Sin gastos registrados"
+        self.stats_p1_name = stats.get("p1_name", "Sin registrar")
+        self.stats_p1_lbl = stats.get("p1_lbl", "0 veces")
+        self.stats_p1_pct = stats.get("p1_pct", 0.0)
 
-        # 2. Productos en despensa
-        total_p = stats["pantry_items_count"]
-        self.stats_products_str = str(total_p)
-        list_cnt = stats["shopping_lists_count"]
-        if list_cnt > 0:
-            self.stats_purchases_str = f"En {list_cnt} lista(s) de compras"
-        else:
-            self.stats_purchases_str = "Sin listas creadas"
+        self.stats_p2_name = stats.get("p2_name", "Sin registrar")
+        self.stats_p2_lbl = stats.get("p2_lbl", "0 veces")
+        self.stats_p2_pct = stats.get("p2_pct", 0.0)
 
-        # 3. Ranking de productos frecuentes
-        top = stats["top_products"]
-        if len(top) >= 1:
-            self.stats_p1_name = top[0]["name"]
-            self.stats_p1_lbl = top[0]["count_lbl"]
-            self.stats_p1_pct = top[0]["percent"]
-        else:
-            self.stats_p1_name = "Sin registrar"
-            self.stats_p1_lbl = "0 veces"
-            self.stats_p1_pct = 0.0
+        self.stats_p3_name = stats.get("p3_name", "Sin registrar")
+        self.stats_p3_lbl = stats.get("p3_lbl", "0 veces")
+        self.stats_p3_pct = stats.get("p3_pct", 0.0)
 
-        if len(top) >= 2:
-            self.stats_p2_name = top[1]["name"]
-            self.stats_p2_lbl = top[1]["count_lbl"]
-            self.stats_p2_pct = top[1]["percent"]
-        else:
-            self.stats_p2_name = "Sin registrar"
-            self.stats_p2_lbl = "0 veces"
-            self.stats_p2_pct = 0.0
-
-        if len(top) >= 3:
-            self.stats_p3_name = top[2]["name"]
-            self.stats_p3_lbl = top[2]["count_lbl"]
-            self.stats_p3_pct = top[2]["percent"]
-        else:
-            self.stats_p3_name = "Sin registrar"
-            self.stats_p3_lbl = "0 veces"
-            self.stats_p3_pct = 0.0
-
-        # 4. Mensaje inferior de estado y progreso
-        if stats["reponer_count"] > 0:
-            self.stats_status_title = f"{stats['reponer_count']} producto(s) por reponer"
-            self.stats_status_desc = "Revisa tu despensa y agrégalos a tu carrito de compras."
-        elif stats["por_agotar_count"] > 0:
-            self.stats_status_title = f"{stats['por_agotar_count']} producto(s) por agotarse"
-            self.stats_status_desc = "Queda poco stock de algunos alimentos básicos."
-        elif total_p > 0:
-            self.stats_status_title = "Despensa abastecida"
-            self.stats_status_desc = f"Tus {total_p} alimentos se encuentran en niveles óptimos."
-        else:
-            self.stats_status_title = "Empieza tu despensa"
-            self.stats_status_desc = "Agrega alimentos para monitorear tu consumo y alertas."
+        self.stats_status_title = stats.get("status_title", "Bienvenido")
+        self.stats_status_desc = stats.get("status_desc", "Agrega alimentos para monitorear tu despensa.")
 
     # ----------------------------------------------------
     # Interacción: Botón '+' según Pantalla Activa
@@ -527,36 +440,33 @@ class MainApp(MDApp):
             modal.open()
 
     # ----------------------------------------------------
-    # Controladores CRUD
+    # Controladores CRUD (Delegados en controladores MVC)
     # ----------------------------------------------------
     def agregar_item_carrito(self, title, price, subtitle):
         if not self.auth.current_user:
             return
-        self.db.add_cart_item(
-            user_id=self.auth.current_user.id,
-            title=title,
-            subtitle=subtitle,
-            price=price,
-            quantity=1
-        )
-        if hasattr(self, 'analytics') and self.analytics:
-            self.analytics.track_event("add_cart_item", metadata={"title": title, "price": price})
+        if hasattr(self, 'cart_ctrl'):
+            self.cart_ctrl.add_item(self.auth.current_user.id, title, price, subtitle)
+        else:
+            self.db.add_cart_item(self.auth.current_user.id, title, subtitle, price, 1)
         self.cargar_carrito()
         self.actualizar_inicio()
         self.actualizar_estadisticas()
 
     def toggle_item_carrito(self, item_id, is_checked):
-        self.db.toggle_cart_item(item_id, is_checked)
-        if hasattr(self, 'analytics') and self.analytics:
-            self.analytics.track_event("toggle_cart_item", metadata={"item_id": item_id, "checked": is_checked})
+        if hasattr(self, 'cart_ctrl'):
+            self.cart_ctrl.toggle_item(item_id, is_checked)
+        else:
+            self.db.toggle_cart_item(item_id, is_checked)
         self.cargar_carrito()
         self.actualizar_inicio()
         self.actualizar_estadisticas()
 
     def eliminar_item_carrito(self, item_id):
-        self.db.delete_cart_item(item_id)
-        if hasattr(self, 'analytics') and self.analytics:
-            self.analytics.track_event("delete_cart_item", metadata={"item_id": item_id})
+        if hasattr(self, 'cart_ctrl'):
+            self.cart_ctrl.delete_item(item_id)
+        else:
+            self.db.delete_cart_item(item_id)
         self.cargar_carrito()
         self.actualizar_inicio()
         self.actualizar_estadisticas()
@@ -564,39 +474,37 @@ class MainApp(MDApp):
     def agregar_item_despensa(self, name, quantity, unit, threshold, expiration_date=None):
         if not self.auth.current_user:
             return
-        self.db.add_pantry_item(
-            user_id=self.auth.current_user.id,
-            name=name,
-            quantity=quantity,
-            unit=unit,
-            min_threshold=threshold,
-            category="General",
-            expiration_date=expiration_date
-        )
-        if hasattr(self, 'analytics') and self.analytics:
-            self.analytics.track_event("add_pantry_item", metadata={"name": name, "quantity": quantity, "unit": unit, "expiration": expiration_date})
+        if hasattr(self, 'pantry_ctrl'):
+            self.pantry_ctrl.add_item(self.auth.current_user.id, name, quantity, unit, threshold, expiration_date)
+        else:
+            self.db.add_pantry_item(self.auth.current_user.id, name, quantity, unit, threshold, "General", expiration_date)
         self.cargar_despensa()
         self.actualizar_inicio()
         self.actualizar_estadisticas()
 
     def actualizar_vencimiento_despensa(self, item_id, new_expiration_date):
-        self.db.update_pantry_expiration(item_id, new_expiration_date)
-        if hasattr(self, 'analytics') and self.analytics:
-            self.analytics.track_event("update_pantry_expiration", metadata={"item_id": item_id, "expiration": new_expiration_date})
+        if hasattr(self, 'pantry_ctrl'):
+            self.pantry_ctrl.update_expiration(item_id, new_expiration_date)
+        else:
+            self.db.update_pantry_expiration(item_id, new_expiration_date)
         self.cargar_despensa()
         self.actualizar_inicio()
         self.actualizar_estadisticas()
 
     def cambiar_cantidad_despensa(self, item_id, delta):
-        self.db.update_pantry_quantity(item_id, delta)
+        if hasattr(self, 'pantry_ctrl'):
+            self.pantry_ctrl.change_quantity(item_id, delta)
+        else:
+            self.db.update_pantry_quantity(item_id, delta)
         self.cargar_despensa()
         self.actualizar_inicio()
         self.actualizar_estadisticas()
 
     def eliminar_item_despensa(self, item_id):
-        self.db.delete_pantry_item(item_id)
-        if hasattr(self, 'analytics') and self.analytics:
-            self.analytics.track_event("delete_pantry_item", metadata={"item_id": item_id})
+        if hasattr(self, 'pantry_ctrl'):
+            self.pantry_ctrl.delete_item(item_id)
+        else:
+            self.db.delete_pantry_item(item_id)
         self.cargar_despensa()
         self.actualizar_inicio()
         self.actualizar_estadisticas()
@@ -604,24 +512,22 @@ class MainApp(MDApp):
     def agregar_lista_compras(self, name, color_hex, initial_items=""):
         if not self.auth.current_user:
             return
-        new_list_id = self.db.add_shopping_list(
-            user_id=self.auth.current_user.id,
-            name=name,
-            icon_color=color_hex,
-            icon_name="clipboard-text-outline"
-        )
-        if new_list_id and initial_items:
-            items_list = [it.strip() for it in initial_items.replace("\n", ",").split(",") if it.strip()]
-            for it_name in items_list:
-                self.db.add_shopping_list_item(new_list_id, it_name)
-
-        if hasattr(self, 'analytics') and self.analytics:
-            self.analytics.track_event("create_shopping_list", metadata={"name": name, "initial_items": initial_items})
+        if hasattr(self, 'list_ctrl'):
+            self.list_ctrl.add_list(self.auth.current_user.id, name, color_hex, initial_items)
+        else:
+            new_list_id = self.db.add_shopping_list(self.auth.current_user.id, name, color_hex, "clipboard-text-outline")
+            if new_list_id and initial_items:
+                items_list = [it.strip() for it in initial_items.replace("\n", ",").split(",") if it.strip()]
+                for it_name in items_list:
+                    self.db.add_shopping_list_item(new_list_id, it_name)
         self.cargar_listas()
         self.actualizar_estadisticas()
 
     def eliminar_lista_compras(self, list_id):
-        self.db.delete_shopping_list(list_id)
+        if hasattr(self, 'list_ctrl'):
+            self.list_ctrl.delete_list(list_id)
+        else:
+            self.db.delete_shopping_list(list_id)
         self.cargar_listas()
         self.actualizar_estadisticas()
 
