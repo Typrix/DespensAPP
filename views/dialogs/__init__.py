@@ -18,9 +18,9 @@ from views.dialogs.list_dialog import (
 )
 from views.dialogs.auth_dialog import AuthModal
 
-# Cargar la definición declarativa dialogs.kv asegurando ruta absoluta
+# Cargar la definición declarativa dialogs.kv desde la carpeta kv/
 DIALOGS_KV_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "dialogs.kv")
+    os.path.join(os.path.dirname(__file__), "..", "..", "kv", "dialogs.kv")
 )
 if os.path.exists(DIALOGS_KV_PATH):
     Builder.load_file(DIALOGS_KV_PATH)
