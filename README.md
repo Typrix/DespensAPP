@@ -73,34 +73,50 @@ python main.py
 ```text
 DespensAPP/
 │
+├── controllers/                # [C] Controladores de negocio y eventos (MVC)
+│   ├── main_controller.py     # Orquestador central de pantallas y estado
+│   ├── auth_controller.py     # Autenticación y hash SHA-256
+│   ├── analytics_controller.py # Telemetría y eventos
+│   ├── sync_controller.py     # Sincronización offline-to-online
+│   ├── cart_controller.py     # Operaciones de carrito
+│   ├── pantry_controller.py   # Control de despensa y caducidad
+│   └── list_controller.py     # Listas de compras de supermercado
+│
+├── models/                     # [M] Modelos de dominio y persistencia (MVC)
+│   ├── user.py                # Entidad de usuario
+│   ├── cart_item.py           # Artículos de carrito
+│   ├── pantry_item.py         # Productos de despensa con alertas
+│   ├── shopping_list.py       # Listas y productos anotados
+│   └── database.py            # Persistencia híbrida (MySQL + SQLite local)
+│
+├── views/                      # [V] Vistas y componentes gráficos (MVC)
+│   ├── theme.py               # Paletas de color reactivas e identidades
+│   ├── widgets/               # Componentes interactivos (filas, tarjetas, barras)
+│   └── dialogs/               # Modales de captura y formularios
+│
+├── kv/                         # Plantillas declarativas Kivy
+│   ├── dialogs.kv             # Layout de modales y formularios
+│   ├── components.kv          # Componentes base
+│   └── screens/               # Pantallas (home, cart, pantry, lists, stats, splash)
+│
+├── database/                   # Infraestructura y esquemas de base de datos
+│   ├── database_schema.sql    # DDL con tablas relacionales y telemetría
+│   └── db_config.example.json # Plantilla de configuración MySQL
+│
+├── docs/                       # Documentación y recursos de entrega
+│   ├── GUIA_FUNCIONAMIENTO.md # Manual detallado de la aplicación
+│   ├── HISTORIAL_CAMBIOS.md   # Registro cronológico de versiones
+│   ├── FUNDAMENTACION-UX-UI.md# Sustento del diseño de experiencia
+│   └── uso_ia.md              # Bitácora de asistencia por IA
+│
+├── admin_dashboard/            # Suite de Analítica y Servidor Web FastAPI
+│   ├── server.py              # API REST y servidor Jinja2
+│   ├── Dockerfile             # Contenedor para despliegue en la nube
+│   ├── templates/             # Panel web interactivo con Chart.js
+│   └── static/                # Estilos Dark SaaS y lógica de polling
+│
 ├── main.py                     # Punto de entrada de la aplicación móvil (Kivy / KivyMD)
-├── database.py                 # Gestor híbrido de base de datos (MySQL + SQLite fallback)
-├── analytics_manager.py        # Motor cliente de telemetría de uso y eventos
-├── auth_manager.py             # Lógica de sesiones y autenticación
-├── models.py                   # Entidades de datos (User, CartItem, PantryItem, etc.)
-├── theme.py                    # Paleta de colores e identidades visuales
-├── widgets.py                  # Componentes reutilizables de UI
-├── database_schema.sql         # Esquema SQL completo con tablas de telemetría
-├── requirements.txt            # Dependencias fijadas del proyecto
+├── main.kv                     # Raíz de navegación de la aplicación
 ├── iniciar.bat                 # Lanzador y configurador automático para Windows
-│
-├── kv/                         # Vistas declarativas KV divididas por módulo
-│   ├── components.kv
-│   └── screens/
-│       ├── splash_screen.kv
-│       ├── home_screen.kv
-│       ├── cart_screen.kv
-│       ├── cupboard_screen.kv
-│       ├── lists_screen.kv
-│       └── stats_screen.kv
-│
-└── admin_dashboard/            # Suite de Analítica y Servidor Web FastAPI
-    ├── server.py               # API REST, endpoints analíticos y servidor Jinja2
-    ├── Dockerfile              # Empaquetado Docker para despliegue en la nube
-    ├── requirements.txt        # Dependencias exclusivas para el contenedor web
-    ├── templates/
-    │   └── index.html          # Panel web interactivo con Chart.js
-    └── static/
-        ├── css/dashboard.css   # Estilos modernos Dark SaaS / Linear
-        └── js/dashboard.js     # Lógica reactiva de polling cada 3s y gráficos
+└── requirements.txt            # Dependencias fijadas del proyecto
 ```
