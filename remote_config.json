@@ -4,7 +4,7 @@
   "maintenance_mode": false,
   "banner": {
     "enabled": true,
-    "title": "Configuración Remota Activa",
+    "title": "Configuración Remota",
     "message": "¡Promo DespensAPP activa! 15% de ahorro en compras de fin de semana.",
     "type": "promo",
     "badge_text": "REMOTO JSON"
