@@ -4,29 +4,51 @@ Modales de Despensa para DespensAPP.
 Controla adición de alimentos, umbrales mínimos, control de caducidad y detalle.
 """
 
+from datetime import datetime, date
 from kivy.properties import BooleanProperty, StringProperty, NumericProperty
+from kivymd.uix.pickers import MDModalDatePicker
 from views.dialogs.base import BaseFormModal, EditItemModal
 
 
 class AddPantryItemModal(BaseFormModal):
     """Modal para ingresar un producto a la despensa con umbral numérico y fecha de vencimiento."""
     has_no_expiration = BooleanProperty(False)
+    expiration_date_str = StringProperty("")
 
     def __init__(self, callback_add, **kwargs):
         super().__init__(**kwargs)
         self.callback_add = callback_add
 
+    def open_date_picker(self):
+        """Abre el selector interactivo de fecha mediante calendario visual (MDModalDatePicker)."""
+        if self.has_no_expiration:
+            return
+
+        date_picker = MDModalDatePicker()
+
+        def on_ok(picker_instance):
+            selected_dates = picker_instance.get_date()
+            if selected_dates:
+                chosen_date = selected_dates[0]
+                formatted_date = chosen_date.strftime("%Y-%m-%d")
+                self.expiration_date_str = formatted_date
+                if "field_expiration_input" in self.ids:
+                    self.ids.field_expiration_input.text = formatted_date
+            picker_instance.dismiss()
+
+        def on_cancel(picker_instance):
+            picker_instance.dismiss()
+
+        date_picker.bind(on_ok=on_ok, on_cancel=on_cancel)
+        date_picker.open()
+
     def toggle_no_expiration(self):
         """Alterna entre producto con fecha de vencimiento y producto no perecible."""
         self.has_no_expiration = not self.has_no_expiration
         if self.has_no_expiration:
-            self.ids.field_expiration.input_text = ""
-            self.ids.field_expiration.ids.text_input.text = ""
-            self.ids.field_expiration.ids.text_input.disabled = True
-            self.ids.field_expiration.hint_text = "No vence (producto no perecible)"
-        else:
-            self.ids.field_expiration.ids.text_input.disabled = False
-            self.ids.field_expiration.hint_text = "AAAA-MM-DD (ej: 2026-11-20)"
+            self.expiration_date_str = ""
+            if "field_expiration_input" in self.ids:
+                self.ids.field_expiration_input.text = ""
 
     def submit(self):
         """Valida y registra el alimento en el inventario."""
@@ -34,7 +56,12 @@ class AddPantryItemModal(BaseFormModal):
         quantity_str = self.ids.field_quantity.ids.text_input.text.strip()
         unit = self.ids.field_unit.ids.text_input.text.strip() or "un."
         thresh_str = self.ids.field_threshold.ids.text_input.text.strip()
-        exp_date = None if self.has_no_expiration else self.ids.field_expiration.ids.text_input.text.strip()
+
+        if self.has_no_expiration:
+            exp_date = None
+        else:
+            raw_input = self.ids.field_expiration_input.text.strip() if "field_expiration_input" in self.ids else self.expiration_date_str.strip()
+            exp_date = raw_input if raw_input and raw_input.lower() not in ("no vence", "sin vencimiento", "none", "null") else None
 
         if not name:
             return
@@ -81,22 +108,29 @@ class PantryItemDetailModal(BaseFormModal):
         self.dismiss()
 
     def edit_expiration(self):
-        """Abre modal secundario para actualizar la fecha de vencimiento."""
-        def save_exp(new_date):
-            clean_date = new_date.strip()
-            if clean_date.lower() in ("no vence", "sin vencimiento", "", "none"):
-                clean_date = None
-            if self.callback_update_exp:
-                self.callback_update_exp(self.item_id, clean_date)
+        """Abre el selector de calendario interactivo para actualizar la fecha de caducidad."""
+        date_picker = MDModalDatePicker()
+
+        def on_ok(picker_instance):
+            selected_dates = picker_instance.get_date()
+            if selected_dates and self.callback_update_exp:
+                chosen_date = selected_dates[0]
+                formatted_date = chosen_date.strftime("%Y-%m-%d")
+                self.callback_update_exp(self.item_id, formatted_date)
+            picker_instance.dismiss()
             self.dismiss()
 
-        init_val = self.raw_expiration if self.raw_expiration else ""
-        modal = EditItemModal(
-            title_text="Fecha de Vencimiento (AAAA-MM-DD o 'No vence')",
-            initial_value=init_val,
-            callback_save=save_exp
-        )
-        modal.open()
+        def on_cancel(picker_instance):
+            picker_instance.dismiss()
+
+        date_picker.bind(on_ok=on_ok, on_cancel=on_cancel)
+        date_picker.open()
+
+    def clear_expiration(self):
+        """Elimina la fecha de vencimiento marcando el producto como no perecible."""
+        if self.callback_update_exp:
+            self.callback_update_exp(self.item_id, None)
+        self.dismiss()
 
     def delete_item(self):
         """Elimina el producto de la despensa."""

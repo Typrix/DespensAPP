@@ -214,11 +214,62 @@
             hint_text: "Si baja de este número, alertará"
             input_filter: "float"
 
-        # Campo: Fecha de Vencimiento
-        CustomInputField:
-            id: field_expiration
-            label_text: "FECHA DE VENCIMIENTO"
-            hint_text: "AAAA-MM-DD (ej: 2026-11-20)"
+        # Campo: Fecha de Vencimiento con selector de calendario integrado
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: "56dp"
+            spacing: "4dp"
+
+            Label:
+                text: "FECHA DE VENCIMIENTO"
+                font_size: "11sp"
+                bold: True
+                color: app.text_secondary_color
+                size_hint_y: None
+                height: "16dp"
+                halign: "left"
+                text_size: self.size
+
+            BoxLayout:
+                size_hint_y: None
+                height: "36dp"
+                spacing: "4dp"
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [10, 10, 10, 10]
+                    Color:
+                        rgba: app.divider_color
+                    Line:
+                        rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
+                        width: 1.0
+
+                TextInput:
+                    id: field_expiration_input
+                    text: root.expiration_date_str
+                    hint_text: "No vence (no perecible)" if root.has_no_expiration else "Toca el calendario (AAAA-MM-DD)"
+                    disabled: root.has_no_expiration
+                    multiline: False
+                    font_size: "13.5sp"
+                    padding: ["10dp", "8dp", "6dp", "8dp"]
+                    background_color: [0, 0, 0, 0]
+                    cursor_color: app.accent_green_color
+                    foreground_color: app.input_text_color
+                    hint_text_color: app.input_placeholder_color
+                    size_hint_x: 1
+
+                MDIconButton:
+                    icon: "calendar-month-outline"
+                    style: "standard"
+                    theme_icon_color: "Custom"
+                    icon_color: app.accent_green_color if not root.has_no_expiration else app.text_secondary_color
+                    disabled: root.has_no_expiration
+                    pos_hint: {"center_y": 0.5}
+                    on_release: root.open_date_picker()
 
         # Botón / Toggle: Sin fecha de vencimiento
         BoxLayout:
@@ -381,13 +432,30 @@
                 text_size: self.size
 
             Button:
-                text: "Cambiar"
+                text: "Calendario"
                 font_size: "11sp"
+                bold: True
                 size_hint: None, None
-                size: "70dp", "32dp"
+                size: "76dp", "32dp"
                 color: app.accent_green_color
                 background_color: [0, 0, 0, 0]
                 on_release: root.edit_expiration()
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [8, 8, 8, 8]
+
+            Button:
+                text: "Quitar"
+                font_size: "11sp"
+                size_hint: None, None
+                size: "54dp", "32dp"
+                color: app.text_secondary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.clear_expiration()
                 canvas.before:
                     Color:
                         rgba: app.sage_container_color
