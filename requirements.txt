@@ -7,6 +7,7 @@
 kivy==2.3.1
 kivymd==2.0.0
 pillow>=10.4.0
+plyer>=2.1.0
 
 # Dependencias binarias de Kivy para Windows (renderizado OpenGL)
 kivy-deps.angle==0.4.0; sys_platform == 'win32'

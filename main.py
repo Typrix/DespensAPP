@@ -26,6 +26,7 @@ from controllers import (
     AuthController,
     AnalyticsController,
     SyncController,
+    NotificationController,
 )
 from views import (
     COLOR_LIGHT,
@@ -94,6 +95,7 @@ class MainApp(MDApp):
     # Referencias auxiliares
     profile_modal = None
     analytics = None
+    notifications = None
 
     # Paletas de color centralizadas
     COLOR_LIGHT = COLOR_LIGHT
@@ -152,6 +154,7 @@ class MainApp(MDApp):
         self.cart_ctrl = self.controller.cart
         self.pantry_ctrl = self.controller.pantry
         self.list_ctrl = self.controller.lists
+        self.notifications = getattr(self.controller, "notifications", None)
         user_id = self.auth.current_user.id if self.auth.current_user else None
         self.analytics.start_session(user_id=user_id, platform="Windows")
         Clock.schedule_once(self._splash_paso_datos, 0.35)
@@ -179,6 +182,9 @@ class MainApp(MDApp):
         """Transición fluida a la aplicación principal."""
         if self.root:
             self.root.current = "main_app"
+
+        # Programar chequeo periódico de alertas de despensa cada 10 minutos
+        Clock.schedule_interval(self._verificar_notificaciones_periodicas, 600)
 
         if self.auth.is_authenticated():
             self.cambiar_pantalla(self.current_screen_name)
@@ -340,6 +346,10 @@ class MainApp(MDApp):
             return
 
         items = self.db.get_pantry_items(self.auth.current_user.id)
+
+        # Evaluar alertas automáticas de caducidad y stock mediante Plyer
+        if hasattr(self, 'notifications') and self.notifications:
+            self.notifications.check_pantry_items(items)
 
         for idx, it in enumerate(items):
             row = PantryItemRow(
@@ -562,11 +572,20 @@ class MainApp(MDApp):
         if summary.get("success") and summary.get("total", 0) > 0:
             print(f"[DespensAPP] {summary.get('message')}")
 
+    def _verificar_notificaciones_periodicas(self, dt=None):
+        """Revisa periódicamente el estado de la despensa para alertar sobre stock o vencimientos."""
+        if hasattr(self, 'auth') and self.auth and self.auth.current_user:
+            if hasattr(self, 'notifications') and self.notifications:
+                items = self.db.get_pantry_items(self.auth.current_user.id)
+                self.notifications.check_pantry_items(items)
+
     def cerrar_sesion_usuario(self):
         """Cierra la sesión, limpia las pantallas y exige inicio de sesión."""
         if hasattr(self, 'analytics') and self.analytics:
             self.analytics.track_event("user_logout")
             self.analytics.update_user(None)
+        if hasattr(self, 'notifications') and self.notifications:
+            self.notifications.clear_history()
         self.cerrar_menu_perfil()
         self.auth.logout()
         self._sincronizar_datos_usuario()

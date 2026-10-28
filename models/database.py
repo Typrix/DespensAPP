@@ -865,6 +865,58 @@ class DatabaseManager:
                 print(f"[DB] Error update_pantry_expiration SQLite: {e}")
                 return False
 
+    def get_pantry_item_by_id(self, item_id: int) -> Optional[PantryItem]:
+        """Obtiene un producto de despensa específico por su identificador único."""
+        if self.is_mysql:
+            try:
+                conn = self.get_mysql_connection()
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id, user_id, name, quantity, unit, min_threshold, category, expiration_date
+                        FROM pantry_items
+                        WHERE id = %s LIMIT 1;
+                    """, (item_id,))
+                    r = cur.fetchone()
+                conn.close()
+                if r:
+                    return PantryItem(
+                        id=r["id"],
+                        user_id=r["user_id"],
+                        name=r["name"],
+                        quantity=float(r["quantity"]),
+                        unit=r["unit"] or "un.",
+                        min_threshold=float(r["min_threshold"]),
+                        category=r["category"] or "General",
+                        expiration_date=r.get("expiration_date")
+                    )
+            except Exception as e:
+                print(f"[DB] Error get_pantry_item_by_id MySQL: {e}")
+        else:
+            try:
+                conn = self.get_sqlite_connection()
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT id, user_id, name, quantity, unit, min_threshold, category, expiration_date
+                    FROM pantry_items
+                    WHERE id = ? LIMIT 1;
+                """, (item_id,))
+                r = cur.fetchone()
+                conn.close()
+                if r:
+                    return PantryItem(
+                        id=r["id"],
+                        user_id=r["user_id"],
+                        name=r["name"],
+                        quantity=float(r["quantity"]),
+                        unit=r["unit"] or "un.",
+                        min_threshold=float(r["min_threshold"]),
+                        category=r["category"] or "General",
+                        expiration_date=r["expiration_date"] if "expiration_date" in r.keys() else None
+                    )
+            except Exception as e:
+                print(f"[DB] Error get_pantry_item_by_id SQLite: {e}")
+        return None
+
     def delete_pantry_item(self, item_id: int) -> bool:
         """Elimina un producto de la despensa."""
         if self.is_mysql:

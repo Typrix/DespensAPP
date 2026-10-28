@@ -10,6 +10,7 @@ from controllers.sync_controller import SyncController, SyncManager
 from controllers.cart_controller import CartController
 from controllers.pantry_controller import PantryController
 from controllers.list_controller import ListController
+from controllers.notification_controller import NotificationController
 from controllers.main_controller import MainController
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     "CartController",
     "PantryController",
     "ListController",
+    "NotificationController",
 ]

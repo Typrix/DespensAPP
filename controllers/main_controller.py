@@ -14,6 +14,7 @@ from controllers.sync_controller import SyncController
 from controllers.cart_controller import CartController
 from controllers.pantry_controller import PantryController
 from controllers.list_controller import ListController
+from controllers.notification_controller import NotificationController
 
 
 class MainController:
@@ -27,10 +28,11 @@ class MainController:
         self.auth = AuthController(self.db)
         self.analytics = AnalyticsController(self.db)
         self.sync = SyncController(self.db)
+        self.notifications = NotificationController()
 
         # 3. Controladores de Dominio
         self.cart = CartController(self.db, self.analytics)
-        self.pantry = PantryController(self.db, self.analytics)
+        self.pantry = PantryController(self.db, self.analytics, self.notifications)
         self.lists = ListController(self.db, self.analytics)
 
     @property
