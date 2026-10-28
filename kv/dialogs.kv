@@ -726,25 +726,21 @@
         text_size: self.size
 
     # Botón de Edición Rápida (para corregir errores tipográficos)
-    Button:
-        text: "✎"
-        font_size: "14sp"
-        size_hint: None, None
-        size: "30dp", "30dp"
+    MDIconButton:
+        icon: "pencil-outline"
+        style: "standard"
+        theme_icon_color: "Custom"
+        icon_color: app.text_secondary_color
         pos_hint: {"center_y": 0.5}
-        color: app.text_secondary_color
-        background_color: [0, 0, 0, 0]
         on_release: root.edit()
 
     # Botón Eliminar Producto
-    Button:
-        text: "✕"
-        font_size: "13sp"
-        size_hint: None, None
-        size: "30dp", "30dp"
+    MDIconButton:
+        icon: "close"
+        style: "standard"
+        theme_icon_color: "Custom"
+        icon_color: [0.85, 0.25, 0.25, 0.85]
         pos_hint: {"center_y": 0.5}
-        color: [0.85, 0.3, 0.3, 1.0]
-        background_color: [0, 0, 0, 0]
         on_release: root.delete()
 
 
@@ -795,22 +791,20 @@
                 valign: "middle"
                 text_size: self.size
 
-            Button:
-                text: "✎"
-                font_size: "15sp"
-                size_hint: None, None
-                size: "32dp", "32dp"
-                color: app.text_secondary_color
-                background_color: [0, 0, 0, 0]
+            MDIconButton:
+                icon: "pencil-outline"
+                style: "standard"
+                theme_icon_color: "Custom"
+                icon_color: app.text_secondary_color
+                pos_hint: {"center_y": 0.5}
                 on_release: root.edit_list_name()
 
-            Button:
-                text: "🗑"
-                font_size: "14sp"
-                size_hint: None, None
-                size: "32dp", "32dp"
-                color: [0.85, 0.3, 0.3, 1.0]
-                background_color: [0, 0, 0, 0]
+            MDIconButton:
+                icon: "trash-can-outline"
+                style: "standard"
+                theme_icon_color: "Custom"
+                icon_color: [0.85, 0.25, 0.25, 0.9]
+                pos_hint: {"center_y": 0.5}
                 on_release: root.delete_this_list()
 
         # Subtítulo (contador de items y tachados)
