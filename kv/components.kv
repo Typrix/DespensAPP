@@ -87,23 +87,17 @@
 <CartItemRow>:
     size_hint_y: None
     height: "54dp"
-    spacing: "10dp"
-    padding: ["0dp", "4dp", "0dp", "4dp"]
+    spacing: "8dp"
+    padding: ["4dp", "4dp", "4dp", "4dp"]
 
-    # Checkbox interactivo
-    AnchorLayout:
-        size_hint: None, None
-        size: "30dp", "46dp"
+    # Checkbox interactivo (Círculo de marcación)
+    MDIconButton:
+        icon: "check-circle" if root.checked else "circle-outline"
+        style: "standard"
+        theme_icon_color: "Custom"
+        icon_color: app.accent_green_color if root.checked else app.text_secondary_color
         pos_hint: {"center_y": 0.5}
-        Button:
-            background_color: [0, 0, 0, 0]
-            size_hint: 1, 1
-            on_release: root.toggle_check()
-            MDIcon:
-                icon: "check-circle" if root.checked else "circle-outline"
-                theme_text_color: "Custom"
-                text_color: app.accent_green_color if root.checked else app.text_secondary_color
-                pos_hint: {"center_x": 0.5, "center_y": 0.5}
+        on_release: root.toggle_check()
 
     # Título y Subtítulo
     BoxLayout:
@@ -138,18 +132,14 @@
         valign: "middle"
         text_size: self.size
 
-    # Botón Eliminar
-    Button:
-        size_hint: None, None
-        size: "26dp", "26dp"
+    # Botón Eliminar (Basurero Rojo)
+    MDIconButton:
+        icon: "trash-can-outline"
+        style: "standard"
+        theme_icon_color: "Custom"
+        icon_color: [0.85, 0.25, 0.25, 0.85]
         pos_hint: {"center_y": 0.5}
-        background_color: [0, 0, 0, 0]
         on_release: root.delete_self()
-        MDIcon:
-            icon: "trash-can-outline"
-            theme_text_color: "Custom"
-            text_color: [0.85, 0.35, 0.35, 0.5]
-            pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
 
 # ---------------------------------------------------------
