@@ -40,6 +40,7 @@ from views import (
     AddCircleButton,
     AvatarCircleButton,
     ProfileModalView,
+    RemoteConfigBanner,
     AddCartItemModal,
     AddPantryItemModal,
     PantryItemDetailModal,
@@ -92,10 +93,18 @@ class MainApp(MDApp):
     stats_status_title = StringProperty("Bienvenido")
     stats_status_desc = StringProperty("Agrega alimentos para monitorear tu despensa.")
 
+    # Configuración Remota (Remote Config JSON)
+    remote_banner_visible = BooleanProperty(False)
+    remote_banner_title = StringProperty("Configuración Remota")
+    remote_banner_message = StringProperty("")
+    remote_banner_badge = StringProperty("REMOTO")
+    remote_banner_type = StringProperty("promo")
+
     # Referencias auxiliares
     profile_modal = None
     analytics = None
     notifications = None
+    remote_config = None
 
     # Paletas de color centralizadas
     COLOR_LIGHT = COLOR_LIGHT
@@ -155,6 +164,8 @@ class MainApp(MDApp):
         self.pantry_ctrl = self.controller.pantry
         self.list_ctrl = self.controller.lists
         self.notifications = getattr(self.controller, "notifications", None)
+        self.remote_config = getattr(self.controller, "remote_config", None)
+        self.actualizar_config_remota()
         user_id = self.auth.current_user.id if self.auth.current_user else None
         self.analytics.start_session(user_id=user_id, platform="Windows")
         Clock.schedule_once(self._splash_paso_datos, 0.35)
@@ -208,6 +219,18 @@ class MainApp(MDApp):
             self.user_email_str = "cuenta@despensapp.com"
             self.user_initials_str = "??"
             self.user_greeting_str = "Bienvenido a DespensAPP"
+
+    def actualizar_config_remota(self):
+        """Carga o refresca la configuración remota y actualiza el estado reactivo de la UI."""
+        if not hasattr(self, "remote_config") or not self.remote_config:
+            return
+        self.remote_config.fetch_config()
+        banner_info = self.remote_config.get_banner_info()
+        self.remote_banner_visible = self.remote_config.is_banner_enabled()
+        self.remote_banner_title = banner_info.get("title", "Configuración Remota")
+        self.remote_banner_message = banner_info.get("message", "")
+        self.remote_banner_badge = banner_info.get("badge_text", "REMOTO")
+        self.remote_banner_type = banner_info.get("type", "promo")
 
     def get_container(self, name: str):
         """Busca un widget contenedor por su ID en el árbol raíz o dentro de las pantallas activas."""

@@ -57,6 +57,15 @@
                         text_color: app.accent_green_color
                         pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
+            # Banner de Configuración Remota (Remote Config)
+            RemoteConfigBanner:
+                id: remote_config_banner
+                title: app.remote_banner_title
+                message: app.remote_banner_message
+                badge_text: app.remote_banner_badge
+                banner_type: app.remote_banner_type
+                is_active: app.remote_banner_visible
+
             # Tarjeta 1: Gasto semanal actual
             BoxLayout:
                 size_hint_y: None

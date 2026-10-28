@@ -11,6 +11,7 @@ from views.widgets.pantry_row import PantryItemRow
 from views.widgets.list_card import ShoppingListCard
 from views.widgets.buttons import AddCircleButton, AvatarCircleButton
 from views.widgets.profile_modal import ProfileModalView
+from views.widgets.remote_banner import RemoteConfigBanner
 
 __all__ = [
     "CustomProgressBar",
@@ -21,4 +22,5 @@ __all__ = [
     "AddCircleButton",
     "AvatarCircleButton",
     "ProfileModalView",
+    "RemoteConfigBanner",
 ]

@@ -14,6 +14,7 @@ from views.widgets import (
     AddCircleButton,
     AvatarCircleButton,
     ProfileModalView,
+    RemoteConfigBanner,
 )
 from views.dialogs import (
     BaseFormModal,
@@ -40,6 +41,7 @@ __all__ = [
     "AddCircleButton",
     "AvatarCircleButton",
     "ProfileModalView",
+    "RemoteConfigBanner",
     "BaseFormModal",
     "EditItemModal",
     "AddCartItemModal",
