@@ -5,19 +5,112 @@ Controla adición de alimentos, umbrales mínimos, control de caducidad y detall
 """
 
 from datetime import datetime, date
+from kivy.metrics import dp
 from kivy.properties import BooleanProperty, StringProperty, NumericProperty
+from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.pickers import MDModalDatePicker
 from views.dialogs.base import BaseFormModal, EditItemModal
+
+# Unidades predefinidas disponibles en el menú desplegable
+PANTRY_UNITS = ["un.", "kg", "g", "L", "ml", "paquete", "caja", "lata", "botella"]
+NAME_MAX_LENGTH = 50
+QUANTITY_MAX = 100000
+
+
+def validate_pantry_form(name, quantity_str, unit, threshold_str, expiration_str, has_no_expiration):
+    """
+    Valida los campos del formulario de despensa.
+    Retorna (True, "", datos_limpios) si es válido, o (False, mensaje_error, None).
+    """
+    name = (name or "").strip()
+    if not name:
+        return False, "Ingresa el nombre del producto.", None
+    if len(name) < 2:
+        return False, "El nombre debe tener al menos 2 caracteres.", None
+    if len(name) > NAME_MAX_LENGTH:
+        return False, f"El nombre no puede superar {NAME_MAX_LENGTH} caracteres.", None
+
+    quantity_str = (quantity_str or "").strip()
+    if not quantity_str:
+        return False, "Ingresa la cantidad actual.", None
+    try:
+        quantity = float(quantity_str)
+    except ValueError:
+        return False, "La cantidad debe ser un número válido.", None
+    if quantity < 0 or quantity > QUANTITY_MAX:
+        return False, f"La cantidad debe estar entre 0 y {QUANTITY_MAX}.", None
+
+    if unit not in PANTRY_UNITS:
+        return False, "Selecciona una unidad de la lista.", None
+
+    threshold_str = (threshold_str or "").strip()
+    if not threshold_str:
+        return False, "Ingresa la cantidad mínima para la alerta.", None
+    try:
+        threshold = float(threshold_str)
+    except ValueError:
+        return False, "La cantidad mínima debe ser un número válido.", None
+    if threshold < 0 or threshold > QUANTITY_MAX:
+        return False, f"La cantidad mínima debe estar entre 0 y {QUANTITY_MAX}.", None
+
+    if has_no_expiration:
+        exp_date = None
+    else:
+        expiration_str = (expiration_str or "").strip()
+        if not expiration_str:
+            return False, "Elige la fecha de vencimiento o marca 'no perecible'.", None
+        try:
+            parsed = datetime.strptime(expiration_str, "%Y-%m-%d").date()
+        except ValueError:
+            return False, "La fecha debe tener el formato AAAA-MM-DD.", None
+        if parsed < date.today():
+            return False, "La fecha de vencimiento no puede ser anterior a hoy.", None
+        exp_date = parsed.strftime("%Y-%m-%d")
+
+    return True, "", {
+        "name": name,
+        "quantity": quantity,
+        "unit": unit,
+        "threshold": threshold,
+        "expiration_date": exp_date,
+    }
 
 
 class AddPantryItemModal(BaseFormModal):
     """Modal para ingresar un producto a la despensa con umbral numérico y fecha de vencimiento."""
     has_no_expiration = BooleanProperty(False)
     expiration_date_str = StringProperty("")
+    selected_unit = StringProperty(PANTRY_UNITS[0])
+    error_text = StringProperty("")
 
     def __init__(self, callback_add, **kwargs):
         super().__init__(**kwargs)
         self.callback_add = callback_add
+        self.unit_menu = None
+
+    def open_unit_menu(self, caller):
+        """Despliega el menú con las unidades predefinidas bajo el campo de unidad."""
+        if self.unit_menu is None:
+            items = [
+                {"text": unit, "on_release": lambda u=unit: self.set_unit(u)}
+                for unit in PANTRY_UNITS
+            ]
+            # El menú se alinea con el recuadro completo del campo (texto + flecha)
+            field_box = caller.parent
+            self.unit_menu = MDDropdownMenu(
+                caller=field_box,
+                items=items,
+                position="bottom",
+                width=field_box.width,
+                max_height=dp(240),
+            )
+        self.unit_menu.open()
+
+    def set_unit(self, unit):
+        """Asigna la unidad seleccionada en el menú desplegable."""
+        self.selected_unit = unit
+        if self.unit_menu:
+            self.unit_menu.dismiss()
 
     def open_date_picker(self):
         """Abre el selector interactivo de fecha mediante calendario visual (MDModalDatePicker)."""
@@ -52,32 +145,23 @@ class AddPantryItemModal(BaseFormModal):
 
     def submit(self):
         """Valida y registra el alimento en el inventario."""
-        name = self.ids.field_name.ids.text_input.text.strip()
-        quantity_str = self.ids.field_quantity.ids.text_input.text.strip()
-        unit = self.ids.field_unit.ids.text_input.text.strip() or "un."
-        thresh_str = self.ids.field_threshold.ids.text_input.text.strip()
+        raw_expiration = self.ids.field_expiration_input.text if "field_expiration_input" in self.ids else self.expiration_date_str
 
-        if self.has_no_expiration:
-            exp_date = None
-        else:
-            raw_input = self.ids.field_expiration_input.text.strip() if "field_expiration_input" in self.ids else self.expiration_date_str.strip()
-            exp_date = raw_input if raw_input and raw_input.lower() not in ("no vence", "sin vencimiento", "none", "null") else None
-
-        if not name:
+        ok, error, data = validate_pantry_form(
+            name=self.ids.field_name.ids.text_input.text,
+            quantity_str=self.ids.field_quantity.ids.text_input.text,
+            unit=self.selected_unit,
+            threshold_str=self.ids.field_threshold.ids.text_input.text,
+            expiration_str=raw_expiration,
+            has_no_expiration=self.has_no_expiration,
+        )
+        if not ok:
+            self.error_text = error
             return
 
-        try:
-            quantity = float(quantity_str) if quantity_str else 1.0
-        except ValueError:
-            quantity = 1.0
-
-        try:
-            threshold = float(thresh_str) if thresh_str else 2.0
-        except ValueError:
-            threshold = 2.0
-
+        self.error_text = ""
         if self.callback_add:
-            self.callback_add(name, quantity, unit, threshold, exp_date)
+            self.callback_add(data["name"], data["quantity"], data["unit"], data["threshold"], data["expiration_date"])
         self.dismiss()
 
 
