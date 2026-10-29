@@ -51,23 +51,34 @@ ScreenManager:
                 padding: ["16dp", "10dp", "16dp", "10dp"]
                 spacing: "15dp"
 
-                # Logo Principal DespensAPP con Recuadro Azul
+                # Logo Principal DespensAPP
                 AnchorLayout:
                     size_hint: None, None
                     size: "90dp", "90dp"
                     pos_hint: {"center_y": 0.5}
                     canvas.before:
-                        Color:
-                            rgba: app.leaf_badge_bg_color
+                        StencilPush
                         RoundedRectangle:
                             pos: self.pos
                             size: self.size
                             radius: [22, 22, 22, 22]
+                        StencilUse
+                        Color:
+                            rgba: 0.063, 0.141, 0.325, 1
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                    canvas.after:
+                        StencilUnUse
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [22, 22, 22, 22]
+                        StencilPop
+
                     Image:
                         source: "docs/despensapp_logo.png"
-                        size_hint: None, None
-                        size: "140dp", "140dp"
-                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                        fit_mode: "contain"
 
                 # Título y Subtítulo de Pantalla
                 BoxLayout:

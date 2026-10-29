@@ -35,18 +35,28 @@
                     size_hint: None, None
                     size: "110dp", "110dp"
                     canvas.before:
-                        Color:
-                            rgba: app.leaf_badge_bg_color
+                        StencilPush
                         RoundedRectangle:
                             pos: self.pos
                             size: self.size
                             radius: [28, 28, 28, 28]
+                        StencilUse
+                        Color:
+                            rgba: 0.063, 0.141, 0.325, 1
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                    canvas.after:
+                        StencilUnUse
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [28, 28, 28, 28]
+                        StencilPop
 
                     Image:
                         source: "docs/despensapp_logo.png"
-                        size_hint: None, None
-                        size: "150dp", "150dp"
-                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                        fit_mode: "contain"
 
             # Nombre y Lema
             BoxLayout:
