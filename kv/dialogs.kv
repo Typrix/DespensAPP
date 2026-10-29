@@ -689,7 +689,9 @@
     padding: ["10dp", "4dp", "10dp", "4dp"]
     canvas.before:
         Color:
-            rgba: [0.95, 0.96, 0.95, 1.0] if not root.is_checked else [0.91, 0.92, 0.91, 0.7]
+            # En modo oscuro usa sage_container_color (tono azul medianoche #1D293D)
+            # En modo claro usa el gris claro sutil original
+            rgba: (app.sage_container_color if not root.is_checked else [0.15, 0.22, 0.32, 0.7]) if app.modo_oscuro else ([0.95, 0.96, 0.95, 1.0] if not root.is_checked else [0.91, 0.92, 0.91, 0.7])
         RoundedRectangle:
             pos: self.pos
             size: self.size
@@ -708,7 +710,7 @@
         on_release: root.toggle()
         canvas.before:
             Color:
-                rgba: app.accent_green_color if root.is_checked else [0.75, 0.78, 0.76, 1.0]
+                rgba: app.accent_green_color if root.is_checked else ([0.30, 0.40, 0.55, 1.0] if app.modo_oscuro else [0.75, 0.78, 0.76, 1.0])
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
@@ -719,13 +721,14 @@
         text: f"[s]{root.name}[/s]" if root.is_checked else root.name
         markup: True
         font_size: "13.5sp"
-        color: [0.55, 0.55, 0.55, 1.0] if root.is_checked else app.text_primary_color
+        # Si está tachado, usa un color secundario adaptativo; si está activo, usa el color principal del tema
+        color: app.text_secondary_color if root.is_checked else app.text_primary_color
         size_hint_x: 1
         halign: "left"
         valign: "middle"
         text_size: self.size
 
-    # Botón de Edición Rápida (para corregir errores tipográficos)
+    # Botón de Edición Rápida
     MDIconButton:
         icon: "pencil-outline"
         style: "standard"
