@@ -736,8 +736,8 @@ class DatabaseManager:
         name = name.strip()
         unit = unit.strip() or "un."
         category = category.strip() or "General"
-        quantity = float(quantity)
-        min_threshold = float(min_threshold)
+        quantity = max(0.0, float(quantity))
+        min_threshold = max(0.0, float(min_threshold))
         clean_exp = expiration_date.strip() if expiration_date and expiration_date.strip().lower() not in ("none", "null", "no vence", "") else None
 
         if self.is_mysql:
@@ -1358,9 +1358,9 @@ class DatabaseManager:
             return "Bowl de avena con leche tibia"
         elif "manzana" in text_all or "platano" in text_all or "banana" in text_all:
             return "Ensalada fresca de frutas"
-        elif "aceite" in text_all and len(pantry_names) >= 2:
-            primer_ing = [n for n in pantry_names if "aceite" not in n.lower()][0]
-            return f"Salteado con {primer_ing}"
+        sin_aceite = [n for n in pantry_names if "aceite" not in n.lower()]
+        if "aceite" in text_all and sin_aceite:
+            return f"Salteado con {sin_aceite[0]}"
         else:
             return f"Plato casero con {pantry_names[0]}"
 
