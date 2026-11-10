@@ -199,3 +199,18 @@
 ## Validación
 - 21 pruebas de `PurchaseController` sobre SQLite temporal (no duplicar, sumar/crear en despensa, historial por semana/mes/año) más las suites de la Fase 1.
 - Recorrido real de la app con capturas en modo claro y oscuro, sin tocar `despensapp_local.db` ni MySQL.
+
+---
+
+## Entrada / Prompt del Usuario (Carrito acumulado, historial por listas y modal de despensa)
+> "que al marcar las cosas del carro el precio vaya desde 0 y no descontando, las ultimas compras ponelas por listas, que sea mas comodo para el usuario el modal de los productos de Mi Despensa"
+
+## Acciones Realizadas
+
+1. **Total del carrito acumulado**: "En el carro" parte en $0 y sube al marcar productos (`CartController.summarize`), con el detalle "de $X estimado · N de M productos".
+2. **Historial agrupado por lista**: `purchase_history` guarda `list_name` al comprar (con migración `ALTER TABLE` para bases existentes, en MySQL, SQLite, esquema y sincronización). `PurchaseController.group_by_list` arma una tarjeta por lista con subtotal y fecha; lo comprado sin lista va a "Compras sueltas". El nombre se conserva aunque la lista se borre.
+3. **Modal de Mi Despensa rediseñado**: píldora de estado, botón editar y cerrar; tarjeta de stock con el mínimo de alerta visible; tarjeta de vencimiento con fecha y días restantes ("Cambiar fecha" / "No vence" sin cerrar el modal); "Listo" como acción principal y "Eliminar" secundario. Nuevo modo edición en el mismo modal para nombre, unidad y mínimo de alerta (`validate_pantry_details`, `PantryController.update_details`), que antes no se podían corregir.
+
+## Validación
+- 18 pruebas nuevas (total acumulado, agrupación y migración sobre una base con el esquema anterior, edición de despensa) más las suites de las fases 1 y 2.
+- Recorrido de la app con capturas en modo claro y oscuro; se ajustó el contraste de la píldora de estado en modo oscuro.

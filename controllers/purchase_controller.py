@@ -21,6 +21,7 @@ PERIODS = {
 }
 DEFAULT_NEW_THRESHOLD = 1.0
 RESTOCK_SUBTITLE = "Reponer despensa"
+LOOSE_PURCHASES = "Compras sueltas"  # productos agregados al carrito sin venir de una lista
 
 
 def _normalize(name: str) -> str:
@@ -118,6 +119,7 @@ class PurchaseController:
         """
         now = self.clock().strftime(PURCHASE_DATETIME_FORMAT)
         summary = {"updated": 0, "created": 0, "total": 0.0, "count": 0}
+        list_names = self._list_names(user_id)
         for entry in entries:
             cart_item: CartItem = entry["cart_item"]
             quantity = float(entry["quantity"])
@@ -131,7 +133,8 @@ class PurchaseController:
                 self.db.add_pantry_item(user_id, cart_item.title, quantity, unit, DEFAULT_NEW_THRESHOLD, "General", None)
                 summary["created"] += 1
             self.db.add_purchase_record(user_id, cart_item.title, cart_item.price, quantity, unit, now,
-                                        list_id=cart_item.list_id)
+                                        list_id=cart_item.list_id,
+                                        list_name=list_names.get(cart_item.list_id))
             self.db.delete_cart_item(cart_item.id)
             summary["total"] += cart_item.price
             summary["count"] += 1
@@ -163,4 +166,31 @@ class PurchaseController:
             "total_str": format_money(total),
             "count": len(records),
             "records": records,
+            "groups": self.group_by_list(records, self._list_names(user_id)),
         }
+
+    def _list_names(self, user_id: int) -> Dict[int, str]:
+        """Mapa id -> nombre de las listas actuales del usuario."""
+        return {lst.id: lst.name for lst in self.db.get_shopping_lists(user_id)}
+
+    @staticmethod
+    def group_by_list(records, current_list_names: Optional[Dict[int, str]] = None) -> List[Dict[str, Any]]:
+        """
+        Agrupa las compras por lista, de la compra más reciente a la más antigua.
+        Usa el nombre guardado al comprar; si no existe (registros antiguos) busca la
+        lista actual por id, y si no hay lista va a "Compras sueltas".
+        """
+        current_list_names = current_list_names or {}
+        groups: Dict[str, Dict[str, Any]] = {}
+        for rec in records:  # ya vienen ordenados por fecha descendente
+            name = rec.list_name or current_list_names.get(rec.list_id) or LOOSE_PURCHASES
+            group = groups.setdefault(name, {
+                "name": name, "records": [], "subtotal": 0.0, "last_date": rec.formatted_date,
+            })
+            group["records"].append(rec)
+            group["subtotal"] += rec.price
+        result = list(groups.values())
+        for g in result:
+            g["count"] = len(g["records"])
+            g["subtotal_str"] = format_money(g["subtotal"])
+        return result

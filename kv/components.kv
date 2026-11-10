@@ -700,3 +700,92 @@
                     pos: self.pos
                     size: self.size
                     radius: [12, 12, 12, 12]
+
+
+# ---------------------------------------------------------
+# Tarjeta de Lista en el Historial de Compras
+# ---------------------------------------------------------
+<PurchaseGroupCard>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: self.minimum_height
+    padding: ["14dp", "12dp", "14dp", "8dp"]
+    spacing: "4dp"
+    canvas.before:
+        Color:
+            rgba: app.card_white_color
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [16, 16, 16, 16]
+
+    BoxLayout:
+        size_hint_y: None
+        height: "40dp"
+        spacing: "10dp"
+
+        AnchorLayout:
+            size_hint: None, None
+            size: "34dp", "34dp"
+            pos_hint: {"center_y": 0.5}
+            canvas.before:
+                Color:
+                    rgba: app.leaf_badge_bg_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [10, 10, 10, 10]
+            MDIcon:
+                icon: "basket-outline" if root.name == "Compras sueltas" else "clipboard-text-outline"
+                theme_text_color: "Custom"
+                text_color: app.accent_green_color
+                font_size: "18sp"
+                pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+        BoxLayout:
+            orientation: "vertical"
+            Label:
+                text: root.name
+                font_size: "14sp"
+                bold: True
+                color: app.text_primary_color
+                halign: "left"
+                valign: "bottom"
+                text_size: self.size
+                shorten: True
+                shorten_from: "right"
+            Label:
+                text: root.info
+                font_size: "10.5sp"
+                color: app.text_secondary_color
+                halign: "left"
+                valign: "top"
+                text_size: self.size
+
+        Label:
+            text: root.subtotal_str
+            size_hint_x: None
+            width: "84dp"
+            font_size: "15sp"
+            bold: True
+            color: app.text_primary_color
+            halign: "right"
+            valign: "middle"
+            text_size: self.size
+
+    # Separador
+    Widget:
+        size_hint_y: None
+        height: "1dp"
+        canvas.before:
+            Color:
+                rgba: app.divider_color
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+    BoxLayout:
+        id: rows_box
+        orientation: "vertical"
+        size_hint_y: None
+        height: self.minimum_height

@@ -64,7 +64,7 @@
                 size_hint_y: None
                 height: "36dp"
                 Label:
-                    text: "Total estimado"
+                    text: "En el carro"
                     font_size: "13sp"
                     color: app.text_secondary_color
                     halign: "left"
@@ -78,6 +78,17 @@
                     halign: "right"
                     valign: "middle"
                     text_size: self.size
+
+            # Detalle: total estimado de todo el carrito y avance
+            Label:
+                text: app.cart_total_detail
+                font_size: "11.5sp"
+                color: app.text_secondary_color
+                size_hint_y: None
+                height: "18dp" if app.cart_total_detail else 0
+                halign: "right"
+                valign: "top"
+                text_size: self.size
 
             # Finalizar compra: pasa lo marcado a la despensa y al historial
             Button:

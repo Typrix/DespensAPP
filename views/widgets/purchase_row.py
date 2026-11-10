@@ -13,3 +13,13 @@ class PurchaseHistoryRow(BoxLayout):
     title = StringProperty("")
     detail = StringProperty("")
     price_str = StringProperty("$0")
+
+
+class PurchaseGroupCard(BoxLayout):
+    """Tarjeta de una lista en el historial: encabezado con subtotal y sus productos comprados."""
+    name = StringProperty("")
+    info = StringProperty("")
+    subtotal_str = StringProperty("$0")
+
+    def add_row(self, row):
+        self.ids.rows_box.add_widget(row)

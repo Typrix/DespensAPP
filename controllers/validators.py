@@ -154,6 +154,22 @@ def expiration_warning(expiration_str):
     return ""
 
 
+def validate_pantry_details(name, unit, threshold_str):
+    """
+    Valida la edición de un producto de despensa (nombre, unidad y mínimo de alerta).
+    Retorna (True, "", datos) o (False, mensaje_error, None).
+    """
+    name, error = _validate_name(name, "el nombre del producto")
+    if error:
+        return False, error, None
+    if unit not in PANTRY_UNITS:
+        return False, "Selecciona una unidad de la lista.", None
+    threshold, error = validate_quantity(threshold_str, "La cantidad mínima")
+    if error:
+        return False, error, None
+    return True, "", {"name": name, "unit": unit, "threshold": threshold}
+
+
 def validate_pantry_form(name, quantity_str, unit, threshold_str, expiration_str, has_no_expiration):
     """
     Valida los campos del formulario de despensa.

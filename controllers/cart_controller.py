@@ -25,6 +25,23 @@ class CartController:
         items = self.get_items(user_id)
         return sum(it.price for it in items if not it.is_checked)
 
+    @staticmethod
+    def summarize(items: List[CartItem]) -> dict:
+        """
+        Resumen del carrito para la pantalla de compras:
+        lo que ya está en el carro (marcado) parte en $0 y sube al marcar,
+        junto al total estimado de todo el carrito.
+        """
+        in_cart = sum(it.price for it in items if it.is_checked)
+        estimated = sum(it.price for it in items)
+        checked = sum(1 for it in items if it.is_checked)
+        return {
+            "in_cart": in_cart,
+            "estimated": estimated,
+            "checked": checked,
+            "total_items": len(items),
+        }
+
     def add_item(self, user_id: int, title: str, price: float, subtitle: str = "General"):
         """Añade un nuevo artículo al carrito y registra telemetría."""
         item_id = self.db.add_cart_item(

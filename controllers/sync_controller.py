@@ -173,7 +173,7 @@ class SyncController:
             # C2. Sincronizar Historial de Compras (clave: producto + fecha de compra)
             try:
                 sqlite_cur.execute("""
-                    SELECT title, price, quantity, unit, list_id, purchased_at
+                    SELECT title, price, quantity, unit, list_id, list_name, purchased_at
                     FROM purchase_history
                     WHERE user_id = ?;
                 """, (sqlite_user_id,))
@@ -197,6 +197,7 @@ class SyncController:
                     unit=ph_row["unit"] or "un.",
                     purchased_at=str(ph_row["purchased_at"])[:19],
                     list_id=list_id_mapping.get(ph_row["list_id"]),
+                    list_name=ph_row["list_name"],
                 )
                 summary["synced_purchases"] += 1
 

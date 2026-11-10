@@ -20,6 +20,7 @@ from views.widgets import (
     show_info_toast,
     EmptyState,
     PurchaseHistoryRow,
+    PurchaseGroupCard,
 )
 from views.dialogs import (
     BaseFormModal,
@@ -54,6 +55,7 @@ __all__ = [
     "show_info_toast",
     "EmptyState",
     "PurchaseHistoryRow",
+    "PurchaseGroupCard",
     "BaseFormModal",
     "EditItemModal",
     "AddCartItemModal",

@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS `purchase_history` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
     `list_id` INT NULL,
+    `list_name` VARCHAR(100) NULL,
     `title` VARCHAR(150) NOT NULL,
     `price` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
     `quantity` DECIMAL(10, 2) NOT NULL DEFAULT 1.00,

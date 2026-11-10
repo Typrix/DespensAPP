@@ -66,6 +66,19 @@ class PantryController:
             if item:
                 self.notifications.check_item_alerts(item, force=True, check_stock=True, check_expiration=False)
 
+    def update_details(self, item_id: int, name: str, unit: str, min_threshold: float):
+        """Corrige nombre, unidad y mínimo de alerta manteniendo cantidad y vencimiento."""
+        item = self.db.get_pantry_item_by_id(item_id)
+        if not item:
+            return None
+        self.db.update_pantry_item_details(item_id, name, item.quantity, unit, min_threshold, item.expiration_date)
+        if self.analytics:
+            self.analytics.track_event("edit_pantry_item", metadata={"item_id": item_id})
+        updated = self.db.get_pantry_item_by_id(item_id)
+        if self.notifications and updated:
+            self.notifications.check_item_alerts(updated, force=True, check_stock=True, check_expiration=False)
+        return updated
+
     def update_expiration(self, item_id: int, new_expiration_date: Optional[str]):
         """Actualiza la fecha de vencimiento y alerta de inmediato si está por vencer o venció."""
         self.db.update_pantry_expiration(item_id, new_expiration_date)

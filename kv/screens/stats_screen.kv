@@ -165,19 +165,12 @@
                 valign: "middle"
                 text_size: self.size
 
+            # Una tarjeta por lista (PurchaseGroupCard), la más reciente primero
             MDBoxLayout:
                 id: purchase_history_container
                 orientation: "vertical"
                 adaptive_height: True
-                spacing: "2dp"
-                padding: ["10dp", "6dp", "10dp", "6dp"]
-                canvas.before:
-                    Color:
-                        rgba: app.card_white_color
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [16, 16, 16, 16]
+                spacing: "10dp"
 
             # Subtítulo: Lo Más Frecuente
             Label:

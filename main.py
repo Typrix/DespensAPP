@@ -47,6 +47,7 @@ from views import (
     show_info_toast,
     EmptyState,
     PurchaseHistoryRow,
+    PurchaseGroupCard,
     AddCartItemModal,
     AddPantryItemModal,
     PantryItemDetailModal,
@@ -78,6 +79,7 @@ class MainApp(MDApp):
     # Datos Dinámicos del Carrito
     total_carrito_str = StringProperty("$0")
     cart_checked_count = NumericProperty(0)
+    cart_total_detail = StringProperty("")
     cart_has_items = BooleanProperty(False)
 
     # Alertas de despensa (campana de Inicio)
@@ -358,6 +360,7 @@ class MainApp(MDApp):
 
         if not self.auth.current_user:
             self.total_carrito_str = "$0"
+            self.cart_total_detail = ""
             self.cart_checked_count = 0
             self.cart_has_items = False
             if container:
@@ -366,9 +369,15 @@ class MainApp(MDApp):
 
         items = [it for it in self.db.get_cart_items(self.auth.current_user.id)
                  if not self.is_pending_delete("cart", it.id)]
-        total = sum(it.price for it in items if not it.is_checked)
-        self.total_carrito_str = f"${int(total):,}".replace(",", ".")
-        self.cart_checked_count = sum(1 for it in items if it.is_checked)
+        # El total parte en $0 y sube a medida que se marcan productos
+        summary = self.cart_ctrl.summarize(items)
+        money = lambda v: f"${int(v):,}".replace(",", ".")
+        self.total_carrito_str = money(summary["in_cart"])
+        self.cart_total_detail = (
+            f"de {money(summary['estimated'])} estimado · {summary['checked']} de {summary['total_items']} productos"
+            if items else ""
+        )
+        self.cart_checked_count = summary["checked"]
         self.cart_has_items = bool(items)
 
         if not container:
@@ -548,18 +557,27 @@ class MainApp(MDApp):
             ))
             return
         from controllers.validators import format_number
-        for rec in data["records"][:max_rows]:
-            container.add_widget(PurchaseHistoryRow(
-                title=rec.title,
-                detail=f"{rec.formatted_date} · {format_number(rec.quantity)} {rec.unit}",
-                price_str=rec.formatted_price if rec.price > 0 else "Sin precio",
-            ))
-        if count > max_rows:
-            container.add_widget(PurchaseHistoryRow(
-                title=f"y {count - max_rows} compra(s) más",
-                detail="",
-                price_str="",
-            ))
+        # Una tarjeta por lista; como máximo max_rows productos visibles en total
+        shown = 0
+        for group in data["groups"]:
+            card = PurchaseGroupCard(
+                name=group["name"],
+                info=f"{group['count']} {'producto' if group['count'] == 1 else 'productos'} · {group['last_date']}",
+                subtotal_str=group["subtotal_str"],
+            )
+            for rec in group["records"]:
+                if shown >= max_rows:
+                    break
+                card.add_row(PurchaseHistoryRow(
+                    title=rec.title,
+                    detail=f"{rec.formatted_date} · {format_number(rec.quantity)} {rec.unit}",
+                    price_str=rec.formatted_price if rec.price > 0 else "Sin precio",
+                ))
+                shown += 1
+            hidden = group["count"] - len(card.ids.rows_box.children)
+            if hidden > 0:
+                card.add_row(PurchaseHistoryRow(title=f"y {hidden} producto(s) más", detail="", price_str=""))
+            container.add_widget(card)
 
     def abrir_historial_compras(self):
         """Desde Inicio: abre Estadísticas en la vista de la última semana."""
@@ -663,19 +681,21 @@ class MainApp(MDApp):
         if not item:
             return
         PantryItemDetailModal(
-            item_id=item.id,
-            item_name=item.name,
-            quantity_val=item.quantity,
-            unit=item.unit or "un.",
-            expiration_str=item.expiration_status,
-            raw_expiration=item.expiration_date or "",
-            status_str=item.status,
+            item=item,
             callback_set_qty=self.fijar_cantidad_despensa,
             callback_finish=self.finalizar_ajuste_despensa,
             callback_delete=self.eliminar_item_despensa,
             callback_update_exp=self.actualizar_vencimiento_despensa,
             callback_add_to_cart=self.agregar_despensa_al_carrito,
+            callback_update_details=self.actualizar_detalles_despensa,
         ).open()
+
+    def actualizar_detalles_despensa(self, item_id, name, unit, min_threshold):
+        """Guarda nombre, unidad y mínimo de alerta; retorna el producto actualizado."""
+        updated = self.pantry_ctrl.update_details(item_id, name, unit, min_threshold)
+        self.cargar_despensa()
+        self.actualizar_inicio()
+        return updated
 
     def agregar_despensa_al_carrito(self, item_id):
         """Agrega al carrito un producto de la despensa por reponer. Retorna True si se agregó."""

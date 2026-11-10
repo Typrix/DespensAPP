@@ -182,6 +182,7 @@ class DatabaseManager:
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
                         `user_id` INT NOT NULL,
                         `list_id` INT NULL,
+                        `list_name` VARCHAR(100) NULL,
                         `title` VARCHAR(150) NOT NULL,
                         `price` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
                         `quantity` DECIMAL(10, 2) NOT NULL DEFAULT 1.00,
@@ -190,6 +191,11 @@ class DatabaseManager:
                         INDEX `idx_purchase_user_date` (`user_id`, `purchased_at`)
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
                 """)
+                # Migración: bases creadas antes de guardar el nombre de la lista
+                try:
+                    cur.execute("ALTER TABLE `purchase_history` ADD COLUMN `list_name` VARCHAR(100) NULL;")
+                except Exception:
+                    pass
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS `app_sessions` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -339,6 +345,7 @@ class DatabaseManager:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 list_id INTEGER,
+                list_name TEXT,
                 title TEXT NOT NULL,
                 price REAL NOT NULL DEFAULT 0.0,
                 quantity REAL NOT NULL DEFAULT 1.0,
@@ -346,6 +353,11 @@ class DatabaseManager:
                 purchased_at TEXT NOT NULL
             );
         """)
+        # Migración: bases creadas antes de guardar el nombre de la lista
+        try:
+            cur.execute("ALTER TABLE purchase_history ADD COLUMN list_name TEXT;")
+        except Exception:
+            pass
         cur.execute("CREATE INDEX IF NOT EXISTS idx_purchase_user_date ON purchase_history (user_id, purchased_at);")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS app_sessions (
@@ -739,19 +751,20 @@ class DatabaseManager:
     # Historial de Compras
     # ----------------------------------------------------
     def add_purchase_record(self, user_id: int, title: str, price: float, quantity: float,
-                            unit: str, purchased_at: str, list_id: Optional[int] = None) -> Optional[int]:
-        """Registra un producto comprado al finalizar la compra."""
+                            unit: str, purchased_at: str, list_id: Optional[int] = None,
+                            list_name: Optional[str] = None) -> Optional[int]:
+        """Registra un producto comprado al finalizar la compra (con el nombre de su lista, si tiene)."""
         return self._run(
-            """INSERT INTO purchase_history (user_id, list_id, title, price, quantity, unit, purchased_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?);""",
-            (user_id, list_id, title.strip(), max(0.0, float(price)), max(0.0, float(quantity)),
-             (unit or "un.").strip(), purchased_at),
+            """INSERT INTO purchase_history (user_id, list_id, list_name, title, price, quantity, unit, purchased_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?);""",
+            (user_id, list_id, (list_name or "").strip() or None, title.strip(), max(0.0, float(price)),
+             max(0.0, float(quantity)), (unit or "un.").strip(), purchased_at),
             fetch="lastrowid",
         )
 
     def get_purchase_history(self, user_id: int, since: Optional[str] = None) -> List[PurchaseRecord]:
         """Obtiene las compras del usuario (desde la fecha 'since' si se indica), más recientes primero."""
-        query = """SELECT id, user_id, list_id, title, price, quantity, unit, purchased_at
+        query = """SELECT id, user_id, list_id, list_name, title, price, quantity, unit, purchased_at
                    FROM purchase_history WHERE user_id = ?"""
         params: Tuple = (user_id,)
         if since:
@@ -768,6 +781,7 @@ class DatabaseManager:
                 unit=r["unit"] or "un.",
                 list_id=r["list_id"],
                 purchased_at=r["purchased_at"],
+                list_name=r["list_name"],
             )
             for r in rows
         ]

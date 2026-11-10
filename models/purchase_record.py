@@ -22,6 +22,7 @@ class PurchaseRecord:
     unit: str = "un."
     list_id: Optional[int] = None
     purchased_at: str = ""
+    list_name: Optional[str] = None  # nombre de la lista al momento de comprar
 
     @property
     def formatted_price(self) -> str:
