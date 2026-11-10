@@ -24,20 +24,7 @@ class PantryItemRow(ButtonBehavior, BoxLayout):
     unit = StringProperty("un.")
 
     def open_detail(self):
-        """Abre la ventana modal de detalle para ajustar stock o caducidad."""
+        """Abre la ventana modal de detalle para ajustar stock, caducidad o reponer."""
         app = MDApp.get_running_app()
         if app:
-            from views.dialogs.pantry_dialog import PantryItemDetailModal
-            modal = PantryItemDetailModal(
-                item_id=self.item_id,
-                item_name=self.name,
-                quantity_val=self.quantity_val,
-                unit=self.unit,
-                expiration_str=self.expiration_str,
-                raw_expiration=self.raw_expiration,
-                callback_set_qty=app.fijar_cantidad_despensa,
-                callback_finish=app.finalizar_ajuste_despensa,
-                callback_delete=app.eliminar_item_despensa,
-                callback_update_exp=getattr(app, "actualizar_vencimiento_despensa", None)
-            )
-            modal.open()
+            app.abrir_detalle_despensa(self.item_id)

@@ -5,7 +5,7 @@ Orquesta los modelos de datos, persistencia y sub-controladores funcionales,
 sirviendo como puente entre las Vistas Kivy y el dominio de negocio.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
 from models.database import DatabaseManager
 from controllers.auth_controller import AuthController
@@ -16,6 +16,7 @@ from controllers.pantry_controller import PantryController
 from controllers.list_controller import ListController
 from controllers.notification_controller import NotificationController
 from controllers.remote_config_controller import RemoteConfigController
+from controllers.purchase_controller import PurchaseController
 
 
 class MainController:
@@ -36,6 +37,7 @@ class MainController:
         self.cart = CartController(self.db, self.analytics)
         self.pantry = PantryController(self.db, self.analytics, self.notifications)
         self.lists = ListController(self.db, self.analytics)
+        self.purchases = PurchaseController(self.db, self.analytics)
 
     @property
     def current_user(self):
@@ -53,13 +55,15 @@ class MainController:
             }
 
         stats = self.db.get_user_statistics(user_id)
-        cart_total = stats.get("cart_total", 0.0)
-        spent_str = f"${int(cart_total):,}".replace(",", ".") if cart_total > 0 else "$0"
+        spent_str = self.purchases.get_spending(user_id, "week")["total_str"]
 
         first_venc = stats.get("first_vencido")
         first_por_venc = stats.get("first_por_vencer")
         first_rep = stats.get("first_reponer")
         first_agot = stats.get("first_por_agotar")
+
+        first_alert = first_venc or first_por_venc or first_rep or first_agot
+        alert_item_id = first_alert.id if first_alert else 0
 
         if first_venc:
             alert_title = "Alimento vencido"
@@ -85,7 +89,38 @@ class MainController:
             "alert_title": alert_title,
             "alert_desc": alert_desc,
             "recipe_str": stats.get("suggested_recipe", "Añade alimentos para sugerir recetas"),
+            "alert_item_id": alert_item_id,
         }
+
+    # Prioridad y color de cada tipo de alerta (rojo = urgente, ámbar = atención)
+    _ALERT_RED = [0.85, 0.20, 0.25, 1.0]
+    _ALERT_AMBER = [0.82, 0.48, 0.12, 1.0]
+
+    def get_alerts(self, user_id: Optional[int]) -> List[Dict[str, Any]]:
+        """
+        Lista de alertas de la despensa ordenadas por urgencia:
+        vencidos, por vencer, sin stock y por agotarse. Un producto aparece una sola vez.
+        """
+        if not user_id:
+            return []
+        alerts, seen = [], set()
+
+        def add(item, desc, color):
+            if item.id in seen:
+                return
+            seen.add(item.id)
+            alerts.append({"item_id": item.id, "title": item.name, "desc": desc, "color": color})
+
+        items = self.db.get_pantry_items(user_id)
+        for it in sorted((i for i in items if i.is_expired), key=lambda i: i.days_until_expiration or 0):
+            add(it, it.expiration_status, self._ALERT_RED)
+        for it in sorted((i for i in items if i.is_expiring_soon), key=lambda i: i.days_until_expiration or 0):
+            add(it, it.expiration_status, self._ALERT_AMBER)
+        for it in (i for i in items if i.status == "Reponer"):
+            add(it, "Sin stock · reponer", self._ALERT_RED)
+        for it in (i for i in items if i.status == "Por agotarse"):
+            add(it, f"Quedan {it.formatted_quantity}", self._ALERT_AMBER)
+        return alerts
 
     def get_stats_summary(self, user_id: Optional[int]) -> Dict[str, Any]:
         """Calcula las métricas de gasto, ranking y alertas para la pantalla de estadísticas."""
@@ -103,10 +138,9 @@ class MainController:
             }
 
         stats = self.db.get_user_statistics(user_id)
-        cart_total = stats.get("cart_total", 0.0)
-
-        spent_str = f"${int(cart_total):,}".replace(",", ".") if cart_total > 0 else "$0"
-        spent_sub = f"En {stats.get('cart_items_count', 0)} producto(s) en lista" if cart_total > 0 else "Sin gastos registrados"
+        week = self.purchases.get_spending(user_id, "week")
+        spent_str = week["total_str"]
+        spent_sub = f"En {week['count']} producto(s) comprados" if week["count"] else "Sin compras esta semana"
 
         total_p = stats.get("pantry_items_count", 0)
         products_str = str(total_p)

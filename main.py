@@ -44,11 +44,16 @@ from views import (
     RemoteConfigBanner,
     show_undo_snackbar,
     hide_undo_snackbar,
+    show_info_toast,
+    EmptyState,
+    PurchaseHistoryRow,
     AddCartItemModal,
     AddPantryItemModal,
     PantryItemDetailModal,
     AddShoppingListModal,
     AuthModal,
+    CheckoutModal,
+    AlertsModal,
 )
 
 
@@ -72,6 +77,19 @@ class MainApp(MDApp):
 
     # Datos Dinámicos del Carrito
     total_carrito_str = StringProperty("$0")
+    cart_checked_count = NumericProperty(0)
+    cart_has_items = BooleanProperty(False)
+
+    # Alertas de despensa (campana de Inicio)
+    alerts_count = NumericProperty(0)
+    home_alert_item_id = NumericProperty(0)
+
+    # Historial de compras por periodo (Estadísticas)
+    stats_period = StringProperty("week")
+    stats_period_label = StringProperty("Última semana")
+    # Textos derivados (KV no reevalúa expresiones como prop.upper(), por eso se calculan aquí)
+    stats_period_tag = StringProperty("ÚLTIMA SEMANA")
+    stats_spent_title = StringProperty("Gasto · última semana")
 
     # Datos Dinámicos de la Pantalla de Inicio
     home_spent_str = StringProperty("$0")
@@ -340,6 +358,8 @@ class MainApp(MDApp):
 
         if not self.auth.current_user:
             self.total_carrito_str = "$0"
+            self.cart_checked_count = 0
+            self.cart_has_items = False
             if container:
                 container.clear_widgets()
             return
@@ -348,11 +368,22 @@ class MainApp(MDApp):
                  if not self.is_pending_delete("cart", it.id)]
         total = sum(it.price for it in items if not it.is_checked)
         self.total_carrito_str = f"${int(total):,}".replace(",", ".")
+        self.cart_checked_count = sum(1 for it in items if it.is_checked)
+        self.cart_has_items = bool(items)
 
         if not container:
             return
 
         container.clear_widgets()
+        if not items:
+            container.add_widget(EmptyState(
+                icon="cart-outline",
+                title="Tu carrito está vacío",
+                message="Agrega productos o envía una lista desde la pestaña Listas.",
+                action_text="Agregar producto",
+                action=lambda: self.abrir_formulario("cart"),
+            ))
+            return
         for idx, it in enumerate(items):
             row = CartItemRow(
                 item_id=it.id,
@@ -383,6 +414,15 @@ class MainApp(MDApp):
         if hasattr(self, 'notifications') and self.notifications:
             self.notifications.check_pantry_items(items)
 
+        if not items:
+            container.add_widget(EmptyState(
+                icon="cupboard-outline",
+                title="Tu despensa está vacía",
+                message="Registra lo que tienes en casa o finaliza una compra para llenarla.",
+                action_text="Agregar producto",
+                action=lambda: self.abrir_formulario("cupboard"),
+            ))
+            return
         for idx, it in enumerate(items):
             row = PantryItemRow(
                 item_id=it.id,
@@ -410,11 +450,19 @@ class MainApp(MDApp):
         if not self.auth.current_user:
             return
 
-        lists = self.db.get_shopping_lists(self.auth.current_user.id)
+        lists = [lst for lst in self.db.get_shopping_lists(self.auth.current_user.id)
+                 if not self.is_pending_delete("list", lst.id)]
+        if not lists:
+            container.add_widget(EmptyState(
+                icon="clipboard-text-outline",
+                title="Aún no tienes listas",
+                message="Crea una lista para anotar lo que necesitas y luego pásala al carrito.",
+                action_text="Crear lista",
+                action=lambda: self.abrir_formulario("lists"),
+            ))
+            return
 
         for lst in lists:
-            if self.is_pending_delete("list", lst.id):
-                continue
             sub = f"{lst.pending_count} pendientes · {lst.items_count} productos"
             card = ShoppingListCard(
                 list_id=lst.id,
@@ -436,6 +484,8 @@ class MainApp(MDApp):
         self.home_alert_title_str = summary.get("alert_title", "Despensa")
         self.home_alert_desc_str = summary.get("alert_desc", "Sin productos")
         self.home_recipe_str = summary.get("recipe_str", "Añade alimentos para sugerir recetas")
+        self.home_alert_item_id = summary.get("alert_item_id", 0) or 0
+        self.alerts_count = len(self.controller.get_alerts(uid)) if hasattr(self, 'controller') else 0
 
     def actualizar_estadisticas(self):
         """Calcula dinámicamente las métricas de estadísticas delegando en el controlador MVC."""
@@ -461,6 +511,60 @@ class MainApp(MDApp):
 
         self.stats_status_title = stats.get("status_title", "Bienvenido")
         self.stats_status_desc = stats.get("status_desc", "Agrega alimentos para monitorear tu despensa.")
+        self.cargar_historial_compras()
+
+    # ----------------------------------------------------
+    # Historial de Compras por Periodo (Semana / Mes / Año)
+    # ----------------------------------------------------
+    def cambiar_periodo_estadisticas(self, period):
+        """Cambia el periodo del historial y recalcula el gasto mostrado."""
+        self.stats_period = period
+        self.cargar_historial_compras()
+
+    def cargar_historial_compras(self, max_rows=20):
+        """Muestra el gasto total y las compras del periodo elegido."""
+        if not hasattr(self, 'controller'):
+            return
+        uid = self.auth.current_user.id if self.auth.current_user else None
+        data = self.controller.purchases.get_spending(uid, self.stats_period)
+        self.stats_period_label = data["label"]
+        self.stats_period_tag = data["label"].upper()
+        self.stats_spent_title = f"Gasto · {data['label'].lower()}"
+        self.stats_spent_str = data["total_str"]
+        count = data["count"]
+        self.stats_spent_sub = (f"{count} producto(s) comprados" if count else "Sin compras en este periodo")
+
+        container = self.get_container("purchase_history_container")
+        if not container:
+            return
+        container.clear_widgets()
+        if not data["records"]:
+            container.add_widget(EmptyState(
+                icon="receipt-text-outline",
+                title="Sin compras registradas",
+                message="Cuando finalices una compra en el carrito, aparecerá aquí.",
+                action_text="Ir al carrito",
+                action=lambda: self.cambiar_pantalla("cart"),
+            ))
+            return
+        from controllers.validators import format_number
+        for rec in data["records"][:max_rows]:
+            container.add_widget(PurchaseHistoryRow(
+                title=rec.title,
+                detail=f"{rec.formatted_date} · {format_number(rec.quantity)} {rec.unit}",
+                price_str=rec.formatted_price if rec.price > 0 else "Sin precio",
+            ))
+        if count > max_rows:
+            container.add_widget(PurchaseHistoryRow(
+                title=f"y {count - max_rows} compra(s) más",
+                detail="",
+                price_str="",
+            ))
+
+    def abrir_historial_compras(self):
+        """Desde Inicio: abre Estadísticas en la vista de la última semana."""
+        self.stats_period = "week"
+        self.cambiar_pantalla("stats")
 
     # ----------------------------------------------------
     # Interacción: Botón '+' según Pantalla Activa
@@ -471,7 +575,13 @@ class MainApp(MDApp):
             self.abrir_modal_auth(can_cancel=False)
             return
 
-        scr = self.current_screen_name
+        self.abrir_formulario(self.current_screen_name)
+
+    def abrir_formulario(self, scr):
+        """Abre el formulario de alta de la sección indicada (carrito, despensa o listas)."""
+        if not self.auth.current_user:
+            self.abrir_modal_auth(can_cancel=False)
+            return
         if scr == "cart":
             modal = AddCartItemModal(callback_add=self.agregar_item_carrito)
             modal.open()
@@ -498,6 +608,102 @@ class MainApp(MDApp):
         self.cargar_carrito()
         self.actualizar_inicio()
         self.actualizar_estadisticas()
+
+    def editar_item_carrito(self, item_id):
+        """Abre el modal de carrito precargado para corregir nombre, categoría o precio."""
+        if not self.auth.current_user:
+            return
+        item = next((it for it in self.db.get_cart_items(self.auth.current_user.id) if it.id == item_id), None)
+        if item:
+            AddCartItemModal(item=item, callback_save=self.guardar_edicion_carrito).open()
+
+    def guardar_edicion_carrito(self, item_id, title, price, subtitle):
+        self.db.update_cart_item(item_id, title, subtitle, price)
+        self.cargar_carrito()
+        self.actualizar_inicio()
+
+    def abrir_finalizar_compra(self):
+        """Abre el resumen de compra con los productos marcados del carrito."""
+        if not self.auth.current_user:
+            return
+        items = [it for it in self.db.get_cart_items(self.auth.current_user.id)
+                 if not self.is_pending_delete("cart", it.id)]
+        rows = self.controller.purchases.build_checkout(self.auth.current_user.id, items)
+        if not rows:
+            show_info_toast("Marca los productos que compraste para finalizar.")
+            return
+        CheckoutModal(checkout_rows=rows, callback_confirm=self.confirmar_compra).open()
+
+    def confirmar_compra(self, entries):
+        """Registra la compra: suma a la despensa, guarda historial y vacía lo comprado."""
+        summary = self.controller.purchases.finalize_purchase(self.auth.current_user.id, entries)
+        self.cargar_todo()
+        detalle = []
+        if summary["updated"]:
+            detalle.append(f"{summary['updated']} actualizado(s)")
+        if summary["created"]:
+            detalle.append(f"{summary['created']} nuevo(s)")
+        show_info_toast(f"Compra registrada · despensa: {', '.join(detalle)}")
+
+    def pasar_lista_al_carrito(self, list_id, list_name):
+        """Envía al carrito los productos pendientes de una lista."""
+        if not self.auth.current_user:
+            return
+        added = self.controller.purchases.send_list_to_cart(self.auth.current_user.id, list_id, list_name)
+        self.cargar_carrito()
+        self.cargar_listas()
+        if added:
+            show_info_toast(f"{added} producto(s) enviados al carrito")
+        else:
+            show_info_toast("Esos productos ya estaban en el carrito")
+
+    def abrir_detalle_despensa(self, item_id):
+        """Abre el detalle de un producto de la despensa (desde la lista, Inicio o alertas)."""
+        item = self.db.get_pantry_item_by_id(item_id)
+        if not item:
+            return
+        PantryItemDetailModal(
+            item_id=item.id,
+            item_name=item.name,
+            quantity_val=item.quantity,
+            unit=item.unit or "un.",
+            expiration_str=item.expiration_status,
+            raw_expiration=item.expiration_date or "",
+            status_str=item.status,
+            callback_set_qty=self.fijar_cantidad_despensa,
+            callback_finish=self.finalizar_ajuste_despensa,
+            callback_delete=self.eliminar_item_despensa,
+            callback_update_exp=self.actualizar_vencimiento_despensa,
+            callback_add_to_cart=self.agregar_despensa_al_carrito,
+        ).open()
+
+    def agregar_despensa_al_carrito(self, item_id):
+        """Agrega al carrito un producto de la despensa por reponer. Retorna True si se agregó."""
+        item = self.db.get_pantry_item_by_id(item_id)
+        if not item or not self.auth.current_user:
+            return False
+        added = self.controller.purchases.add_pantry_item_to_cart(self.auth.current_user.id, item)
+        self.cargar_carrito()
+        return added
+
+    def abrir_alerta_principal(self):
+        """Tarjeta de Inicio: abre el producto de la alerta más urgente o la despensa."""
+        if self.home_alert_item_id:
+            self.cambiar_pantalla("cupboard")
+            self.abrir_detalle_despensa(self.home_alert_item_id)
+        else:
+            self.cambiar_pantalla("cupboard")
+
+    def abrir_alertas(self):
+        """Campana de Inicio: muestra todas las alertas de la despensa."""
+        uid = self.auth.current_user.id if self.auth.current_user else None
+        alerts = self.controller.get_alerts(uid) if hasattr(self, 'controller') else []
+
+        def open_item(item_id):
+            self.cambiar_pantalla("cupboard")
+            self.abrir_detalle_despensa(item_id)
+
+        AlertsModal(alerts=alerts, callback_open_item=open_item).open()
 
     def toggle_item_carrito(self, item_id, is_checked):
         if hasattr(self, 'cart_ctrl'):

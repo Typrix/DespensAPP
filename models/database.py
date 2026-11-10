@@ -19,6 +19,7 @@ from models.user import User
 from models.cart_item import CartItem
 from models.pantry_item import PantryItem
 from models.shopping_list import ShoppingList, ShoppingListItem
+from models.purchase_record import PurchaseRecord
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 CONFIG_PATH = os.path.join(PROJECT_ROOT, 'db_config.json')
@@ -175,6 +176,20 @@ class DatabaseManager:
                     cur.execute("ALTER TABLE `pantry_items` ADD COLUMN `expiration_date` VARCHAR(20) NULL;")
                 except Exception:
                     pass
+                # Historial de compras finalizadas (base del gasto por periodo)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS `purchase_history` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `user_id` INT NOT NULL,
+                        `list_id` INT NULL,
+                        `title` VARCHAR(150) NOT NULL,
+                        `price` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                        `quantity` DECIMAL(10, 2) NOT NULL DEFAULT 1.00,
+                        `unit` VARCHAR(30) DEFAULT 'un.',
+                        `purchased_at` DATETIME NOT NULL,
+                        INDEX `idx_purchase_user_date` (`user_id`, `purchased_at`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                """)
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS `app_sessions` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -318,6 +333,20 @@ class DatabaseManager:
             cur.execute("ALTER TABLE pantry_items ADD COLUMN expiration_date TEXT;")
         except Exception:
             pass
+        # Historial de compras finalizadas (fecha en texto 'AAAA-MM-DD HH:MM:SS', hora local)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS purchase_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                list_id INTEGER,
+                title TEXT NOT NULL,
+                price REAL NOT NULL DEFAULT 0.0,
+                quantity REAL NOT NULL DEFAULT 1.0,
+                unit TEXT DEFAULT 'un.',
+                purchased_at TEXT NOT NULL
+            );
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_purchase_user_date ON purchase_history (user_id, purchased_at);")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS app_sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -672,6 +701,76 @@ class DatabaseManager:
             except Exception as e:
                 print(f"[DB] Error delete_cart_item SQLite: {e}")
                 return False
+
+    def _run(self, query: str, params: tuple = (), fetch: str = "none"):
+        """
+        Ejecuta una consulta en el motor activo. Escribe la consulta con '?' y se
+        traduce a '%s' para MySQL. fetch: 'none' | 'all' | 'lastrowid'.
+        Retorna None si ocurre un error.
+        """
+        try:
+            if self.is_mysql:
+                conn = self.get_mysql_connection()
+                with conn.cursor() as cur:
+                    cur.execute(query.replace("?", "%s"), params)
+                    result = cur.fetchall() if fetch == "all" else (cur.lastrowid if fetch == "lastrowid" else True)
+                conn.close()
+                return result
+            conn = self.get_sqlite_connection()
+            cur = conn.cursor()
+            cur.execute(query, params)
+            result = cur.fetchall() if fetch == "all" else (cur.lastrowid if fetch == "lastrowid" else True)
+            conn.commit()
+            conn.close()
+            return result
+        except Exception as e:
+            print(f"[DB] Error en consulta ({'MySQL' if self.is_mysql else 'SQLite'}): {e}")
+            return None
+
+    def update_cart_item(self, item_id: int, title: str, subtitle: str, price: float) -> bool:
+        """Corrige nombre, categoría y precio de un artículo del carrito."""
+        result = self._run(
+            "UPDATE cart_items SET title = ?, subtitle = ?, price = ? WHERE id = ?;",
+            (title.strip(), subtitle.strip() or "General", max(0.0, float(price)), item_id),
+        )
+        return bool(result)
+
+    # ----------------------------------------------------
+    # Historial de Compras
+    # ----------------------------------------------------
+    def add_purchase_record(self, user_id: int, title: str, price: float, quantity: float,
+                            unit: str, purchased_at: str, list_id: Optional[int] = None) -> Optional[int]:
+        """Registra un producto comprado al finalizar la compra."""
+        return self._run(
+            """INSERT INTO purchase_history (user_id, list_id, title, price, quantity, unit, purchased_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?);""",
+            (user_id, list_id, title.strip(), max(0.0, float(price)), max(0.0, float(quantity)),
+             (unit or "un.").strip(), purchased_at),
+            fetch="lastrowid",
+        )
+
+    def get_purchase_history(self, user_id: int, since: Optional[str] = None) -> List[PurchaseRecord]:
+        """Obtiene las compras del usuario (desde la fecha 'since' si se indica), más recientes primero."""
+        query = """SELECT id, user_id, list_id, title, price, quantity, unit, purchased_at
+                   FROM purchase_history WHERE user_id = ?"""
+        params: Tuple = (user_id,)
+        if since:
+            query += " AND purchased_at >= ?"
+            params = (user_id, since)
+        rows = self._run(query + " ORDER BY purchased_at DESC, id DESC;", params, fetch="all") or []
+        return [
+            PurchaseRecord(
+                id=r["id"],
+                user_id=r["user_id"],
+                title=r["title"],
+                price=float(r["price"] or 0.0),
+                quantity=float(r["quantity"] or 0.0),
+                unit=r["unit"] or "un.",
+                list_id=r["list_id"],
+                purchased_at=r["purchased_at"],
+            )
+            for r in rows
+        ]
 
     # ----------------------------------------------------
     # Despensa

@@ -13,6 +13,7 @@ from controllers.list_controller import ListController
 from controllers.notification_controller import NotificationController
 from controllers.remote_config_controller import RemoteConfigController
 from controllers.undo_controller import UndoController
+from controllers.purchase_controller import PurchaseController
 from controllers.main_controller import MainController
 
 __all__ = [
@@ -29,4 +30,5 @@ __all__ = [
     "ListController",
     "NotificationController",
     "UndoController",
+    "PurchaseController",
 ]

@@ -30,3 +30,9 @@ class CartItemRow(BoxLayout):
         app = MDApp.get_running_app()
         if app:
             app.eliminar_item_carrito(self.item_id, self.title)
+
+    def edit_self(self):
+        """Abre el modal para corregir nombre, categoría o precio."""
+        app = MDApp.get_running_app()
+        if app:
+            app.editar_item_carrito(self.item_id)

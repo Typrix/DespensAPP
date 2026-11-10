@@ -40,22 +40,45 @@
                         valign: "middle"
                         text_size: self.size
 
-                AnchorLayout:
+                FloatLayout:
                     size_hint: None, None
                     size: "38dp", "38dp"
                     pos_hint: {"center_y": 0.5}
-                    canvas.before:
-                        Color:
-                            rgba: app.card_white_color
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [12, 12, 12, 12]
-                    MDIcon:
-                        icon: "bell-outline"
-                        theme_text_color: "Custom"
-                        text_color: app.accent_green_color
-                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                    TapCard:
+                        size_hint: 1, 1
+                        pos: self.parent.pos
+                        on_release: app.abrir_alertas()
+                        canvas.before:
+                            Color:
+                                rgba: app.card_white_color
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [12, 12, 12, 12]
+                        AnchorLayout:
+                            MDIcon:
+                                icon: "bell-ring-outline" if app.alerts_count else "bell-outline"
+                                theme_text_color: "Custom"
+                                text_color: app.accent_green_color
+                                pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                    # Indicador con la cantidad de alertas
+                    Label:
+                        text: str(app.alerts_count) if app.alerts_count < 10 else "9+"
+                        font_size: "9.5sp"
+                        bold: True
+                        color: [1, 1, 1, 1]
+                        size_hint: None, None
+                        size: "17dp", "17dp"
+                        pos: self.parent.right - dp(12), self.parent.top - dp(12)
+                        opacity: 1 if app.alerts_count else 0
+                        canvas.before:
+                            Color:
+                                rgba: [0.85, 0.20, 0.25, 1.0]
+                            Ellipse:
+                                pos: self.pos
+                                size: self.size
 
             # Banner de Configuración Remota (Remote Config)
             RemoteConfigBanner:
@@ -66,8 +89,9 @@
                 banner_type: app.remote_banner_type
                 is_active: app.remote_banner_visible
 
-            # Tarjeta 1: Gasto semanal actual
-            BoxLayout:
+            # Tarjeta 1: Gasto real de los últimos 7 días (abre el historial)
+            TapCard:
+                on_release: app.abrir_historial_compras()
                 size_hint_y: None
                 height: "76dp"
                 padding: ["14dp", "12dp", "14dp", "12dp"]
@@ -101,7 +125,7 @@
                     orientation: "vertical"
                     pos_hint: {"center_y": 0.5}
                     Label:
-                        text: "Gasto semanal actual"
+                        text: "Gastado en los últimos 7 días"
                         font_size: "11sp"
                         color: app.text_secondary_color
                         halign: "left"
@@ -114,8 +138,9 @@
                         halign: "left"
                         text_size: self.size
 
-            # Tarjeta 2: Por Caducar / Reponer
-            BoxLayout:
+            # Tarjeta 2: Por Caducar / Reponer (abre el producto de la alerta)
+            TapCard:
+                on_release: app.abrir_alerta_principal()
                 size_hint_y: None
                 height: "76dp"
                 padding: ["14dp", "12dp", "14dp", "12dp"]

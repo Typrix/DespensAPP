@@ -130,6 +130,7 @@ class ShoppingListDetailModal(BaseFormModal):
     list_name = StringProperty("")
     icon_color_rgba = ListProperty([0.157, 0.431, 0.831, 1.0])
     subtitle_info = StringProperty("0 productos")
+    pending_count = NumericProperty(0)
 
     def __init__(self, list_id, list_name, icon_color_rgba, **kwargs):
         super().__init__(**kwargs)
@@ -152,6 +153,7 @@ class ShoppingListDetailModal(BaseFormModal):
         container.clear_widgets()
 
         checked_count = sum(1 for it in items if it.is_checked)
+        self.pending_count = len(items) - checked_count
         self.subtitle_info = f"{len(items)} productos anotados · {checked_count} tachados"
 
         if not items:
@@ -250,6 +252,13 @@ class ShoppingListDetailModal(BaseFormModal):
             callback_save=save_list_name
         )
         modal.open()
+
+    def send_to_cart(self):
+        """Envía al carrito los productos sin tachar y los marca como comprados en la lista."""
+        app = MDApp.get_running_app()
+        if app:
+            app.pasar_lista_al_carrito(self.list_id, self.list_name)
+            self.load_items()
 
     def delete_this_list(self):
         """Elimina la lista completa (con opción de deshacer)."""

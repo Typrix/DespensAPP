@@ -13,6 +13,15 @@ class AuthModal(BaseFormModal):
     is_login_mode = BooleanProperty(True)
     can_cancel = BooleanProperty(False)
     message_text = StringProperty("")
+    is_error_message = BooleanProperty(False)
+
+    # Palabras que identifican un mensaje de error (rojo); el resto se muestra en azul
+    ERROR_HINTS = ("error", "incorrect", "campo", "requerid", "conexión", "modo local", "completa")
+
+    def on_message_text(self, instance, value):
+        """Recalcula el color del mensaje (en KV, message_text.lower() no se reevalúa)."""
+        text = (value or "").lower()
+        self.is_error_message = any(hint in text for hint in self.ERROR_HINTS)
 
     def __init__(self, auth_manager, callback_success, can_cancel=False, **kwargs):
         super().__init__(**kwargs)

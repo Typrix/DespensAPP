@@ -32,6 +32,7 @@ class SyncController:
             "synced_lists": 0,
             "synced_pantry": 0,
             "synced_cart": 0,
+            "synced_purchases": 0,
             "synced_sessions": 0,
             "synced_events": 0,
             "total": 0,
@@ -169,6 +170,36 @@ class SyncController:
                     )
                     summary["synced_cart"] += 1
 
+            # C2. Sincronizar Historial de Compras (clave: producto + fecha de compra)
+            try:
+                sqlite_cur.execute("""
+                    SELECT title, price, quantity, unit, list_id, purchased_at
+                    FROM purchase_history
+                    WHERE user_id = ?;
+                """, (sqlite_user_id,))
+                local_purchases = sqlite_cur.fetchall()
+            except sqlite3.OperationalError:
+                local_purchases = []  # BD local antigua sin la tabla
+
+            existing_purchases = {
+                (p.title.strip().lower(), str(p.purchased_at)[:19])
+                for p in self.db.get_purchase_history(mysql_user_id)
+            }
+            for ph_row in local_purchases:
+                key = (ph_row["title"].strip().lower(), str(ph_row["purchased_at"])[:19])
+                if key in existing_purchases:
+                    continue
+                self.db.add_purchase_record(
+                    user_id=mysql_user_id,
+                    title=ph_row["title"],
+                    price=float(ph_row["price"] or 0.0),
+                    quantity=float(ph_row["quantity"] or 1.0),
+                    unit=ph_row["unit"] or "un.",
+                    purchased_at=str(ph_row["purchased_at"])[:19],
+                    list_id=list_id_mapping.get(ph_row["list_id"]),
+                )
+                summary["synced_purchases"] += 1
+
             # D. Sincronizar Métricas y Sesiones de Telemetría
             sqlite_cur.execute("""
                 SELECT id, platform, app_version, start_time, end_time, duration_seconds 
@@ -215,6 +246,7 @@ class SyncController:
             summary["total"] = (
                 summary["synced_pantry"] +
                 summary["synced_cart"] +
+                summary["synced_purchases"] +
                 summary["synced_lists"] +
                 summary["synced_sessions"] +
                 summary["synced_events"]

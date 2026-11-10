@@ -97,6 +97,25 @@ CREATE TABLE IF NOT EXISTS `shopping_list_items` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
+-- 5b. Historial de Compras Finalizadas (gasto por semana, mes y año)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `purchase_history` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `list_id` INT NULL,
+    `title` VARCHAR(150) NOT NULL,
+    `price` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+    `quantity` DECIMAL(10, 2) NOT NULL DEFAULT 1.00,
+    `unit` VARCHAR(30) DEFAULT 'un.',
+    `purchased_at` DATETIME NOT NULL,
+    INDEX `idx_purchase_user_date` (`user_id`, `purchased_at`),
+    CONSTRAINT `fk_purchase_history_user`
+        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
 -- 5. Tabla de Sesiones de la App (Telemetría)
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `app_sessions` (

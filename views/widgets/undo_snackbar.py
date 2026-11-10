@@ -61,6 +61,13 @@ class UndoBar(BoxLayout):
         ))
         self.children[0].bind(size=lambda lbl, size: setattr(lbl, "text_size", size))
 
+        if on_undo is None:
+            # Aviso informativo: solo mensaje, sin botón
+            self.padding = [dp(16), 0, dp(16), 0]
+            Window.bind(size=self._reposition)
+            self._reposition()
+            return
+
         undo_btn = Button(
             text="Deshacer",
             bold=True,
@@ -115,6 +122,11 @@ def hide_undo_snackbar():
     """Cierra la barra visible (ej: al confirmar borrados pendientes por cierre de sesión)."""
     if _current_bar is not None:
         _current_bar.dismiss()
+
+
+def show_info_toast(message, duration=3.0):
+    """Muestra un aviso breve sin acción (ej: 'Compra registrada')."""
+    return show_undo_snackbar(message, None, duration)
 
 
 def show_undo_snackbar(message, on_undo, duration=4.0):

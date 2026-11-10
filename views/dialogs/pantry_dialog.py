@@ -145,10 +145,12 @@ class PantryItemDetailModal(BaseFormModal):
     step_display = StringProperty("1")
     expiration_str = StringProperty("Sin vencimiento")
     raw_expiration = StringProperty("")
+    needs_restock = BooleanProperty(False)
+    restock_text = StringProperty("Añadir al carrito")
 
     def __init__(self, item_id, item_name, quantity_val, unit, expiration_str="", raw_expiration="",
                  callback_set_qty=None, callback_finish=None, callback_delete=None,
-                 callback_update_exp=None, **kwargs):
+                 callback_update_exp=None, status_str="", callback_add_to_cart=None, **kwargs):
         super().__init__(**kwargs)
         self.item_id = item_id
         self.item_name = item_name
@@ -163,6 +165,8 @@ class PantryItemDetailModal(BaseFormModal):
         self.callback_finish = callback_finish
         self.callback_delete = callback_delete
         self.callback_update_exp = callback_update_exp
+        self.callback_add_to_cart = callback_add_to_cart
+        self.needs_restock = status_str in ("Reponer", "Por agotarse") and callback_add_to_cart is not None
         self._qty_changed = False
         self.clear_error_on_input(self.ids.exact_qty_input)
 
@@ -198,6 +202,13 @@ class PantryItemDetailModal(BaseFormModal):
         if self._qty_changed and self.callback_finish:
             self.callback_finish(self.item_id)
         self._qty_changed = False
+
+    def add_to_cart(self):
+        """Agrega el producto al carrito para reponerlo (sin cerrar el modal)."""
+        if not self.callback_add_to_cart:
+            return
+        added = self.callback_add_to_cart(self.item_id)
+        self.restock_text = "Agregado al carrito" if added else "Ya está en el carrito"
 
     def edit_expiration(self):
         """Abre el selector de calendario interactivo para actualizar la fecha de caducidad."""

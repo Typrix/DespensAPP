@@ -99,38 +99,47 @@
         pos_hint: {"center_y": 0.5}
         on_release: root.toggle_check()
 
-    # Título y Subtítulo
-    BoxLayout:
-        orientation: "vertical"
+    # Título, subtítulo y precio (tocar para editar)
+    TapArea:
         size_hint_x: 1
-        pos_hint: {"center_y": 0.5}
-        Label:
-            text: root.title
-            font_size: "14sp"
-            bold: True
-            color: app.text_primary_color if not root.checked else app.text_secondary_color
-            halign: "left"
-            valign: "middle"
-            text_size: self.size
-        Label:
-            text: root.subtitle
-            font_size: "11sp"
-            color: app.text_secondary_color
-            halign: "left"
-            valign: "middle"
-            text_size: self.size
+        spacing: "8dp"
+        on_release: root.edit_self()
 
-    # Precio Formateado
-    Label:
-        text: root.price_str
-        size_hint_x: None
-        width: "65dp"
-        font_size: "14.5sp"
-        bold: True
-        color: app.text_primary_color if not root.checked else app.text_secondary_color
-        halign: "right"
-        valign: "middle"
-        text_size: self.size
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_x: 1
+            pos_hint: {"center_y": 0.5}
+            Label:
+                text: root.title
+                font_size: "14sp"
+                bold: True
+                color: app.text_primary_color if not root.checked else app.text_secondary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+                shorten: True
+                shorten_from: "right"
+            Label:
+                text: root.subtitle
+                font_size: "11sp"
+                color: app.text_secondary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+                shorten: True
+                shorten_from: "right"
+
+        # Precio formateado ("Sin precio" si aún no se conoce)
+        Label:
+            text: root.price_str if root.price_val > 0 else "Sin precio"
+            size_hint_x: None
+            width: "72dp"
+            font_size: "14.5sp" if root.price_val > 0 else "11sp"
+            bold: root.price_val > 0
+            color: (app.text_primary_color if not root.checked else app.text_secondary_color) if root.price_val > 0 else app.text_secondary_color
+            halign: "right"
+            valign: "middle"
+            text_size: self.size
 
     # Botón Eliminar (Basurero Rojo)
     MDIconButton:
@@ -550,3 +559,144 @@
                 text_color: app.accent_green_color
                 pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
+
+
+# ---------------------------------------------------------
+# Píldora de Periodo (Semana / Mes / Año) en Estadísticas
+# ---------------------------------------------------------
+<PeriodChip@ButtonBehavior+Label>:
+    period: "week"
+    is_active: app.stats_period == self.period
+    font_size: "12.5sp"
+    bold: self.is_active
+    color: [1, 1, 1, 1] if self.is_active else app.text_secondary_color
+    on_release: app.cambiar_periodo_estadisticas(self.period)
+    canvas.before:
+        Color:
+            rgba: app.accent_green_color if self.is_active else (0, 0, 0, 0)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [10, 10, 10, 10]
+
+
+# ---------------------------------------------------------
+# Tarjeta y Zona Tocable Genéricas (Inicio, filas del carrito)
+# ---------------------------------------------------------
+<TapCard@ButtonBehavior+BoxLayout>:
+    opacity: 0.8 if self.state == "down" else 1
+
+<TapArea@ButtonBehavior+BoxLayout>:
+    opacity: 0.7 if self.state == "down" else 1
+
+
+# ---------------------------------------------------------
+# Fila del Historial de Compras
+# ---------------------------------------------------------
+<PurchaseHistoryRow>:
+    size_hint_y: None
+    height: "44dp"
+    spacing: "8dp"
+
+    BoxLayout:
+        orientation: "vertical"
+        Label:
+            text: root.title
+            font_size: "13sp"
+            bold: True
+            color: app.text_primary_color
+            halign: "left"
+            valign: "bottom"
+            text_size: self.size
+            shorten: True
+            shorten_from: "right"
+        Label:
+            text: root.detail
+            font_size: "10.5sp"
+            color: app.text_secondary_color
+            halign: "left"
+            valign: "top"
+            text_size: self.size
+
+    Label:
+        text: root.price_str
+        size_hint_x: None
+        width: "76dp"
+        font_size: "13.5sp"
+        bold: True
+        color: app.text_primary_color
+        halign: "right"
+        valign: "middle"
+        text_size: self.size
+
+
+# ---------------------------------------------------------
+# Estado Vacío con Acción (Compras, Despensa, Listas, Historial)
+# ---------------------------------------------------------
+<EmptyState>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: self.minimum_height
+    padding: ["12dp", "18dp", "12dp", "14dp"]
+    spacing: "6dp"
+
+    AnchorLayout:
+        size_hint_y: None
+        height: "52dp"
+        AnchorLayout:
+            size_hint: None, None
+            size: "52dp", "52dp"
+            canvas.before:
+                Color:
+                    rgba: app.leaf_badge_bg_color
+                Ellipse:
+                    pos: self.pos
+                    size: self.size
+            MDIcon:
+                icon: root.icon
+                theme_text_color: "Custom"
+                text_color: app.accent_green_color
+                pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+    Label:
+        text: root.title
+        font_size: "15sp"
+        bold: True
+        color: app.text_primary_color
+        size_hint_y: None
+        height: "24dp"
+        halign: "center"
+        valign: "middle"
+        text_size: self.size
+
+    Label:
+        text: root.message
+        font_size: "12sp"
+        color: app.text_secondary_color
+        size_hint_y: None
+        height: self.texture_size[1] + dp(4)
+        halign: "center"
+        text_size: self.width, None
+
+    AnchorLayout:
+        size_hint_y: None
+        height: "48dp" if root.action_text else 0
+        opacity: 1 if root.action_text else 0
+        disabled: not root.action_text
+
+        Button:
+            text: root.action_text
+            font_size: "13sp"
+            bold: True
+            size_hint: None, None
+            size: max(dp(150), self.texture_size[0] + dp(32)), dp(38)
+            color: [1, 1, 1, 1]
+            background_color: [0, 0, 0, 0]
+            on_release: root.run_action()
+            canvas.before:
+                Color:
+                    rgba: app.accent_green_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [12, 12, 12, 12]

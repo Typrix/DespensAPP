@@ -168,3 +168,34 @@
 ## Validación
 - `compileall` sin errores y 42 pruebas de parseo, validadores y cola de deshacer.
 - Pruebas de integración sobre una copia temporal en SQLite (sin tocar `despensapp_local.db`) y recorrido real de la app con capturas: error de precio, precio `1.500` guardado como 1500, barra de deshacer, aviso de vencido, stepper de stock y modo oscuro.
+
+---
+
+## Entrada / Prompt del Usuario (Fase 2: conectar el flujo de compras)
+> "pasemos a la fase 2"
+> "Opción A (recomendada): una tabla nueva purchase_history [...] quiero que las ultimas compras puedan vistas como ultima semana, ultimo mes y ultimo año"
+
+## Acciones Realizadas
+
+1. **Historial de compras (`purchase_history`)**: tabla nueva en MySQL, SQLite, `database/database_schema.sql` y en la sincronización offline (`sync_controller.py`). Modelo `models/purchase_record.py`. El gasto de Inicio pasa a ser lo gastado de verdad en los últimos 7 días (antes mostraba el total del carrito).
+2. **`controllers/purchase_controller.py`**: lógica del ciclo Listas → Carrito → Despensa.
+   - "Pasar al carrito" desde una lista (sin duplicar productos que ya están pendientes).
+   - "Finalizar compra": modal con una fila por producto marcado; suma la cantidad al producto existente de la despensa (o lo crea con la unidad elegida), registra el historial y lo quita del carrito.
+   - "Añadir al carrito" desde el detalle de un producto por agotarse o sin stock.
+   - Gasto e historial por periodo: última semana, último mes y último año.
+3. **Estadísticas**: selector Semana / Mes / Año con el total gastado y la lista de últimas compras del periodo.
+4. **Inicio con acciones**: la tarjeta de gasto abre el historial, la de alerta abre el producto afectado y la campana muestra un panel con todas las alertas y un contador.
+5. **Carrito editable y estados vacíos**: tocar un producto del carrito permite corregir nombre, precio o categoría; Compras, Despensa, Listas e historial muestran una guía con botón cuando no tienen datos.
+
+## Diagnóstico y Solución de Bugs
+
+1. **Etiquetas que no se actualizaban en KV**
+   - **Causa raíz**: en Kivy 2.3.1, una expresión KV que llama un método sobre una propiedad (`app.prop.upper()`, `root.msg.lower()`) se evalúa una sola vez y no vuelve a enlazarse. Afectaba al periodo de Estadísticas y, desde antes, al color de los mensajes del login (los errores salían en azul en vez de rojo).
+   - **Solución**: los textos derivados se calculan en Python (`stats_period_tag`, `stats_spent_title`, `AuthModal.is_error_message`).
+2. **Check de las listas mostraba un cuadro vacío**
+   - **Causa raíz**: la fuente Roboto no incluye el glifo `✓`.
+   - **Solución**: se reemplazó por el icono Material `check` y se quitaron los demás `✓` de la interfaz.
+
+## Validación
+- 21 pruebas de `PurchaseController` sobre SQLite temporal (no duplicar, sumar/crear en despensa, historial por semana/mes/año) más las suites de la Fase 1.
+- Recorrido real de la app con capturas en modo claro y oscuro, sin tocar `despensapp_local.db` ni MySQL.

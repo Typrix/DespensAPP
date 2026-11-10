@@ -24,7 +24,7 @@
                     orientation: "vertical"
                     size_hint_x: 1
                     Label:
-                        text: "ÚLTIMOS 30 DÍAS"
+                        text: app.stats_period_tag
                         font_size: "10sp"
                         bold: True
                         color: app.category_tag_color
@@ -57,6 +57,30 @@
                         text_color: app.accent_green_color
                         pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
+            # Selector de periodo del historial (Semana / Mes / Año)
+            BoxLayout:
+                size_hint_y: None
+                height: "40dp"
+                padding: "4dp"
+                spacing: "4dp"
+                canvas.before:
+                    Color:
+                        rgba: app.card_white_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [14, 14, 14, 14]
+
+                PeriodChip:
+                    text: "Semana"
+                    period: "week"
+                PeriodChip:
+                    text: "Mes"
+                    period: "month"
+                PeriodChip:
+                    text: "Año"
+                    period: "year"
+
             # Tarjetas Resumen (Lado a Lado)
             BoxLayout:
                 size_hint_y: None
@@ -77,7 +101,7 @@
                             radius: [18, 18, 18, 18]
 
                     Label:
-                        text: "Gasto mensual"
+                        text: app.stats_spent_title
                         font_size: "11sp"
                         color: app.chart_card_text_dim_color
                         halign: "left"
@@ -128,6 +152,32 @@
                         color: app.text_secondary_color
                         halign: "left"
                         text_size: self.size
+
+            # Historial de compras del periodo elegido
+            Label:
+                text: "ÚLTIMAS COMPRAS"
+                size_hint_y: None
+                height: "22dp"
+                font_size: "10sp"
+                bold: True
+                color: app.category_tag_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+            MDBoxLayout:
+                id: purchase_history_container
+                orientation: "vertical"
+                adaptive_height: True
+                spacing: "2dp"
+                padding: ["10dp", "6dp", "10dp", "6dp"]
+                canvas.before:
+                    Color:
+                        rgba: app.card_white_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [16, 16, 16, 16]
 
             # Subtítulo: Lo Más Frecuente
             Label:

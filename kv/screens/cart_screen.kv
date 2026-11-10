@@ -78,3 +78,33 @@
                     halign: "right"
                     valign: "middle"
                     text_size: self.size
+
+            # Finalizar compra: pasa lo marcado a la despensa y al historial
+            Button:
+                text: f"Finalizar compra ({app.cart_checked_count})"
+                font_size: "14sp"
+                bold: True
+                size_hint_y: None
+                height: "46dp" if app.cart_checked_count else 0
+                opacity: 1 if app.cart_checked_count else 0
+                disabled: not app.cart_checked_count
+                color: [1, 1, 1, 1]
+                background_color: [0, 0, 0, 0]
+                on_release: app.abrir_finalizar_compra()
+                canvas.before:
+                    Color:
+                        rgba: app.accent_green_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [14, 14, 14, 14]
+
+            Label:
+                text: "Marca lo que ya echaste al carro y finaliza la compra para sumarlo a tu despensa."
+                font_size: "11sp"
+                color: app.text_secondary_color
+                size_hint_y: None
+                height: self.texture_size[1] + dp(6) if app.cart_has_items and not app.cart_checked_count else 0
+                opacity: 1 if app.cart_has_items and not app.cart_checked_count else 0
+                halign: "center"
+                text_size: self.width, None
