@@ -6,7 +6,7 @@ Reexporta todos los componentes visuales personalizados.
 
 from views.widgets.progress_bar import CustomProgressBar
 from views.widgets.nav_button import BottomNavButton
-from views.widgets.pantry_row import PantryItemRow
+from views.widgets.pantry_row import PantryItemRow, PantryFilterChip, PantrySectionHeader
 from views.widgets.list_card import ShoppingListCard
 from views.widgets.buttons import AddCircleButton, AvatarCircleButton
 from views.widgets.profile_modal import ProfileModalView
@@ -19,6 +19,8 @@ __all__ = [
     "CustomProgressBar",
     "BottomNavButton",
     "PantryItemRow",
+    "PantryFilterChip",
+    "PantrySectionHeader",
     "ShoppingListCard",
     "AddCircleButton",
     "AvatarCircleButton",

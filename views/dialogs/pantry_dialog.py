@@ -12,6 +12,7 @@ from kivymd.app import MDApp
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.pickers import MDModalDatePicker
 from views.dialogs.base import BaseFormModal
+from controllers.pantry_organizer import PANTRY_CATEGORIES, DEFAULT_CATEGORY, category_icon, category_of
 from controllers.validators import (
     PANTRY_UNITS,
     NAME_MAX_LENGTH,
@@ -48,17 +49,32 @@ def _open_date_picker(on_date):
     date_picker.open()
 
 
+def _category_menu(caller, on_pick):
+    """Menú desplegable con las categorías del catálogo."""
+    return MDDropdownMenu(
+        caller=caller,
+        items=[{"text": c, "leading_icon": category_icon(c), "on_release": lambda c=c: on_pick(c)}
+               for c in PANTRY_CATEGORIES],
+        position="bottom",
+        width=max(caller.width, dp(180)),
+        max_height=dp(260),
+    )
+
+
 class AddPantryItemModal(BaseFormModal):
     """Modal para ingresar un producto a la despensa con umbral numérico y fecha de vencimiento."""
     has_no_expiration = BooleanProperty(False)
     expiration_date_str = StringProperty("")
     selected_unit = StringProperty(PANTRY_UNITS[0])
+    selected_category = StringProperty(DEFAULT_CATEGORY)
+    selected_category_icon = StringProperty(category_icon(DEFAULT_CATEGORY))
     warning_text = StringProperty("")
 
     def __init__(self, callback_add, **kwargs):
         super().__init__(**kwargs)
         self.callback_add = callback_add
         self.unit_menu = None
+        self.category_menu = None
         self.clear_error_on_input(
             self.ids.field_name.ids.text_input,
             self.ids.field_quantity.ids.text_input,
@@ -95,6 +111,24 @@ class AddPantryItemModal(BaseFormModal):
         if self.unit_menu:
             self.unit_menu.dismiss()
 
+    def on_dismiss(self):
+        """Cierra los menús desplegables abiertos junto con el modal."""
+        for menu in (self.unit_menu, self.category_menu):
+            if menu:
+                menu.dismiss()
+
+    def open_category_menu(self, caller):
+        """Despliega las categorías bajo el campo."""
+        if self.category_menu is None:
+            self.category_menu = _category_menu(caller, self.set_category)
+        self.category_menu.open()
+
+    def set_category(self, category):
+        self.selected_category = category
+        self.selected_category_icon = category_icon(category)
+        if self.category_menu:
+            self.category_menu.dismiss()
+
     def open_date_picker(self):
         """Abre el selector interactivo de fecha mediante calendario visual (MDModalDatePicker)."""
         if self.has_no_expiration:
@@ -123,6 +157,7 @@ class AddPantryItemModal(BaseFormModal):
             threshold_str=self.ids.field_threshold.ids.text_input.text,
             expiration_str=self.ids.field_expiration_input.text,
             has_no_expiration=self.has_no_expiration,
+            category=self.selected_category,
         )
         if not ok:
             self.error_text = error
@@ -130,7 +165,8 @@ class AddPantryItemModal(BaseFormModal):
 
         self.error_text = ""
         if self.callback_add:
-            self.callback_add(data["name"], data["quantity"], data["unit"], data["threshold"], data["expiration_date"])
+            self.callback_add(data["name"], data["quantity"], data["unit"], data["threshold"],
+                              data["expiration_date"], data["category"])
         self.dismiss()
 
 
@@ -165,6 +201,10 @@ class PantryItemDetailModal(BaseFormModal):
     restock_text = StringProperty(RESTOCK_LABEL)
     is_editing = BooleanProperty(False)
     edit_unit = StringProperty("un.")
+    item_category = StringProperty(DEFAULT_CATEGORY)
+    item_category_icon = StringProperty(category_icon(DEFAULT_CATEGORY))
+    edit_category = StringProperty(DEFAULT_CATEGORY)
+    edit_category_icon = StringProperty(category_icon(DEFAULT_CATEGORY))
 
     def __init__(self, item, callback_set_qty=None, callback_finish=None, callback_delete=None,
                  callback_update_exp=None, callback_add_to_list=None, callback_list_options=None,
@@ -180,9 +220,11 @@ class PantryItemDetailModal(BaseFormModal):
         self.callback_update_details = callback_update_details
         self._changed = False
         self._unit_menu = None
-        # Contenedores de vista y edición: se intercambian dentro de 'body'
-        self._view_box = self.ids.view_box
-        self._edit_box = self.ids.edit_box
+        self._category_menu = None
+        # Contenedores de vista y edición: se intercambian dentro de 'body'.
+        # ids guarda referencias débiles: __self__ retiene el widget mientras está fuera del árbol.
+        self._view_box = self.ids.view_box.__self__
+        self._edit_box = self.ids.edit_box.__self__
         self.ids.body.remove_widget(self._edit_box)
         self.clear_error_on_input(
             self.ids.exact_qty_input,
@@ -200,6 +242,8 @@ class PantryItemDetailModal(BaseFormModal):
         self.item_id = item.id
         self.item_name = item.name
         self.unit = item.unit or "un."
+        self.item_category = category_of(item)
+        self.item_category_icon = category_icon(self.item_category)
         self.min_threshold = float(item.min_threshold)
         self.step = step_for_unit(self.unit)
         self.step_display = format_number(self.step)
@@ -275,6 +319,9 @@ class PantryItemDetailModal(BaseFormModal):
 
     def on_dismiss(self):
         """Al cerrar, refresca la despensa y evalúa alertas una sola vez."""
+        for menu in (self._unit_menu, self._category_menu, self._lists_menu):
+            if menu:
+                menu.dismiss()
         if self._changed and self.callback_finish:
             self.callback_finish(self.item_id)
         self._changed = False
@@ -288,6 +335,7 @@ class PantryItemDetailModal(BaseFormModal):
         self.ids.edit_name.ids.text_input.text = self.item_name
         self.ids.edit_threshold.ids.text_input.text = format_number(self.min_threshold)
         self.edit_unit = self.unit
+        self._set_edit_category(self.item_category)
         self.ids.body.remove_widget(self._view_box)
         self.ids.body.add_widget(self._edit_box)
         self.is_editing = True
@@ -316,19 +364,32 @@ class PantryItemDetailModal(BaseFormModal):
         if self._unit_menu:
             self._unit_menu.dismiss()
 
+    def open_edit_category_menu(self, caller):
+        if self._category_menu is None:
+            self._category_menu = _category_menu(caller, self._set_edit_category)
+        self._category_menu.open()
+
+    def _set_edit_category(self, category):
+        self.edit_category = category
+        self.edit_category_icon = category_icon(category)
+        if self._category_menu:
+            self._category_menu.dismiss()
+
     def save_edit(self):
         """Valida y guarda nombre, unidad y mínimo; recarga el modal con los datos nuevos."""
         ok, error, data = validate_pantry_details(
             self.ids.edit_name.ids.text_input.text,
             self.edit_unit,
             self.ids.edit_threshold.ids.text_input.text,
+            self.edit_category,
         )
         if not ok:
             self.error_text = error
             return
         updated = None
         if self.callback_update_details:
-            updated = self.callback_update_details(self.item_id, data["name"], data["unit"], data["threshold"])
+            updated = self.callback_update_details(self.item_id, data["name"], data["unit"],
+                                                   data["threshold"], data["category"])
         if updated is not None:
             self._load(updated)
         self._changed = True

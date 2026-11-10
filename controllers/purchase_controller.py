@@ -113,6 +113,21 @@ class PurchaseController:
         self.db.add_shopping_list_item(list_id, pantry_item.name)
         return True
 
+    def add_many_to_list(self, list_id: int, pantry_items: List[PantryItem]) -> int:
+        """Anota varios productos de la despensa en una lista. Retorna cuántos se agregaron."""
+        pending = {_normalize(it.name) for it in self.db.get_shopping_list_items(list_id) if not it.is_checked}
+        added = 0
+        for item in pantry_items:
+            key = _normalize(item.name)
+            if key in pending:
+                continue
+            self.db.add_shopping_list_item(list_id, item.name)
+            pending.add(key)
+            added += 1
+        if self.analytics and added:
+            self.analytics.track_event("restock_all_to_list", metadata={"list_id": list_id, "items": added})
+        return added
+
     # ------------------------------------------------------------------
     # Lista -> Despensa (Finalizar compra)
     # ------------------------------------------------------------------

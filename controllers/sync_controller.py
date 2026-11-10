@@ -152,8 +152,16 @@ class SyncController:
                         expiration_date=exp_date
                     )
                     summary["synced_pantry"] += 1
-                elif exp_date and not existing_pantry_names[p_key].expiration_date:
-                    self.db.update_pantry_expiration(existing_pantry_names[p_key].id, exp_date)
+                else:
+                    remote = existing_pantry_names[p_key]
+                    if exp_date and not remote.expiration_date:
+                        self.db.update_pantry_expiration(remote.id, exp_date)
+                    # Completa la categoría remota si allá quedó en 'General'
+                    local_cat = (p_row["category"] or "General").strip()
+                    if local_cat != "General" and (remote.category or "General") == "General":
+                        self.db.update_pantry_item_details(remote.id, remote.name, remote.quantity, remote.unit,
+                                                           remote.min_threshold, remote.expiration_date,
+                                                           category=local_cat)
 
             # C. Sincronizar Carrito de Compras
             sqlite_cur.execute("""

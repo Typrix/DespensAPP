@@ -239,3 +239,24 @@
 ## Validación
 - 27 pruebas nuevas (migración del carrito y de la columna precio sobre base antigua, total en el carro, finalizar desde lista, historial por compra y periodo, lo más comprado, reponer) más las suites de la Fase 1.
 - Recorrido completo de la app con capturas en modo claro y oscuro.
+
+---
+
+## Entrada / Prompt del Usuario (Mi Despensa ordenada)
+> "que mas crees que le faltaria para la comodidad de los usuarios, escanear codigo de barra? quizas la parte de mi despensa un poco mas ordenada"
+
+## Diagnóstico y Solución de Bugs
+1. **Error al guardar la edición de un producto de despensa ("weakly-referenced object no longer exists")**
+   - **Causa raíz**: el modal guardaba `self.ids.view_box`, que es una referencia débil; al sacar el contenedor del árbol para mostrar la edición, nada lo retenía y el recolector de basura podía eliminarlo.
+   - **Solución**: guardar referencias fuertes con `__self__`.
+
+## Acciones Realizadas
+1. **Orden por urgencia** (`controllers/pantry_organizer.py`, sin Kivy): secciones *Necesita atención* (vencido, sin stock, por vencer), *Por agotarse* y *Todo bien*; dentro de cada una, lo que vence antes primero y luego orden alfabético.
+2. **Buscador y filtros**: búsqueda en vivo sin distinguir mayúsculas ni tildes y chips *Todos / Por vencer / Por agotarse / categoría* con conteos.
+3. **Categorías reales**: selector en "Añadir a Despensa" y en la edición del detalle; se guardan en BD, se sincronizan con MySQL y las antiguas (Legumbres, Aceites) se mapean a "Despensa seca". El icono de cada fila depende de la categoría.
+4. **Ajuste rápido `−`/`+` en la fila**: guarda al instante y reordena y evalúa alertas tras una pausa de 1,5 s para no mover la lista mientras se toca.
+5. **Reponer en bloque**: "Añadir lo que falta a una lista" anota lo que está sin stock o por agotarse en "Reponer despensa" sin duplicar pendientes.
+
+## Validación
+- 25 pruebas nuevas (orden, búsqueda con tildes, filtros, conteos, validación y guardado de categoría, reposición sin duplicados) más las suites anteriores, todas sobre SQLite temporal.
+- Recorrido de la pantalla con capturas en modo claro y oscuro, en ancho móvil (400) y escritorio (800).

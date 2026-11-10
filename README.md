@@ -80,6 +80,7 @@ DespensAPP/
 │   ├── sync_controller.py     # Sincronización offline-to-online
 │   ├── purchase_controller.py # Compras: finalizar desde listas e historial
 │   ├── pantry_controller.py   # Control de despensa y caducidad
+│   ├── pantry_organizer.py    # Orden por urgencia, búsqueda, filtros y categorías
 │   └── list_controller.py     # Listas de compras de supermercado
 │
 ├── models/                     # [M] Modelos de dominio y persistencia (MVC)

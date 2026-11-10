@@ -22,7 +22,7 @@ class PantryController:
         return self.db.get_pantry_items(user_id)
 
     def add_item(self, user_id: int, name: str, quantity: float, unit: str,
-                 threshold: float, expiration_date: Optional[str] = None):
+                 threshold: float, expiration_date: Optional[str] = None, category: str = "General"):
         """Registra un nuevo producto en la despensa y verifica alertas si corresponde."""
         item_id = self.db.add_pantry_item(
             user_id=user_id,
@@ -30,7 +30,7 @@ class PantryController:
             quantity=quantity,
             unit=unit,
             min_threshold=threshold,
-            category="General",
+            category=category or "General",
             expiration_date=expiration_date
         )
         if self.analytics:
@@ -66,12 +66,14 @@ class PantryController:
             if item:
                 self.notifications.check_item_alerts(item, force=True, check_stock=True, check_expiration=False)
 
-    def update_details(self, item_id: int, name: str, unit: str, min_threshold: float):
-        """Corrige nombre, unidad y mínimo de alerta manteniendo cantidad y vencimiento."""
+    def update_details(self, item_id: int, name: str, unit: str, min_threshold: float,
+                       category: Optional[str] = None):
+        """Corrige nombre, unidad, mínimo y categoría manteniendo cantidad y vencimiento."""
         item = self.db.get_pantry_item_by_id(item_id)
         if not item:
             return None
-        self.db.update_pantry_item_details(item_id, name, item.quantity, unit, min_threshold, item.expiration_date)
+        self.db.update_pantry_item_details(item_id, name, item.quantity, unit, min_threshold,
+                                       item.expiration_date, category=category)
         if self.analytics:
             self.analytics.track_event("edit_pantry_item", metadata={"item_id": item_id})
         updated = self.db.get_pantry_item_by_id(item_id)

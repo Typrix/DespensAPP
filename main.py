@@ -22,6 +22,12 @@ from kivy.graphics import Color, Rectangle
 
 from models import DatabaseManager
 from controllers.purchase_controller import summarize_items, format_money
+from controllers.pantry_organizer import (
+    FILTER_ALL, FILTER_EXPIRING, FILTER_LOW, CATEGORY_FILTER_PREFIX,
+    group_pantry, filter_counts, used_categories, restock_candidates,
+)
+from controllers.validators import step_for_unit
+from dataclasses import replace as dc_replace
 from controllers import (
     MainController,
     AuthController,
@@ -37,6 +43,8 @@ from views import (
     CustomProgressBar,
     BottomNavButton,
     PantryItemRow,
+    PantryFilterChip,
+    PantrySectionHeader,
     ShoppingListCard,
     AddCircleButton,
     AvatarCircleButton,
@@ -86,6 +94,11 @@ class MainApp(MDApp):
     # Textos derivados (KV no reevalúa expresiones como prop.upper(), por eso se calculan aquí)
     stats_period_tag = StringProperty("ÚLTIMA SEMANA")
     stats_spent_title = StringProperty("Gasto · última semana")
+
+    # Mi Despensa: búsqueda, filtro activo y reposición en bloque
+    pantry_filter = StringProperty("all")
+    pantry_restock_count = NumericProperty(0)
+    pantry_restock_text = StringProperty("")
 
     # Datos Dinámicos de la Pantalla de Inicio
     home_spent_str = StringProperty("$0")
@@ -356,13 +369,18 @@ class MainApp(MDApp):
             print(f"[DespensAPP] {moved} producto(s) del carrito movidos a tus listas.")
 
     def cargar_despensa(self):
-        """Carga y renderiza los productos de la despensa con divisores."""
+        """Lee la despensa de la base de datos, evalúa alertas y la dibuja ordenada por urgencia."""
         container = self.get_container("pantry_items_container")
         if not container:
             return
 
         container.clear_widgets()
         if not self.auth.current_user:
+            self._pantry_items = []
+            self.pantry_restock_count = 0
+            filters = self.get_container("pantry_filters_container")
+            if filters:
+                filters.clear_widgets()
             return
 
         items = [it for it in self.db.get_pantry_items(self.auth.current_user.id)
@@ -371,6 +389,28 @@ class MainApp(MDApp):
         # Evaluar alertas automáticas de caducidad y stock mediante Plyer
         if hasattr(self, 'notifications') and self.notifications:
             self.notifications.check_pantry_items(items)
+
+        self._pantry_items = items
+        self._render_despensa()
+
+    def _render_despensa(self):
+        """Dibuja chips, botón de reponer y secciones por urgencia según búsqueda y filtro."""
+        container = self.get_container("pantry_items_container")
+        if not container:
+            return
+        container.clear_widgets()
+        items = getattr(self, "_pantry_items", [])
+
+        # Si el filtro de categoría ya no tiene productos, vuelve a "Todos"
+        counts = filter_counts(items)
+        if self.pantry_filter != FILTER_ALL and not counts.get(self.pantry_filter):
+            self.pantry_filter = FILTER_ALL
+        self._render_filtros_despensa(items, counts)
+
+        restock = restock_candidates(items)
+        self.pantry_restock_count = len(restock)
+        self.pantry_restock_text = (
+            f"Añadir lo que falta a una lista ({len(restock)})" if restock else "")
 
         if not items:
             container.add_widget(EmptyState(
@@ -381,22 +421,110 @@ class MainApp(MDApp):
                 action=lambda: self.abrir_formulario("cupboard"),
             ))
             return
-        for idx, it in enumerate(items):
-            row = PantryItemRow(
-                item_id=it.id,
-                name=it.name,
-                quantity_str=it.formatted_quantity,
-                status_str=it.status,
-                status_color=it.status_text_color,
-                expiration_str=it.expiration_status,
-                expiration_color=it.expiration_text_color,
-                raw_expiration=it.expiration_date or "",
-                quantity_val=it.quantity,
-                unit=it.unit or "un.",
-            )
-            container.add_widget(row)
-            if idx < len(items) - 1:
-                container.add_widget(self._crear_divisor())
+
+        sections = group_pantry(items, getattr(self, "_pantry_query", ""), self.pantry_filter)
+        if not sections:
+            container.add_widget(EmptyState(
+                icon="magnify-close",
+                title="Sin resultados",
+                message="No hay productos que coincidan con la búsqueda o el filtro.",
+                action_text="Limpiar filtros",
+                action=self.limpiar_filtros_despensa,
+            ))
+            return
+        for section in sections:
+            container.add_widget(PantrySectionHeader(
+                title=section["title"].upper(), count=len(section["items"]), dot_color=section["color"]))
+            for idx, it in enumerate(section["items"]):
+                container.add_widget(PantryItemRow(item=it))
+                if idx < len(section["items"]) - 1:
+                    container.add_widget(self._crear_divisor())
+
+    def _render_filtros_despensa(self, items, counts):
+        """Chips: Todos, Por vencer, Por agotarse y una por categoría en uso."""
+        box = self.get_container("pantry_filters_container")
+        if not box:
+            return
+        box.clear_widgets()
+        chips = [(FILTER_ALL, f"Todos {counts[FILTER_ALL]}")]
+        if counts[FILTER_EXPIRING]:
+            chips.append((FILTER_EXPIRING, f"Por vencer {counts[FILTER_EXPIRING]}"))
+        if counts[FILTER_LOW]:
+            chips.append((FILTER_LOW, f"Por agotarse {counts[FILTER_LOW]}"))
+        categories = used_categories(items)
+        if len(categories) > 1:  # con una sola categoría el chip no filtra nada
+            for cat in categories:
+                key = CATEGORY_FILTER_PREFIX + cat
+                chips.append((key, f"{cat} {counts[key]}"))
+        for key, text in chips:
+            box.add_widget(PantryFilterChip(filter_key=key, text=text))
+
+    def buscar_despensa(self, text):
+        """Buscador de Mi Despensa (en vivo, sin consultar la base de datos)."""
+        self._pantry_query = text or ""
+        self._render_despensa()
+
+    def filtrar_despensa(self, filter_key):
+        """Chip de filtro: tocar el activo vuelve a 'Todos'."""
+        self.pantry_filter = FILTER_ALL if filter_key == self.pantry_filter else filter_key
+        self._render_despensa()
+
+    def limpiar_filtros_despensa(self):
+        self.pantry_filter = FILTER_ALL
+        search = self.get_container("pantry_search_input")
+        if search and search.text:
+            search.text = ""  # dispara buscar_despensa
+        else:
+            self._pantry_query = ""
+            self._render_despensa()
+
+    def ajuste_rapido_despensa(self, row, direction):
+        """
+        -/+ en la fila: guarda al instante y actualiza solo esa fila; el reordenamiento
+        y las alertas se aplican tras una pausa breve para no mover la lista mientras se toca.
+        """
+        item = row.item
+        new_qty = max(0.0, round(item.quantity + direction * step_for_unit(item.unit), 3))
+        if new_qty == item.quantity:
+            return
+        self.fijar_cantidad_despensa(item.id, new_qty)
+        updated = dc_replace(item, quantity=new_qty)
+        row.set_item(updated)
+        items = getattr(self, "_pantry_items", [])
+        self._pantry_items = [updated if it.id == item.id else it for it in items]
+        if not hasattr(self, "_pantry_adjusted"):
+            self._pantry_adjusted = set()
+        self._pantry_adjusted.add(item.id)
+        if getattr(self, "_pantry_refresh_ev", None):
+            self._pantry_refresh_ev.cancel()
+        self._pantry_refresh_ev = Clock.schedule_once(lambda dt: self._cerrar_ajuste_rapido(), 1.5)
+
+    def _cerrar_ajuste_rapido(self):
+        """Fin de la ráfaga de -/+: alertas una vez por producto y refresco general."""
+        self._pantry_refresh_ev = None
+        adjusted, self._pantry_adjusted = getattr(self, "_pantry_adjusted", set()), set()
+        if hasattr(self, 'pantry_ctrl'):
+            for item_id in adjusted:
+                self.pantry_ctrl.check_stock_alerts(item_id)
+        self._render_despensa()
+        self.actualizar_inicio()
+        self.actualizar_estadisticas()
+
+    def reponer_todo_despensa(self):
+        """Anota en 'Reponer despensa' todo lo que está por agotarse o sin stock (sin duplicar)."""
+        if not self.auth.current_user:
+            return
+        candidates = restock_candidates(getattr(self, "_pantry_items", []))
+        if not candidates:
+            return
+        purchases = self.controller.purchases
+        list_id = purchases.find_or_create_list(self.auth.current_user.id, "Reponer despensa", "#F59E0B")
+        added = purchases.add_many_to_list(list_id, candidates)
+        self.cargar_listas()
+        if added:
+            show_info_toast(f"{added} producto(s) anotados en Reponer despensa")
+        else:
+            show_info_toast("Todo lo que falta ya estaba en Reponer despensa")
 
     def cargar_listas(self):
         """Carga y renderiza las tarjetas de listas de compras."""
@@ -609,9 +737,9 @@ class MainApp(MDApp):
             callback_update_details=self.actualizar_detalles_despensa,
         ).open()
 
-    def actualizar_detalles_despensa(self, item_id, name, unit, min_threshold):
-        """Guarda nombre, unidad y mínimo de alerta; retorna el producto actualizado."""
-        updated = self.pantry_ctrl.update_details(item_id, name, unit, min_threshold)
+    def actualizar_detalles_despensa(self, item_id, name, unit, min_threshold, category=None):
+        """Guarda nombre, unidad, mínimo y categoría; retorna el producto actualizado."""
+        updated = self.pantry_ctrl.update_details(item_id, name, unit, min_threshold, category)
         self.cargar_despensa()
         self.actualizar_inicio()
         return updated
@@ -658,13 +786,14 @@ class MainApp(MDApp):
 
         AlertsModal(alerts=alerts, callback_open_item=open_item).open()
 
-    def agregar_item_despensa(self, name, quantity, unit, threshold, expiration_date=None):
+    def agregar_item_despensa(self, name, quantity, unit, threshold, expiration_date=None, category="General"):
         if not self.auth.current_user:
             return
         if hasattr(self, 'pantry_ctrl'):
-            self.pantry_ctrl.add_item(self.auth.current_user.id, name, quantity, unit, threshold, expiration_date)
+            self.pantry_ctrl.add_item(self.auth.current_user.id, name, quantity, unit, threshold,
+                                      expiration_date, category)
         else:
-            self.db.add_pantry_item(self.auth.current_user.id, name, quantity, unit, threshold, "General", expiration_date)
+            self.db.add_pantry_item(self.auth.current_user.id, name, quantity, unit, threshold, category, expiration_date)
         self.cargar_despensa()
         self.actualizar_inicio()
         self.actualizar_estadisticas()
@@ -824,6 +953,11 @@ class MainApp(MDApp):
             self.undo.flush()
         hide_undo_snackbar()
         self.auth.logout()
+        self.pantry_filter = FILTER_ALL
+        self._pantry_query = ""
+        search = self.get_container("pantry_search_input")
+        if search:
+            search.text = ""
         self._sincronizar_datos_usuario()
         self.cargar_todo()
         self.abrir_modal_auth(can_cancel=False)

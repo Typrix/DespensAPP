@@ -86,11 +86,12 @@
 # ---------------------------------------------------------
 <PantryItemRow>:
     size_hint_y: None
-    height: "54dp"
-    spacing: "12dp"
+    height: "58dp"
+    spacing: "10dp"
+    opacity: 0.85 if self.state == "down" else 1
     on_release: root.open_detail()
 
-    # Icono Hoja / Producto
+    # Icono según la categoría, teñido con el estado del stock
     AnchorLayout:
         size_hint: None, None
         size: "38dp", "38dp"
@@ -103,16 +104,18 @@
                 size: self.size
                 radius: [12, 12, 12, 12]
         MDIcon:
-            icon: "leaf"
+            icon: root.icon
+            font_size: "20sp"
             theme_text_color: "Custom"
             text_color: app.accent_green_color
             pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-    # Nombre, Cantidad y Fecha de Vencimiento
+    # Nombre, cantidad + estado y vencimiento
     BoxLayout:
         orientation: "vertical"
         size_hint_x: 1
         pos_hint: {"center_y": 0.5}
+        padding: [0, "8dp", 0, "8dp"]
         spacing: "2dp"
         Label:
             text: root.name
@@ -122,14 +125,17 @@
             halign: "left"
             valign: "middle"
             text_size: self.size
+            shorten: True
+            shorten_from: "right"
         BoxLayout:
             size_hint_y: None
             height: "16dp"
             spacing: "6dp"
             Label:
-                text: root.quantity_str
+                text: root.status_str
                 font_size: "11sp"
-                color: app.text_secondary_color
+                bold: True
+                color: root.status_color
                 size_hint_x: None
                 width: self.texture_size[0]
                 halign: "left"
@@ -142,16 +148,93 @@
                 halign: "left"
                 valign: "middle"
                 text_size: self.size
+                shorten: True
+                shorten_from: "right"
 
-    # Píldora de Estado: Suficiente / Por agotarse / Reponer
-    Label:
-        text: root.status_str
+    # Ajuste rápido: - cantidad +
+    BoxLayout:
         size_hint_x: None
-        width: "84dp"
-        font_size: "12sp"
+        width: "122dp"
+        size_hint_y: None
+        height: "34dp"
+        pos_hint: {"center_y": 0.5}
+        canvas.before:
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [17, 17, 17, 17]
+        StockStepButton:
+            text: "−"
+            disabled: root.quantity_val <= 0
+            on_release: root.quick_adjust(-1)
+        Label:
+            text: root.quantity_str
+            font_size: "12sp"
+            bold: True
+            color: app.text_primary_color
+            halign: "center"
+            valign: "middle"
+            text_size: self.size
+            shorten: True
+        StockStepButton:
+            text: "+"
+            on_release: root.quick_adjust(1)
+
+
+# Botón circular -/+ de la fila de despensa
+<StockStepButton@ButtonBehavior+Label>:
+    size_hint_x: None
+    width: "34dp"
+    font_size: "18sp"
+    bold: True
+    color: app.accent_green_color
+    opacity: 0.35 if self.disabled else (0.6 if self.state == "down" else 1)
+    disabled_color: app.text_secondary_color
+
+
+# Chip de filtro de la despensa (activo = relleno verde)
+<PantryFilterChip>:
+    is_active: app.pantry_filter == self.filter_key
+    size_hint: None, None
+    height: "32dp"
+    width: self.texture_size[0] + dp(24)
+    font_size: "12sp"
+    bold: self.is_active
+    color: [1, 1, 1, 1] if self.is_active else app.text_secondary_color
+    opacity: 0.8 if self.state == "down" else 1
+    canvas.before:
+        Color:
+            rgba: app.accent_green_color if self.is_active else app.card_white_color
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [16, 16, 16, 16]
+
+
+# Encabezado de sección (Necesita atención / Por agotarse / Todo bien)
+<PantrySectionHeader>:
+    size_hint_y: None
+    height: "34dp"
+    spacing: "8dp"
+    padding: [0, "10dp", 0, 0]
+    Widget:
+        size_hint: None, None
+        size: "8dp", "8dp"
+        pos_hint: {"center_y": 0.4}
+        canvas.before:
+            Color:
+                rgba: root.dot_color
+            Ellipse:
+                pos: self.pos
+                size: self.size
+    Label:
+        text: f"{root.title}  ·  {root.count}"
+        font_size: "11sp"
         bold: True
-        color: root.status_color
-        halign: "right"
+        color: app.text_secondary_color
+        halign: "left"
         valign: "middle"
         text_size: self.size
 

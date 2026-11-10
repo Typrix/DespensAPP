@@ -952,8 +952,11 @@ class DatabaseManager:
                 print(f"[DB] Error set_pantry_quantity SQLite: {e}")
                 return False
 
-    def update_pantry_item_details(self, item_id: int, name: str, quantity: float, unit: str, min_threshold: float, expiration_date: Optional[str] = None) -> bool:
-        """Actualiza los datos completos de un producto de despensa, incluyendo fecha de caducidad."""
+    def update_pantry_item_details(self, item_id: int, name: str, quantity: float, unit: str, min_threshold: float, expiration_date: Optional[str] = None, category: Optional[str] = None) -> bool:
+        """Actualiza los datos completos de un producto de despensa (categoría: None = mantener)."""
+        if category is not None:
+            category = category.strip() or "General"
+            self._run("UPDATE pantry_items SET category = ? WHERE id = ?;", (category, item_id))
         name = name.strip()
         unit = unit.strip() or "un."
         quantity = max(0.0, float(quantity))

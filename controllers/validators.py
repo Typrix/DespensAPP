@@ -8,6 +8,8 @@ Lógica pura (sin Kivy) para interpretar números en formato chileno
 import re
 from datetime import datetime, date
 
+from controllers.pantry_organizer import PANTRY_CATEGORIES, DEFAULT_CATEGORY
+
 # Unidades predefinidas disponibles en el menú desplegable de despensa
 PANTRY_UNITS = ["un.", "kg", "g", "L", "ml", "paquete", "caja", "lata", "botella"]
 NAME_MAX_LENGTH = 50
@@ -154,7 +156,15 @@ def expiration_warning(expiration_str):
     return ""
 
 
-def validate_pantry_details(name, unit, threshold_str):
+def _clean_category(category):
+    """Categoría válida del catálogo (vacía = 'General'). Retorna (categoria, error)."""
+    category = (category or "").strip() or DEFAULT_CATEGORY
+    if category not in PANTRY_CATEGORIES:
+        return None, "Selecciona una categoría de la lista."
+    return category, ""
+
+
+def validate_pantry_details(name, unit, threshold_str, category=DEFAULT_CATEGORY):
     """
     Valida la edición de un producto de despensa (nombre, unidad y mínimo de alerta).
     Retorna (True, "", datos) o (False, mensaje_error, None).
@@ -167,10 +177,14 @@ def validate_pantry_details(name, unit, threshold_str):
     threshold, error = validate_quantity(threshold_str, "La cantidad mínima")
     if error:
         return False, error, None
-    return True, "", {"name": name, "unit": unit, "threshold": threshold}
+    category, error = _clean_category(category)
+    if error:
+        return False, error, None
+    return True, "", {"name": name, "unit": unit, "threshold": threshold, "category": category}
 
 
-def validate_pantry_form(name, quantity_str, unit, threshold_str, expiration_str, has_no_expiration):
+def validate_pantry_form(name, quantity_str, unit, threshold_str, expiration_str, has_no_expiration,
+                         category=DEFAULT_CATEGORY):
     """
     Valida los campos del formulario de despensa.
     Permite fechas pasadas (producto ya vencido); el aviso se muestra aparte.
@@ -188,6 +202,10 @@ def validate_pantry_form(name, quantity_str, unit, threshold_str, expiration_str
         return False, "Selecciona una unidad de la lista.", None
 
     threshold, error = validate_quantity(threshold_str, "La cantidad mínima")
+    if error:
+        return False, error, None
+
+    category, error = _clean_category(category)
     if error:
         return False, error, None
 
@@ -209,4 +227,5 @@ def validate_pantry_form(name, quantity_str, unit, threshold_str, expiration_str
         "unit": unit,
         "threshold": threshold,
         "expiration_date": exp_date,
+        "category": category,
     }

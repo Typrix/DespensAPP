@@ -75,6 +75,73 @@
             hint_text_color: app.input_placeholder_color
 
 
+# Campo de selección (menú desplegable): todo el recuadro es tocable.
+# Uso: DropdownField(label_text, value, icon) + on_release: root.abrir_menu(self)
+<DropdownField@ButtonBehavior+BoxLayout>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: "56dp"
+    spacing: "4dp"
+    label_text: ""
+    value: ""
+    icon: ""
+
+    Label:
+        text: root.label_text
+        font_size: "11sp"
+        bold: True
+        color: app.text_secondary_color
+        size_hint_y: None
+        height: "16dp"
+        halign: "left"
+        text_size: self.size
+
+    BoxLayout:
+        size_hint_y: None
+        height: "36dp"
+        padding: ["10dp", 0, "6dp", 0]
+        spacing: "8dp"
+        opacity: 0.75 if root.state == "down" else 1
+        canvas.before:
+            Color:
+                rgba: app.sage_container_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [10, 10, 10, 10]
+            Color:
+                rgba: app.divider_color
+            Line:
+                rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
+                width: 1.0
+        MDIcon:
+            icon: root.icon or "tag-outline"
+            size_hint_x: None
+            width: "20dp" if root.icon else 0
+            opacity: 1 if root.icon else 0
+            font_size: "18sp"
+            theme_text_color: "Custom"
+            text_color: app.accent_green_color
+            pos_hint: {"center_y": 0.5}
+        Label:
+            text: root.value
+            font_size: "13.5sp"
+            color: app.input_text_color
+            halign: "left"
+            valign: "middle"
+            text_size: self.size
+            shorten: True
+            shorten_from: "right"
+        MDIcon:
+            icon: "menu-down"
+            size_hint_x: None
+            width: "24dp"
+            font_size: "22sp"
+            theme_text_color: "Custom"
+            text_color: app.accent_green_color
+            pos_hint: {"center_y": 0.5}
+
+
 # --------------------------------------------------------
 # 2. Modal: Añadir a la Despensa (Con Umbrales y Fecha de Vencimiento)
 # --------------------------------------------------------
@@ -176,12 +243,24 @@
                         pos_hint: {"center_y": 0.5}
                         on_release: root.open_unit_menu(field_unit)
 
-        # Campo: Umbral Mínimo Numérico (Para clasificar alerta)
-        CustomInputField:
-            id: field_threshold
-            label_text: "CANTIDAD MÍNIMA (ALERTA)"
-            hint_text: "Si baja de este número, alertará"
-            input_filter: numeric_input_filter
+        # Fila: Umbral mínimo (alerta) y Categoría
+        BoxLayout:
+            size_hint_y: None
+            height: "56dp"
+            spacing: "10dp"
+
+            CustomInputField:
+                id: field_threshold
+                label_text: "AVISAR SI BAJA DE"
+                hint_text: "Ej: 2"
+                input_filter: numeric_input_filter
+
+            DropdownField:
+                id: field_category
+                label_text: "CATEGORÍA"
+                value: root.selected_category
+                icon: root.selected_category_icon
+                on_release: root.open_category_menu(self)
 
         # Campo: Fecha de Vencimiento con selector de calendario integrado
         BoxLayout:
@@ -348,10 +427,10 @@
                     text_size: self.size
                     shorten: True
                     shorten_from: "right"
-                AnchorLayout:
-                    anchor_x: "left"
+                BoxLayout:
                     size_hint_y: None
                     height: "20dp"
+                    spacing: "8dp"
                     Label:
                         text: root.status_str
                         font_size: "11sp"
@@ -366,6 +445,21 @@
                                 pos: self.pos
                                 size: self.size
                                 radius: [10, 10, 10, 10]
+                    MDIcon:
+                        icon: root.item_category_icon
+                        size_hint: None, None
+                        size: "16dp", "20dp"
+                        font_size: "15sp"
+                        theme_text_color: "Custom"
+                        text_color: app.text_secondary_color
+                    Label:
+                        text: root.item_category
+                        font_size: "11sp"
+                        color: app.text_secondary_color
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+                        shorten: True
 
             MDIconButton:
                 icon: "pencil-outline"
@@ -697,6 +791,12 @@
                     id: edit_name
                     label_text: "NOMBRE"
                     hint_text: "Ej: Arroz integral"
+
+                DropdownField:
+                    label_text: "CATEGORÍA"
+                    value: root.edit_category
+                    icon: root.edit_category_icon
+                    on_release: root.open_edit_category_menu(self)
 
                 BoxLayout:
                     size_hint_y: None
