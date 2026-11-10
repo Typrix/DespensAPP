@@ -1241,7 +1241,10 @@ class DatabaseManager:
     # Artículos de Listas de Compras (Estilo Supermercado)
     # ----------------------------------------------------
     def get_shopping_list_items(self, list_id: int) -> List[ShoppingListItem]:
-        """Obtiene los productos anotados en una lista de compras de supermercado."""
+        """
+        Obtiene los productos anotados en una lista de compras de supermercado.
+        Orden fijo por creación: tachar un producto no lo mueve de lugar.
+        """
         items = []
         if self.is_mysql:
             try:
@@ -1251,7 +1254,7 @@ class DatabaseManager:
                         SELECT id, list_id, name, is_checked, created_at
                         FROM shopping_list_items
                         WHERE list_id = %s
-                        ORDER BY is_checked ASC, id ASC;
+                        ORDER BY id ASC;
                     """, (list_id,))
                     rows = cur.fetchall()
                 conn.close()
@@ -1273,7 +1276,7 @@ class DatabaseManager:
                     SELECT id, list_id, name, is_checked, created_at
                     FROM shopping_list_items
                     WHERE list_id = ?
-                    ORDER BY is_checked ASC, id ASC;
+                    ORDER BY id ASC;
                 """, (list_id,))
                 rows = cur.fetchall()
                 conn.close()
