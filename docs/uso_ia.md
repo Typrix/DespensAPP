@@ -91,4 +91,80 @@
    - Compilación sintáctica exitosa con `compileall` (0 errores).
    - Pruebas automatizadas de importación y ejecución de lógica de negocio (`MainController`, fallback SQLite y telemetría) con 100% de éxito.
 
+---
 
+## Solicitud (resumen): Limpieza de la raíz del repositorio
+> Ordenar los archivos sueltos de la raíz y dejar todo dentro de los paquetes MVC.
+
+## Acciones Realizadas
+
+1. **Eliminación de wrappers legados**: se retiraron los módulos raíz de retrocompatibilidad (`models.py`, `database.py`, `auth_manager.py`, etc.) y se centralizaron los imports en `models/`, `controllers/` y `views/`.
+2. **Reubicación de recursos**: el esquema SQL y `db_config.example.json` pasaron a `database/`; `GUIA_FUNCIONAMIENTO.md` e `HISTORIAL_CAMBIOS.md` pasaron a `docs/`, con el `README.md` actualizado.
+
+---
+
+## Solicitud (resumen): Notificaciones de stock y caducidad
+> Avisar al usuario cuando un producto de la despensa se está agotando o está por vencer.
+
+## Acciones Realizadas
+
+1. **`controllers/notification_controller.py`**: nuevo `NotificationController` que emite notificaciones nativas con **Plyer** para dos tipos de alerta: stock (*Por agotarse* / *Agotado*) y vencimiento (*Por vencerse* / *Vencido*).
+2. **Anti-spam**: cooldown en memoria por `(item_id, tipo_alerta)` (15 min por defecto) para no repetir la misma alerta.
+3. **Robustez en Windows**: hook sobre los hilos de Plyer y log seguro ante errores de codificación de la terminal, para que un fallo de la bandeja del sistema no tumbe la app.
+4. **Integración**: `PantryController` dispara la revisión al agregar un producto o cambiar su cantidad o fecha de vencimiento; `main.py` revisa la despensa al cargarla y cada 10 minutos (`Clock.schedule_interval`); `models/database.py` añade la consulta de producto por id. Se agregó `plyer` a `requirements.txt`.
+
+---
+
+## Solicitud (resumen): Selector de fecha de vencimiento
+> Elegir la fecha de vencimiento con un calendario en vez de escribirla a mano.
+
+## Acciones Realizadas
+
+1. **`views/dialogs/pantry_dialog.py` y `kv/dialogs.kv`**: el campo de vencimiento abre un `MDModalDatePicker` (KivyMD 2.0); la fecha elegida se guarda en formato `YYYY-MM-DD`, evitando fechas mal escritas, y se puede limpiar con `clear_expiration`.
+
+---
+
+## Solicitud (resumen): Configuración remota y banner
+> Poder cambiar mensajes y funciones de la app sin publicar una nueva versión.
+
+## Acciones Realizadas
+
+1. **`controllers/remote_config_controller.py`**: `RemoteConfigController` carga la configuración con triple respaldo: endpoint remoto → `remote_config.json` local → valores por defecto en memoria.
+2. **Feature flags**: métodos `is_feature_enabled`, `is_maintenance_mode` e `is_banner_enabled` para activar/desactivar módulos (`cloud_sync`, `advanced_analytics`, `smart_notifications`).
+3. **Banner reactivo**: nuevo widget `views/widgets/remote_banner.py` mostrado en la pantalla de Inicio con título, mensaje, tipo y badge definidos en el JSON.
+
+---
+
+## Corrección de Bugs de Interfaz (iconos, textos y contraste)
+
+1. **Iconos del carrito y de listas invisibles o desalineados**
+   - **Causa raíz**: los iconos se dibujaban como `MDIcon` dentro de `Button` transparentes o como caracteres Unicode (`✎`, `✕`); en KivyMD 2.0 eso deja el icono sin tamaño/posición correctos y algunas fuentes no renderizan esos glifos.
+   - **Solución**: se reemplazaron por `MDIconButton` con iconos Material (`check-circle`, `trash-can-outline`, `pencil-outline`, `close`) y color personalizado en `kv/components.kv` y `kv/dialogs.kv`.
+2. **Texto truncado en el modal de autenticación**
+   - **Causa raíz**: la etiqueta de mensajes tenía altura fija (`22dp`) y `text_size: self.size`, por lo que los mensajes largos se cortaban en vez de pasar a una segunda línea.
+   - **Solución**: en `kv/dialogs.kv` se usó `text_size: self.width, None` con altura dinámica (`36dp` si hay mensaje) y se agrandó el modal; además, los mensajes de "requerido", "conexión" y "modo local" ahora se pintan en rojo como errores.
+3. **Bajo contraste de ítems de lista en modo oscuro y nuevo logo**
+   - **Causa raíz**: el fondo y el texto de los ítems tenían colores claros fijos, pensados solo para el modo claro.
+   - **Solución**: en `kv/dialogs.kv` los ítems usan `sage_container_color` y `text_secondary_color` cuando `modo_oscuro` está activo; se reemplazó `docs/despensapp_logo.png` por la versión en paleta azul (más liviana).
+
+
+
+---
+
+## Entrada / Prompt del Usuario (Fase 1 de mejoras de usabilidad)
+> "mira que flujos puedo corregir para que la app se sienta mas comodo para el uso humano"
+> "fase 1"
+
+## Diagnóstico y Solución
+
+1. **Bug: precios con punto de miles se guardaban mal**
+   - **Causa raíz**: el campo de precio usaba `input_filter: "float"`, así que `1.500` (formato chileno) se interpretaba como `1.5` y el carrito mostraba **$1**; además el filtro bloqueaba la coma decimal (`1,5 kg`).
+   - **Solución**: nuevo módulo `controllers/validators.py` (lógica pura, sin Kivy) con `parse_number` que entiende `1.500`, `$2.990`, `1,5` y `0.5`, y un filtro de escritura propio (`numeric_input_filter`).
+2. **Formularios que fallaban en silencio**: carrito, listas, anotar producto y edición de nombres ahora muestran el error en rojo (`FormMessageLabel` reutilizable en `kv/dialogs.kv`) y lo borran apenas el usuario vuelve a escribir. Se reutilizó el patrón `validate_*` de despensa y se permitió registrar productos ya vencidos con un aviso ámbar.
+3. **Borrado con "Deshacer"**: `controllers/undo_controller.py` oculta el elemento al instante y lo elimina de la BD tras 4 s; la barra `views/widgets/undo_snackbar.py` ofrece deshacer. Aplica a productos del carrito, de la despensa, listas completas y productos de una lista. Los pendientes se confirman al cerrar sesión o la app.
+   - **Bug encontrado al probar**: `MDSnackbar` de KivyMD 2.0.0 fallaba con `FBO Initialization failed` (su efecto ripple se crea con altura 0); se reemplazó por una barra propia con widgets base de Kivy.
+4. **Ajuste de stock**: el modal de detalle ya no se cierra en cada `+`/`−`, el paso depende de la unidad (100 g/ml, 0,5 kg/L, 1 el resto) y se puede fijar la cantidad exacta (`set_pantry_quantity` en `models/database.py`). Las alertas y el refresco de la lista ocurren una sola vez al cerrar.
+
+## Validación
+- `compileall` sin errores y 42 pruebas de parseo, validadores y cola de deshacer.
+- Pruebas de integración sobre una copia temporal en SQLite (sin tocar `despensapp_local.db`) y recorrido real de la app con capturas: error de precio, precio `1.500` guardado como 1500, barra de deshacer, aviso de vencido, stepper de stock y modo oscuro.
