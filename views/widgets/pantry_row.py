@@ -20,6 +20,8 @@ class PantryItemRow(ButtonBehavior, BoxLayout):
     expiration_str = StringProperty("Sin vencimiento")
     expiration_color = ListProperty([0.5, 0.5, 0.5, 1.0])
     raw_expiration = StringProperty("")
+    quantity_val = NumericProperty(0)
+    unit = StringProperty("un.")
 
     def open_detail(self):
         """Abre la ventana modal de detalle para ajustar stock o caducidad."""
@@ -29,10 +31,12 @@ class PantryItemRow(ButtonBehavior, BoxLayout):
             modal = PantryItemDetailModal(
                 item_id=self.item_id,
                 item_name=self.name,
-                item_qty_str=self.quantity_str,
+                quantity_val=self.quantity_val,
+                unit=self.unit,
                 expiration_str=self.expiration_str,
                 raw_expiration=self.raw_expiration,
-                callback_change=app.cambiar_cantidad_despensa,
+                callback_set_qty=app.fijar_cantidad_despensa,
+                callback_finish=app.finalizar_ajuste_despensa,
                 callback_delete=app.eliminar_item_despensa,
                 callback_update_exp=getattr(app, "actualizar_vencimiento_despensa", None)
             )

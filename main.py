@@ -27,6 +27,7 @@ from controllers import (
     AnalyticsController,
     SyncController,
     NotificationController,
+    UndoController,
 )
 from views import (
     COLOR_LIGHT,
@@ -41,6 +42,8 @@ from views import (
     AvatarCircleButton,
     ProfileModalView,
     RemoteConfigBanner,
+    show_undo_snackbar,
+    hide_undo_snackbar,
     AddCartItemModal,
     AddPantryItemModal,
     PantryItemDetailModal,
@@ -132,13 +135,17 @@ class MainApp(MDApp):
     input_placeholder_color = ListProperty(COLOR_LIGHT.get("input_placeholder", [0.55, 0.60, 0.68, 1.0]))
 
     def build(self):
+        # Cola de borrados diferidos (ventana de 4 s para "Deshacer")
+        self.undo = UndoController(scheduler=Clock.schedule_once)
         self.theme_cls.theme_style = "Light"
         self.theme_cls.primary_palette = "Blue"
         self._aplicar_tema(False)
         return None
 
     def on_stop(self):
-        """Cierra la sesión de telemetría y guarda la duración total."""
+        """Confirma borrados pendientes y cierra la sesión de telemetría."""
+        if getattr(self, "undo", None):
+            self.undo.flush()
         if hasattr(self, 'analytics') and self.analytics:
             self.analytics.end_session()
 
@@ -337,7 +344,8 @@ class MainApp(MDApp):
                 container.clear_widgets()
             return
 
-        items = self.db.get_cart_items(self.auth.current_user.id)
+        items = [it for it in self.db.get_cart_items(self.auth.current_user.id)
+                 if not self.is_pending_delete("cart", it.id)]
         total = sum(it.price for it in items if not it.is_checked)
         self.total_carrito_str = f"${int(total):,}".replace(",", ".")
 
@@ -368,7 +376,8 @@ class MainApp(MDApp):
         if not self.auth.current_user:
             return
 
-        items = self.db.get_pantry_items(self.auth.current_user.id)
+        items = [it for it in self.db.get_pantry_items(self.auth.current_user.id)
+                 if not self.is_pending_delete("pantry", it.id)]
 
         # Evaluar alertas automáticas de caducidad y stock mediante Plyer
         if hasattr(self, 'notifications') and self.notifications:
@@ -384,6 +393,8 @@ class MainApp(MDApp):
                 expiration_str=it.expiration_status,
                 expiration_color=it.expiration_text_color,
                 raw_expiration=it.expiration_date or "",
+                quantity_val=it.quantity,
+                unit=it.unit or "un.",
             )
             container.add_widget(row)
             if idx < len(items) - 1:
@@ -402,6 +413,8 @@ class MainApp(MDApp):
         lists = self.db.get_shopping_lists(self.auth.current_user.id)
 
         for lst in lists:
+            if self.is_pending_delete("list", lst.id):
+                continue
             sub = f"{lst.pending_count} pendientes · {lst.items_count} productos"
             card = ShoppingListCard(
                 list_id=lst.id,
@@ -495,14 +508,20 @@ class MainApp(MDApp):
         self.actualizar_inicio()
         self.actualizar_estadisticas()
 
-    def eliminar_item_carrito(self, item_id):
-        if hasattr(self, 'cart_ctrl'):
-            self.cart_ctrl.delete_item(item_id)
-        else:
-            self.db.delete_cart_item(item_id)
-        self.cargar_carrito()
-        self.actualizar_inicio()
-        self.actualizar_estadisticas()
+    def eliminar_item_carrito(self, item_id, name="Producto"):
+        """Oculta el producto y lo borra tras la ventana de 'Deshacer'."""
+        def commit():
+            if hasattr(self, 'cart_ctrl'):
+                self.cart_ctrl.delete_item(item_id)
+            else:
+                self.db.delete_cart_item(item_id)
+
+        def refresh():
+            self.cargar_carrito()
+            self.actualizar_inicio()
+            self.actualizar_estadisticas()
+
+        self.programar_borrado("cart", item_id, f"'{name}' eliminado del carrito", refresh, commit)
 
     def agregar_item_despensa(self, name, quantity, unit, threshold, expiration_date=None):
         if not self.auth.current_user:
@@ -524,6 +543,21 @@ class MainApp(MDApp):
         self.actualizar_inicio()
         self.actualizar_estadisticas()
 
+    def fijar_cantidad_despensa(self, item_id, quantity):
+        """Guarda la cantidad exacta sin refrescar ni alertar (ajustes en vivo del modal)."""
+        if hasattr(self, 'pantry_ctrl'):
+            self.pantry_ctrl.set_quantity(item_id, quantity, notify=False)
+        else:
+            self.db.set_pantry_quantity(item_id, quantity)
+
+    def finalizar_ajuste_despensa(self, item_id):
+        """Al cerrar el modal de stock: evalúa alertas una vez y refresca las vistas."""
+        if hasattr(self, 'pantry_ctrl'):
+            self.pantry_ctrl.check_stock_alerts(item_id)
+        self.cargar_despensa()
+        self.actualizar_inicio()
+        self.actualizar_estadisticas()
+
     def cambiar_cantidad_despensa(self, item_id, delta):
         if hasattr(self, 'pantry_ctrl'):
             self.pantry_ctrl.change_quantity(item_id, delta)
@@ -533,14 +567,20 @@ class MainApp(MDApp):
         self.actualizar_inicio()
         self.actualizar_estadisticas()
 
-    def eliminar_item_despensa(self, item_id):
-        if hasattr(self, 'pantry_ctrl'):
-            self.pantry_ctrl.delete_item(item_id)
-        else:
-            self.db.delete_pantry_item(item_id)
-        self.cargar_despensa()
-        self.actualizar_inicio()
-        self.actualizar_estadisticas()
+    def eliminar_item_despensa(self, item_id, name="Producto"):
+        """Oculta el producto y lo borra tras la ventana de 'Deshacer'."""
+        def commit():
+            if hasattr(self, 'pantry_ctrl'):
+                self.pantry_ctrl.delete_item(item_id)
+            else:
+                self.db.delete_pantry_item(item_id)
+
+        def refresh():
+            self.cargar_despensa()
+            self.actualizar_inicio()
+            self.actualizar_estadisticas()
+
+        self.programar_borrado("pantry", item_id, f"'{name}' eliminado de la despensa", refresh, commit)
 
     def agregar_lista_compras(self, name, color_hex, initial_items=""):
         if not self.auth.current_user:
@@ -556,13 +596,48 @@ class MainApp(MDApp):
         self.cargar_listas()
         self.actualizar_estadisticas()
 
-    def eliminar_lista_compras(self, list_id):
-        if hasattr(self, 'list_ctrl'):
-            self.list_ctrl.delete_list(list_id)
-        else:
-            self.db.delete_shopping_list(list_id)
-        self.cargar_listas()
-        self.actualizar_estadisticas()
+    def eliminar_lista_compras(self, list_id, name="Lista"):
+        """Oculta la lista y la borra tras la ventana de 'Deshacer'."""
+        def commit():
+            if hasattr(self, 'list_ctrl'):
+                self.list_ctrl.delete_list(list_id)
+            else:
+                self.db.delete_shopping_list(list_id)
+
+        def refresh():
+            self.cargar_listas()
+            self.actualizar_estadisticas()
+
+        self.programar_borrado("list", list_id, f"Lista '{name}' eliminada", refresh, commit)
+
+    # ----------------------------------------------------
+    # Borrado diferido con opción de "Deshacer"
+    # ----------------------------------------------------
+    def is_pending_delete(self, kind, item_id):
+        """Indica si un elemento está oculto esperando confirmación de borrado."""
+        undo = getattr(self, "undo", None)
+        return bool(undo and undo.is_pending(kind, item_id))
+
+    def programar_borrado(self, kind, item_id, message, refresh, commit=None):
+        """
+        Oculta el elemento al instante y muestra "Deshacer".
+        Si se abre otro aviso, el borrado anterior se confirma de inmediato.
+        """
+        if commit is None:
+            commit = self._commit_por_tipo(kind, item_id)
+        self.undo.flush()
+        self.undo.schedule(kind, item_id, commit, on_done=refresh)
+        refresh()
+        show_undo_snackbar(message, on_undo=lambda: self.undo.undo(kind, item_id),
+                           duration=self.undo.delay)
+
+    def _commit_por_tipo(self, kind, item_id):
+        """Función de borrado real para tipos sin callback propio (productos de una lista)."""
+        if kind == "list_item":
+            if hasattr(self, 'list_ctrl'):
+                return lambda: self.list_ctrl.delete_list_item(item_id)
+            return lambda: self.db.delete_shopping_list_item(item_id)
+        raise ValueError(f"Tipo de borrado desconocido: {kind}")
 
     # ----------------------------------------------------
     # Controladores de Modales de Usuario y Sesión
@@ -610,6 +685,9 @@ class MainApp(MDApp):
         if hasattr(self, 'notifications') and self.notifications:
             self.notifications.clear_history()
         self.cerrar_menu_perfil()
+        if getattr(self, "undo", None):
+            self.undo.flush()
+        hide_undo_snackbar()
         self.auth.logout()
         self._sincronizar_datos_usuario()
         self.cargar_todo()

@@ -4,76 +4,44 @@ Modales de Despensa para DespensAPP.
 Controla adición de alimentos, umbrales mínimos, control de caducidad y detalle.
 """
 
-from datetime import datetime, date
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty, StringProperty, NumericProperty
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.pickers import MDModalDatePicker
-from views.dialogs.base import BaseFormModal, EditItemModal
+from views.dialogs.base import BaseFormModal
+from controllers.validators import (
+    PANTRY_UNITS,
+    NAME_MAX_LENGTH,
+    QUANTITY_MAX,
+    validate_pantry_form,
+    validate_quantity,
+    expiration_warning,
+    format_number,
+    step_for_unit,
+)
 
-# Unidades predefinidas disponibles en el menú desplegable
-PANTRY_UNITS = ["un.", "kg", "g", "L", "ml", "paquete", "caja", "lata", "botella"]
-NAME_MAX_LENGTH = 50
-QUANTITY_MAX = 100000
+# Re-exportado para compatibilidad con código que lo importaba desde este módulo
+__all__ = [
+    "PANTRY_UNITS", "NAME_MAX_LENGTH", "QUANTITY_MAX", "validate_pantry_form",
+    "AddPantryItemModal", "PantryItemDetailModal",
+]
 
 
-def validate_pantry_form(name, quantity_str, unit, threshold_str, expiration_str, has_no_expiration):
-    """
-    Valida los campos del formulario de despensa.
-    Retorna (True, "", datos_limpios) si es válido, o (False, mensaje_error, None).
-    """
-    name = (name or "").strip()
-    if not name:
-        return False, "Ingresa el nombre del producto.", None
-    if len(name) < 2:
-        return False, "El nombre debe tener al menos 2 caracteres.", None
-    if len(name) > NAME_MAX_LENGTH:
-        return False, f"El nombre no puede superar {NAME_MAX_LENGTH} caracteres.", None
+def _open_date_picker(on_date):
+    """Abre el calendario de KivyMD y entrega la fecha elegida (AAAA-MM-DD) al callback."""
+    date_picker = MDModalDatePicker()
 
-    quantity_str = (quantity_str or "").strip()
-    if not quantity_str:
-        return False, "Ingresa la cantidad actual.", None
-    try:
-        quantity = float(quantity_str)
-    except ValueError:
-        return False, "La cantidad debe ser un número válido.", None
-    if quantity < 0 or quantity > QUANTITY_MAX:
-        return False, f"La cantidad debe estar entre 0 y {QUANTITY_MAX}.", None
+    def on_ok(picker_instance):
+        selected_dates = picker_instance.get_date()
+        picker_instance.dismiss()
+        if selected_dates:
+            on_date(selected_dates[0].strftime("%Y-%m-%d"))
 
-    if unit not in PANTRY_UNITS:
-        return False, "Selecciona una unidad de la lista.", None
+    def on_cancel(picker_instance):
+        picker_instance.dismiss()
 
-    threshold_str = (threshold_str or "").strip()
-    if not threshold_str:
-        return False, "Ingresa la cantidad mínima para la alerta.", None
-    try:
-        threshold = float(threshold_str)
-    except ValueError:
-        return False, "La cantidad mínima debe ser un número válido.", None
-    if threshold < 0 or threshold > QUANTITY_MAX:
-        return False, f"La cantidad mínima debe estar entre 0 y {QUANTITY_MAX}.", None
-
-    if has_no_expiration:
-        exp_date = None
-    else:
-        expiration_str = (expiration_str or "").strip()
-        if not expiration_str:
-            return False, "Elige la fecha de vencimiento o marca 'no perecible'.", None
-        try:
-            parsed = datetime.strptime(expiration_str, "%Y-%m-%d").date()
-        except ValueError:
-            return False, "La fecha debe tener el formato AAAA-MM-DD.", None
-        if parsed < date.today():
-            return False, "La fecha de vencimiento no puede ser anterior a hoy.", None
-        exp_date = parsed.strftime("%Y-%m-%d")
-
-    return True, "", {
-        "name": name,
-        "quantity": quantity,
-        "unit": unit,
-        "threshold": threshold,
-        "expiration_date": exp_date,
-    }
+    date_picker.bind(on_ok=on_ok, on_cancel=on_cancel)
+    date_picker.open()
 
 
 class AddPantryItemModal(BaseFormModal):
@@ -81,12 +49,22 @@ class AddPantryItemModal(BaseFormModal):
     has_no_expiration = BooleanProperty(False)
     expiration_date_str = StringProperty("")
     selected_unit = StringProperty(PANTRY_UNITS[0])
-    error_text = StringProperty("")
+    warning_text = StringProperty("")
 
     def __init__(self, callback_add, **kwargs):
         super().__init__(**kwargs)
         self.callback_add = callback_add
         self.unit_menu = None
+        self.clear_error_on_input(
+            self.ids.field_name.ids.text_input,
+            self.ids.field_quantity.ids.text_input,
+            self.ids.field_threshold.ids.text_input,
+            self.ids.field_expiration_input,
+        )
+        # Avisa en vivo si la fecha escrita o elegida ya pasó
+        self.ids.field_expiration_input.bind(
+            text=lambda inst, val: setattr(self, "warning_text", expiration_warning(val))
+        )
 
     def open_unit_menu(self, caller):
         """Despliega el menú con las unidades predefinidas bajo el campo de unidad."""
@@ -109,6 +87,7 @@ class AddPantryItemModal(BaseFormModal):
     def set_unit(self, unit):
         """Asigna la unidad seleccionada en el menú desplegable."""
         self.selected_unit = unit
+        self.error_text = ""
         if self.unit_menu:
             self.unit_menu.dismiss()
 
@@ -117,42 +96,28 @@ class AddPantryItemModal(BaseFormModal):
         if self.has_no_expiration:
             return
 
-        date_picker = MDModalDatePicker()
+        def set_date(formatted_date):
+            self.expiration_date_str = formatted_date
+            self.ids.field_expiration_input.text = formatted_date
 
-        def on_ok(picker_instance):
-            selected_dates = picker_instance.get_date()
-            if selected_dates:
-                chosen_date = selected_dates[0]
-                formatted_date = chosen_date.strftime("%Y-%m-%d")
-                self.expiration_date_str = formatted_date
-                if "field_expiration_input" in self.ids:
-                    self.ids.field_expiration_input.text = formatted_date
-            picker_instance.dismiss()
-
-        def on_cancel(picker_instance):
-            picker_instance.dismiss()
-
-        date_picker.bind(on_ok=on_ok, on_cancel=on_cancel)
-        date_picker.open()
+        _open_date_picker(set_date)
 
     def toggle_no_expiration(self):
         """Alterna entre producto con fecha de vencimiento y producto no perecible."""
         self.has_no_expiration = not self.has_no_expiration
+        self.error_text = ""
         if self.has_no_expiration:
             self.expiration_date_str = ""
-            if "field_expiration_input" in self.ids:
-                self.ids.field_expiration_input.text = ""
+            self.ids.field_expiration_input.text = ""
 
     def submit(self):
         """Valida y registra el alimento en el inventario."""
-        raw_expiration = self.ids.field_expiration_input.text if "field_expiration_input" in self.ids else self.expiration_date_str
-
         ok, error, data = validate_pantry_form(
             name=self.ids.field_name.ids.text_input.text,
             quantity_str=self.ids.field_quantity.ids.text_input.text,
             unit=self.selected_unit,
             threshold_str=self.ids.field_threshold.ids.text_input.text,
-            expiration_str=raw_expiration,
+            expiration_str=self.ids.field_expiration_input.text,
             has_no_expiration=self.has_no_expiration,
         )
         if not ok:
@@ -166,49 +131,82 @@ class AddPantryItemModal(BaseFormModal):
 
 
 class PantryItemDetailModal(BaseFormModal):
-    """Modal flotante para ajustar stock numérico, fecha de caducidad o eliminar producto."""
+    """
+    Modal para ajustar stock, fecha de caducidad o eliminar un producto.
+    Los ajustes de cantidad no cierran el modal: el stock se actualiza en vivo
+    y la lista de la despensa se refresca una sola vez al cerrar.
+    """
     item_id = NumericProperty(0)
     item_name = StringProperty("")
-    item_qty_str = StringProperty("")
+    quantity_val = NumericProperty(0)
+    unit = StringProperty("un.")
+    step = NumericProperty(1)
+    qty_display = StringProperty("")
+    step_display = StringProperty("1")
     expiration_str = StringProperty("Sin vencimiento")
     raw_expiration = StringProperty("")
 
-    def __init__(self, item_id, item_name, item_qty_str, expiration_str="", raw_expiration="",
-                 callback_change=None, callback_delete=None, callback_update_exp=None, **kwargs):
+    def __init__(self, item_id, item_name, quantity_val, unit, expiration_str="", raw_expiration="",
+                 callback_set_qty=None, callback_finish=None, callback_delete=None,
+                 callback_update_exp=None, **kwargs):
         super().__init__(**kwargs)
         self.item_id = item_id
         self.item_name = item_name
-        self.item_qty_str = item_qty_str
+        self.unit = unit or "un."
+        self.step = step_for_unit(self.unit)
+        self.step_display = format_number(self.step)
+        self.quantity_val = float(quantity_val)
+        self.on_quantity_val(self, self.quantity_val)  # también cubre el caso cantidad = 0
         self.expiration_str = expiration_str or "Sin vencimiento"
         self.raw_expiration = raw_expiration or ""
-        self.callback_change = callback_change
+        self.callback_set_qty = callback_set_qty
+        self.callback_finish = callback_finish
         self.callback_delete = callback_delete
         self.callback_update_exp = callback_update_exp
+        self._qty_changed = False
+        self.clear_error_on_input(self.ids.exact_qty_input)
 
-    def change_qty(self, delta):
-        """Aumenta o disminuye la cantidad del producto."""
-        if self.callback_change:
-            self.callback_change(self.item_id, delta)
-        self.dismiss()
+    def on_quantity_val(self, instance, value):
+        self.qty_display = f"{format_number(value)} {self.unit}"
+
+    def _apply_quantity(self, new_qty):
+        """Guarda la nueva cantidad sin cerrar el modal."""
+        new_qty = max(0.0, min(float(QUANTITY_MAX), round(new_qty, 3)))
+        if new_qty == self.quantity_val:
+            return
+        self.quantity_val = new_qty
+        self._qty_changed = True
+        if self.callback_set_qty:
+            self.callback_set_qty(self.item_id, new_qty)
+
+    def change_qty(self, direction):
+        """Suma o resta un paso (según la unidad) a la cantidad actual."""
+        self._apply_quantity(self.quantity_val + direction * self.step)
+
+    def set_exact_qty(self):
+        """Fija la cantidad escrita por el usuario (acepta 1,5 / 500 / 1.500)."""
+        value, error = validate_quantity(self.ids.exact_qty_input.text, "La cantidad")
+        if error:
+            self.error_text = error
+            return
+        self.error_text = ""
+        self.ids.exact_qty_input.text = ""
+        self._apply_quantity(value)
+
+    def on_dismiss(self):
+        """Al cerrar, refresca la despensa y evalúa alertas una sola vez."""
+        if self._qty_changed and self.callback_finish:
+            self.callback_finish(self.item_id)
+        self._qty_changed = False
 
     def edit_expiration(self):
         """Abre el selector de calendario interactivo para actualizar la fecha de caducidad."""
-        date_picker = MDModalDatePicker()
-
-        def on_ok(picker_instance):
-            selected_dates = picker_instance.get_date()
-            if selected_dates and self.callback_update_exp:
-                chosen_date = selected_dates[0]
-                formatted_date = chosen_date.strftime("%Y-%m-%d")
+        def set_date(formatted_date):
+            if self.callback_update_exp:
                 self.callback_update_exp(self.item_id, formatted_date)
-            picker_instance.dismiss()
             self.dismiss()
 
-        def on_cancel(picker_instance):
-            picker_instance.dismiss()
-
-        date_picker.bind(on_ok=on_ok, on_cancel=on_cancel)
-        date_picker.open()
+        _open_date_picker(set_date)
 
     def clear_expiration(self):
         """Elimina la fecha de vencimiento marcando el producto como no perecible."""
@@ -217,7 +215,8 @@ class PantryItemDetailModal(BaseFormModal):
         self.dismiss()
 
     def delete_item(self):
-        """Elimina el producto de la despensa."""
-        if self.callback_delete:
-            self.callback_delete(self.item_id)
+        """Elimina el producto de la despensa (con opción de deshacer)."""
+        self._qty_changed = False
         self.dismiss()
+        if self.callback_delete:
+            self.callback_delete(self.item_id, self.item_name)

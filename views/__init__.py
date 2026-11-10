@@ -15,6 +15,8 @@ from views.widgets import (
     AvatarCircleButton,
     ProfileModalView,
     RemoteConfigBanner,
+    show_undo_snackbar,
+    hide_undo_snackbar,
 )
 from views.dialogs import (
     BaseFormModal,
@@ -42,6 +44,8 @@ __all__ = [
     "AvatarCircleButton",
     "ProfileModalView",
     "RemoteConfigBanner",
+    "show_undo_snackbar",
+    "hide_undo_snackbar",
     "BaseFormModal",
     "EditItemModal",
     "AddCartItemModal",

@@ -12,6 +12,7 @@ from views.widgets.list_card import ShoppingListCard
 from views.widgets.buttons import AddCircleButton, AvatarCircleButton
 from views.widgets.profile_modal import ProfileModalView
 from views.widgets.remote_banner import RemoteConfigBanner
+from views.widgets.undo_snackbar import show_undo_snackbar, hide_undo_snackbar
 
 __all__ = [
     "CustomProgressBar",
@@ -23,4 +24,6 @@ __all__ = [
     "AvatarCircleButton",
     "ProfileModalView",
     "RemoteConfigBanner",
+    "show_undo_snackbar",
+    "hide_undo_snackbar",
 ]

@@ -26,7 +26,7 @@ class CartItemRow(BoxLayout):
             app.toggle_item_carrito(self.item_id, self.checked)
 
     def delete_self(self):
-        """Elimina el artículo del carrito."""
+        """Elimina el artículo del carrito (con opción de deshacer)."""
         app = MDApp.get_running_app()
         if app:
-            app.eliminar_item_carrito(self.item_id)
+            app.eliminar_item_carrito(self.item_id, self.title)

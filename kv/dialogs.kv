@@ -2,6 +2,7 @@
 # ========================================================
 # Diálogos y Modales Visuales para DespensAPP
 # ========================================================
+#:import numeric_input_filter controllers.validators.numeric_input_filter
 
 <BaseFormModal>:
     size_hint: None, None
@@ -9,6 +10,20 @@
     background_color: [0, 0, 0, 0.45]
     background: ""
     auto_dismiss: True
+
+# Mensaje de validación del formulario (rojo = error, ámbar = aviso).
+# Ocupa espacio solo cuando hay texto.
+<FormMessageLabel@Label>:
+    is_warning: False
+    font_size: "12sp"
+    bold: True
+    color: [0.82, 0.48, 0.12, 1.0] if self.is_warning else [0.85, 0.20, 0.25, 1.0]
+    size_hint_y: None
+    height: (self.texture_size[1] + dp(6)) if self.text else 0
+    opacity: 1 if self.text else 0
+    halign: "center"
+    valign: "middle"
+    text_size: self.width, None
 
 <CustomInputField@BoxLayout>:
     orientation: "vertical"
@@ -64,7 +79,7 @@
 # 1. Modal: Añadir al Carrito
 # --------------------------------------------------------
 <AddCartItemModal>:
-    height: "360dp"
+    height: "404dp" if root.error_text else "360dp"
 
     BoxLayout:
         orientation: "vertical"
@@ -106,8 +121,8 @@
             CustomInputField:
                 id: field_price
                 label_text: "PRECIO ($)"
-                hint_text: "Ej: 2500"
-                input_filter: "float"
+                hint_text: "Ej: 2.500 (opcional)"
+                input_filter: numeric_input_filter
 
             CustomInputField:
                 id: field_subtitle
@@ -116,6 +131,9 @@
 
         Widget:
             size_hint_y: 1
+
+        FormMessageLabel:
+            text: root.error_text
 
         # Botones de Acción
         BoxLayout:
@@ -157,7 +175,7 @@
 # 2. Modal: Añadir a la Despensa (Con Umbrales y Fecha de Vencimiento)
 # --------------------------------------------------------
 <AddPantryItemModal>:
-    height: "560dp" if root.error_text else "530dp"
+    height: dp(530) + (dp(44) if root.error_text else 0) + (dp(26) if root.warning_text else 0)
 
     BoxLayout:
         orientation: "vertical"
@@ -199,8 +217,8 @@
             CustomInputField:
                 id: field_quantity
                 label_text: "CANTIDAD ACTUAL"
-                hint_text: "Ej: 2, 500..."
-                input_filter: "float"
+                hint_text: "Ej: 2, 1,5, 500"
+                input_filter: numeric_input_filter
 
             # Selector de unidad: menú desplegable con unidades predefinidas
             BoxLayout:
@@ -259,7 +277,7 @@
             id: field_threshold
             label_text: "CANTIDAD MÍNIMA (ALERTA)"
             hint_text: "Si baja de este número, alertará"
-            input_filter: "float"
+            input_filter: numeric_input_filter
 
         # Campo: Fecha de Vencimiento con selector de calendario integrado
         BoxLayout:
@@ -341,18 +359,13 @@
         Widget:
             size_hint_y: 1
 
-        # Mensaje de validación (solo visible si hay un error en el formulario)
-        Label:
+        # Aviso (ámbar) si el producto ya venció y error de validación (rojo)
+        FormMessageLabel:
+            text: root.warning_text
+            is_warning: True
+
+        FormMessageLabel:
             text: root.error_text
-            font_size: "12sp"
-            bold: True
-            color: [0.85, 0.20, 0.25, 1.0]
-            size_hint_y: None
-            height: "30dp" if root.error_text else "0dp"
-            opacity: 1 if root.error_text else 0
-            halign: "center"
-            valign: "middle"
-            text_size: self.width, None
 
         # Botones de Acción
         BoxLayout:
@@ -394,7 +407,7 @@
 # 2B. Modal: Gestionar Producto de Despensa (Stock, Vencimiento, Eliminar)
 # --------------------------------------------------------
 <PantryItemDetailModal>:
-    height: "320dp"
+    height: "404dp" if root.error_text else "370dp"
 
     BoxLayout:
         orientation: "vertical"
@@ -417,39 +430,34 @@
             height: "26dp"
             halign: "left"
             text_size: self.size
+            shorten: True
 
         Label:
-            text: f"Stock actual: {root.item_qty_str}"
-            font_size: "13sp"
+            text: "STOCK ACTUAL"
+            font_size: "11sp"
+            bold: True
             color: app.text_secondary_color
             size_hint_y: None
-            height: "20dp"
+            height: "16dp"
             halign: "left"
             text_size: self.size
 
-        # Fila de ajuste de cantidad
+        # Stepper: [- paso] cantidad [+ paso] — el modal no se cierra al ajustar
         BoxLayout:
             size_hint_y: None
-            height: "42dp"
-            spacing: "12dp"
-
-            Label:
-                text: "Ajustar cantidad:"
-                font_size: "13sp"
-                color: app.text_primary_color
-                size_hint_x: 1
-                halign: "left"
-                valign: "middle"
-                text_size: self.size
+            height: "48dp"
+            spacing: "10dp"
 
             Button:
-                text: "-1"
-                font_size: "16sp"
+                text: f"-{root.step_display}"
+                font_size: "15sp"
                 bold: True
-                size_hint: None, None
-                size: "44dp", "38dp"
+                size_hint: None, 1
+                width: "64dp"
                 color: app.text_primary_color
                 background_color: [0, 0, 0, 0]
+                disabled: root.quantity_val <= 0
+                opacity: 0.4 if self.disabled else 1
                 on_release: root.change_qty(-1)
                 canvas.before:
                     Color:
@@ -457,14 +465,24 @@
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
-                        radius: [10, 10, 10, 10]
+                        radius: [12, 12, 12, 12]
+
+            Label:
+                text: root.qty_display
+                font_size: "22sp"
+                bold: True
+                color: app.text_primary_color
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+                shorten: True
 
             Button:
-                text: "+1"
-                font_size: "16sp"
+                text: f"+{root.step_display}"
+                font_size: "15sp"
                 bold: True
-                size_hint: None, None
-                size: "44dp", "38dp"
+                size_hint: None, 1
+                width: "64dp"
                 color: [1, 1, 1, 1]
                 background_color: [0, 0, 0, 0]
                 on_release: root.change_qty(+1)
@@ -474,7 +492,61 @@
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
+                        radius: [12, 12, 12, 12]
+
+        # Fijar cantidad exacta (ej: compraste 2,5 kg)
+        BoxLayout:
+            size_hint_y: None
+            height: "38dp"
+            spacing: "8dp"
+
+            AnchorLayout:
+                size_hint_x: 1
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
                         radius: [10, 10, 10, 10]
+                    Color:
+                        rgba: app.divider_color
+                    Line:
+                        rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
+                        width: 1.0
+
+                TextInput:
+                    id: exact_qty_input
+                    hint_text: f"Cantidad exacta en {root.unit}"
+                    input_filter: numeric_input_filter
+                    multiline: False
+                    font_size: "13sp"
+                    padding: ["10dp", "9dp", "10dp", "8dp"]
+                    background_color: [0, 0, 0, 0]
+                    cursor_color: app.accent_green_color
+                    foreground_color: app.input_text_color
+                    hint_text_color: app.input_placeholder_color
+                    on_text_validate: root.set_exact_qty()
+
+            Button:
+                text: "Fijar"
+                font_size: "12.5sp"
+                bold: True
+                size_hint: None, 1
+                width: "64dp"
+                color: app.accent_green_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.set_exact_qty()
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [10, 10, 10, 10]
+
+        FormMessageLabel:
+            text: root.error_text
 
         # Fila de Vencimiento
         BoxLayout:
@@ -567,7 +639,7 @@
 # 2C. Modal: Edición Genérica de Texto (Nombre o Fecha)
 # --------------------------------------------------------
 <EditItemModal>:
-    height: "230dp"
+    height: "270dp" if root.error_text else "230dp"
 
     BoxLayout:
         orientation: "vertical"
@@ -598,6 +670,9 @@
 
         Widget:
             size_hint_y: 1
+
+        FormMessageLabel:
+            text: root.error_text
 
         BoxLayout:
             size_hint_y: None
@@ -638,7 +713,7 @@
 # 3. Modal: Nueva Lista de Compras (Con Productos Iniciales)
 # --------------------------------------------------------
 <AddShoppingListModal>:
-    height: "440dp"
+    height: "484dp" if root.error_text else "440dp"
 
     BoxLayout:
         orientation: "vertical"
@@ -702,6 +777,9 @@
 
         Widget:
             size_hint_y: 1
+
+        FormMessageLabel:
+            text: root.error_text
 
         # Botones de Acción
         BoxLayout:
@@ -929,6 +1007,10 @@
                         pos: self.pos
                         size: self.size
                         radius: [12, 12, 12, 12]
+
+        # Mensaje de validación al anotar producto
+        FormMessageLabel:
+            text: root.error_text
 
         # Separador sutil
         Widget:

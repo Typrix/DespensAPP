@@ -802,6 +802,31 @@ class DatabaseManager:
                 print(f"[DB] Error update_pantry_quantity SQLite: {e}")
                 return False
 
+    def set_pantry_quantity(self, item_id: int, quantity: float) -> bool:
+        """Fija la cantidad exacta de un producto en la despensa (nunca negativa)."""
+        new_q = max(0.0, float(quantity))
+        if self.is_mysql:
+            try:
+                conn = self.get_mysql_connection()
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE pantry_items SET quantity = %s WHERE id = %s;", (new_q, item_id))
+                conn.close()
+                return True
+            except Exception as e:
+                print(f"[DB] Error set_pantry_quantity MySQL: {e}")
+                return False
+        else:
+            try:
+                conn = self.get_sqlite_connection()
+                cur = conn.cursor()
+                cur.execute("UPDATE pantry_items SET quantity = ? WHERE id = ?;", (new_q, item_id))
+                conn.commit()
+                conn.close()
+                return True
+            except Exception as e:
+                print(f"[DB] Error set_pantry_quantity SQLite: {e}")
+                return False
+
     def update_pantry_item_details(self, item_id: int, name: str, quantity: float, unit: str, min_threshold: float, expiration_date: Optional[str] = None) -> bool:
         """Actualiza los datos completos de un producto de despensa, incluyendo fecha de caducidad."""
         name = name.strip()

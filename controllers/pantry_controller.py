@@ -53,6 +53,19 @@ class PantryController:
             if item:
                 self.notifications.check_item_alerts(item, force=True, check_stock=True, check_expiration=False)
 
+    def set_quantity(self, item_id: int, quantity: float, notify: bool = True):
+        """Fija la cantidad exacta; con notify=False se omiten alertas (ajustes sucesivos en el modal)."""
+        self.db.set_pantry_quantity(item_id, quantity)
+        if notify:
+            self.check_stock_alerts(item_id)
+
+    def check_stock_alerts(self, item_id: int):
+        """Evalúa una sola vez las alertas de stock del producto (ej: al cerrar el modal de ajuste)."""
+        if self.notifications:
+            item = self.db.get_pantry_item_by_id(item_id)
+            if item:
+                self.notifications.check_item_alerts(item, force=True, check_stock=True, check_expiration=False)
+
     def update_expiration(self, item_id: int, new_expiration_date: Optional[str]):
         """Actualiza la fecha de vencimiento y alerta de inmediato si está por vencer o venció."""
         self.db.update_pantry_expiration(item_id, new_expiration_date)

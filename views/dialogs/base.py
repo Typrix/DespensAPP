@@ -9,8 +9,16 @@ from kivy.properties import StringProperty
 
 
 class BaseFormModal(ModalView):
-    """Clase base para modales de formulario con cierre automático."""
-    pass
+    """Clase base para modales de formulario con cierre automático y mensaje de error."""
+    error_text = StringProperty("")
+
+    def clear_error_on_input(self, *inputs):
+        """Borra el mensaje de error apenas el usuario vuelve a escribir en alguno de los campos."""
+        for text_input in inputs:
+            text_input.bind(text=self._clear_error)
+
+    def _clear_error(self, *args):
+        self.error_text = ""
 
 
 class EditItemModal(BaseFormModal):
@@ -23,10 +31,14 @@ class EditItemModal(BaseFormModal):
         self.callback_save = callback_save
         self.ids.field_edit.input_text = initial_value
         self.ids.field_edit.ids.text_input.text = initial_value
+        self.clear_error_on_input(self.ids.field_edit.ids.text_input)
 
     def submit(self):
-        """Confirma y guarda el nuevo valor editado."""
+        """Confirma y guarda el nuevo valor editado (no permite dejarlo vacío)."""
         val = self.ids.field_edit.ids.text_input.text.strip()
-        if self.callback_save and val:
+        if not val:
+            self.error_text = "El nombre no puede quedar vacío."
+            return
+        if self.callback_save:
             self.callback_save(val)
         self.dismiss()

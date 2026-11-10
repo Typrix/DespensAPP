@@ -11,6 +11,7 @@ from kivy.properties import BooleanProperty, StringProperty, NumericProperty, Li
 from kivy.graphics import Color, Ellipse, Line
 
 from views.dialogs.base import BaseFormModal, EditItemModal
+from controllers.validators import validate_list_form, NAME_MAX_LENGTH
 
 
 class ColorChipButton(Button):
@@ -59,6 +60,10 @@ class AddShoppingListModal(BaseFormModal):
         self.selected_color = self.COLOR_PALETTE[0]
         self.chip_widgets = []
         self._build_color_chips()
+        self.clear_error_on_input(
+            self.ids.field_name.ids.text_input,
+            self.ids.field_initial_items.ids.text_input,
+        )
 
     def _build_color_chips(self):
         container = self.ids.color_chips_box
@@ -78,12 +83,16 @@ class AddShoppingListModal(BaseFormModal):
             chip.is_selected = (chip.color_hex == color_hex)
 
     def submit(self):
-        name = self.ids.field_name.ids.text_input.text.strip()
-        initial_items = self.ids.field_initial_items.ids.text_input.text.strip()
-        if not name:
+        """Valida y crea la lista, mostrando el error si lo hay."""
+        ok, error, data = validate_list_form(
+            name=self.ids.field_name.ids.text_input.text,
+            initial_items=self.ids.field_initial_items.ids.text_input.text,
+        )
+        if not ok:
+            self.error_text = error
             return
         if self.callback_add:
-            self.callback_add(name, self.selected_color, initial_items)
+            self.callback_add(data["name"], self.selected_color, data["initial_items"])
         self.dismiss()
 
 
@@ -127,6 +136,7 @@ class ShoppingListDetailModal(BaseFormModal):
         self.list_id = list_id
         self.list_name = list_name
         self.icon_color_rgba = icon_color_rgba
+        self.clear_error_on_input(self.ids.new_item_input)
         self.load_items()
 
     def load_items(self):
@@ -134,7 +144,10 @@ class ShoppingListDetailModal(BaseFormModal):
         app = MDApp.get_running_app()
         if not app or not getattr(app, "db", None):
             return
-        items = app.db.get_shopping_list_items(self.list_id)
+        items = [
+            it for it in app.db.get_shopping_list_items(self.list_id)
+            if not app.is_pending_delete("list_item", it.id)
+        ]
         container = self.ids.items_list_box
         container.clear_widgets()
 
@@ -169,7 +182,12 @@ class ShoppingListDetailModal(BaseFormModal):
         """Añade un nuevo producto a la lista (sin precios, como en papel)."""
         name = self.ids.new_item_input.text.strip()
         if not name:
+            self.error_text = "Escribe el producto que quieres anotar."
             return
+        if len(name) > NAME_MAX_LENGTH:
+            self.error_text = f"El nombre no puede superar {NAME_MAX_LENGTH} caracteres."
+            return
+        self.error_text = ""
         app = MDApp.get_running_app()
         if app and getattr(app, "db", None):
             app.db.add_shopping_list_item(self.list_id, name)
@@ -204,12 +222,18 @@ class ShoppingListDetailModal(BaseFormModal):
         modal.open()
 
     def delete_item(self, item_id):
-        """Elimina un producto individual de la lista."""
+        """Elimina un producto individual de la lista (con opción de deshacer)."""
         app = MDApp.get_running_app()
-        if app and getattr(app, "db", None):
-            app.db.delete_shopping_list_item(item_id)
+        if not app:
+            return
+        name = next((row.name for row in self.ids.items_list_box.children
+                     if isinstance(row, ShoppingListItemRow) and row.item_id == item_id), "Producto")
+
+        def refresh():
             self.load_items()
             app.cargar_listas()
+
+        app.programar_borrado("list_item", item_id, f"'{name}' eliminado", refresh)
 
     def edit_list_name(self):
         """Abre modal para renombrar la lista."""
@@ -228,8 +252,8 @@ class ShoppingListDetailModal(BaseFormModal):
         modal.open()
 
     def delete_this_list(self):
-        """Elimina la lista completa."""
+        """Elimina la lista completa (con opción de deshacer)."""
         app = MDApp.get_running_app()
+        self.dismiss()
         if app:
-            app.eliminar_lista_compras(self.list_id)
-            self.dismiss()
+            app.eliminar_lista_compras(self.list_id, self.list_name)
