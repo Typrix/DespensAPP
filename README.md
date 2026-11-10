@@ -78,13 +78,14 @@ DespensAPP/
 │   ├── auth_controller.py     # Autenticación y hash SHA-256
 │   ├── analytics_controller.py # Telemetría y eventos
 │   ├── sync_controller.py     # Sincronización offline-to-online
-│   ├── cart_controller.py     # Operaciones de carrito
+│   ├── purchase_controller.py # Compras: finalizar desde listas e historial
 │   ├── pantry_controller.py   # Control de despensa y caducidad
 │   └── list_controller.py     # Listas de compras de supermercado
 │
 ├── models/                     # [M] Modelos de dominio y persistencia (MVC)
 │   ├── user.py                # Entidad de usuario
-│   ├── cart_item.py           # Artículos de carrito
+│   ├── purchase_record.py     # Historial de compras finalizadas
+│   ├── cart_item.py           # Carrito antiguo (solo migración/sincronización)
 │   ├── pantry_item.py         # Productos de despensa con alertas
 │   ├── shopping_list.py       # Listas y productos anotados
 │   └── database.py            # Persistencia híbrida (MySQL + SQLite local)
@@ -97,7 +98,7 @@ DespensAPP/
 ├── kv/                         # Plantillas declarativas Kivy
 │   ├── dialogs.kv             # Layout de modales y formularios
 │   ├── components.kv          # Componentes base
-│   └── screens/               # Pantallas (home, cart, pantry, lists, stats, splash)
+│   └── screens/               # Pantallas (home, pantry, lists, stats, splash)
 │
 ├── database/                   # Infraestructura y esquemas de base de datos
 │   ├── database_schema.sql    # DDL con tablas relacionales y telemetría

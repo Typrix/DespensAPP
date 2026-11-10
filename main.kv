@@ -6,7 +6,6 @@
 #:include kv/components.kv
 #:include kv/screens/splash_screen.kv
 #:include kv/screens/home_screen.kv
-#:include kv/screens/cart_screen.kv
 #:include kv/screens/pantry_screen.kv
 #:include kv/screens/lists_screen.kv
 #:include kv/screens/stats_screen.kv
@@ -137,7 +136,6 @@ ScreenManager:
                         transition: FadeTransition(duration=0.15, clearcolor=[0, 0, 0, 0])
 
                         HomeScreen:
-                        CartScreen:
                         PantryScreen:
                         ListsScreen:
                         StatsScreen:
@@ -164,12 +162,6 @@ ScreenManager:
                     label_text: "Inicio"
                     screen_target: "home"
                     is_active: app.current_screen_name == "home"
-
-                BottomNavButton:
-                    icon_name: "cart-outline"
-                    label_text: "Compras"
-                    screen_target: "cart"
-                    is_active: app.current_screen_name == "cart"
 
                 BottomNavButton:
                     icon_name: "cupboard-outline"

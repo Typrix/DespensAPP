@@ -49,12 +49,11 @@ graph LR
      - **70%:** Si hay una sesión previa guardada, sincroniza los datos del usuario e inventario.
      - **100%:** Pasa de forma fluida a la pantalla de Inicio (`home`).
 3. **Navegación entre Pantallas:**
-   - El menú inferior (*dock*) permite cambiar entre las 5 secciones principales:
+   - El menú inferior (*dock*) permite cambiar entre las 4 secciones principales:
      - 🏠 **Inicio (`home`):** Tarjetas de resumen diario (gasto de la semana, alertas de alimentos por vencer y receta recomendada).
-     - 🛒 **Compras (`cart`):** Lista interactiva de supermercado donde puedes marcar/desmarcar casillas, ver precios y el total estimado a pagar.
      - 🥫 **Despensa (`cupboard`):** Inventario clasificado por categorías (Aceites, Legumbres, Bebidas) con etiquetas de stock (*Suficiente*, *Reponer*, *Por agotarse*).
-     - 📋 **Listas (`lists`):** Listas temáticas personalizables con colores e iconos (ej. *Compra quincenal*, *Limpieza*).
-     - 📊 **Estadísticas (`stats`):** Métricas reales de consumo (gasto mensual, productos comprados y ranking con barras de progreso).
+     - 📋 **Listas (`lists`):** Cada lista funciona como un carrito: anotas productos (con precio opcional), los tachas al echarlos al carro ("En el carro" suma desde $0) y usas **Finalizar compra** para pasarlos a la despensa y al historial.
+     - 📊 **Estadísticas (`stats`):** Gasto real de la última semana, mes o año, historial de compras agrupado por fecha y lista, y ranking de lo más comprado.
 4. **Modo Claro / Modo Oscuro:**
    - En el menú del avatar de usuario (`SO`), un interruptor permite alternar el tema visual. La paleta de colores reactiva (`theme.py`) redibuja los fondos y textos instantáneamente sin recargar la aplicación.
 
@@ -139,7 +138,7 @@ Ubicado en [`sync_manager.py`](file:///c:/Users/luisc/Desktop/DespensAPP/sync_ma
 3. **Migración sin Duplicados:**
    - **Listas:** Si creaste una lista offline, la crea en MySQL y mapea su nuevo ID.
    - **Despensa:** Revisa si el producto ya existía en MySQL por nombre; si es nuevo, lo inserta.
-   - **Compras:** Pasa los artículos del carrito respetando la lista a la que pertenecían.
+   - **Compras:** Pasa los productos de cada lista (con su precio) y el historial de compras finalizadas.
    - **Métricas:** Sube las sesiones y eventos medidos offline para no perder el historial de uso.
 4. **Limpieza:** Una vez migrado todo exitosamente, vacía la cola local para no duplicar datos en el futuro.
 

@@ -214,3 +214,28 @@
 ## Validación
 - 18 pruebas nuevas (total acumulado, agrupación y migración sobre una base con el esquema anterior, edición de despensa) más las suites de las fases 1 y 2.
 - Recorrido de la app con capturas en modo claro y oscuro; se ajustó el contraste de la píldora de estado en modo oscuro.
+
+---
+
+## Entrada / Prompt del Usuario (Unir carrito y listas)
+> "en la lista quiero que al tachar los items se queden fijos [...] en carritos creo que se puede cambiar como la lista? es realmente necesaria? quizas es mejor guarda las compras por fecha pero si poder hacer listas con nombre, arregle el icono de campanita"
+> "Unir carrito y listas"
+
+## Diagnóstico y Solución de Bugs
+1. **Productos tachados se movían al final de la lista**
+   - **Causa raíz**: la consulta de productos ordenaba por `is_checked ASC, id ASC`.
+   - **Solución**: orden fijo por `id`.
+2. **Indicador de la campana cortado**
+   - **Causa raíz**: el círculo sobresalía del contenedor de 38dp y el `ScrollView` lo recortaba.
+   - **Solución**: contenedor de 46dp con el indicador dentro y borde del color de fondo.
+
+## Acciones Realizadas (lista = carrito)
+1. **Datos**: columna `price` en `shopping_list_items` (migración `ALTER TABLE`, esquema y sincronización). Migración única e idempotente `migrate_cart_to_lists`: lo que había en el carrito vuelve a su lista (completando precios) o va a "Mi carrito".
+2. **Lista como carrito**: se anota producto con precio opcional, se tacha al echarlo al carro ("En el carro" suma desde $0) y "Finalizar compra" lo pasa a la despensa, al historial y lo saca de la lista (lo no encontrado queda pendiente).
+3. **Navegación de 4 pestañas**: se eliminó la pestaña Compras y el código del carrito (`cart_screen.kv`, `cart_row.py`, `cart_dialog.py`, `cart_controller.py`).
+4. **Historial por fecha**: cada compra finalizada es una tarjeta con fecha, hora, lista y subtotal.
+5. **Despensa**: "Añadir a una lista" con menú de listas (o crea "Reponer despensa"). "Lo más comprado" se calcula desde el historial.
+
+## Validación
+- 27 pruebas nuevas (migración del carrito y de la columna precio sobre base antigua, total en el carro, finalizar desde lista, historial por compra y periodo, lo más comprado, reponer) más las suites de la Fase 1.
+- Recorrido completo de la app con capturas en modo claro y oscuro.

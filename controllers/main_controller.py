@@ -11,7 +11,6 @@ from models.database import DatabaseManager
 from controllers.auth_controller import AuthController
 from controllers.analytics_controller import AnalyticsController
 from controllers.sync_controller import SyncController
-from controllers.cart_controller import CartController
 from controllers.pantry_controller import PantryController
 from controllers.list_controller import ListController
 from controllers.notification_controller import NotificationController
@@ -34,7 +33,6 @@ class MainController:
         self.remote_config = RemoteConfigController()
 
         # 3. Controladores de Dominio
-        self.cart = CartController(self.db, self.analytics)
         self.pantry = PantryController(self.db, self.analytics, self.notifications)
         self.lists = ListController(self.db, self.analytics)
         self.purchases = PurchaseController(self.db, self.analytics)

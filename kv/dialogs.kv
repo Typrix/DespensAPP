@@ -76,102 +76,6 @@
 
 
 # --------------------------------------------------------
-# 1. Modal: Añadir al Carrito
-# --------------------------------------------------------
-<AddCartItemModal>:
-    height: "404dp" if root.error_text else "360dp"
-
-    BoxLayout:
-        orientation: "vertical"
-        padding: ["20dp", "18dp", "20dp", "18dp"]
-        spacing: "12dp"
-        canvas.before:
-            Color:
-                rgba: app.card_white_color
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [24, 24, 24, 24]
-
-        # Encabezado
-        BoxLayout:
-            size_hint_y: None
-            height: "32dp"
-            Label:
-                text: root.title_text
-                font_size: "17sp"
-                bold: True
-                color: app.text_primary_color
-                halign: "left"
-                valign: "middle"
-                text_size: self.size
-
-        # Campo: Nombre del producto
-        CustomInputField:
-            id: field_title
-            label_text: "PRODUCTO"
-            hint_text: "Ej: Queso gouda, Manzanas..."
-
-        # Fila: Precio y Categoría/Lista
-        BoxLayout:
-            size_hint_y: None
-            height: "56dp"
-            spacing: "10dp"
-
-            CustomInputField:
-                id: field_price
-                label_text: "PRECIO ($)"
-                hint_text: "Ej: 2.500 (opcional)"
-                input_filter: numeric_input_filter
-
-            CustomInputField:
-                id: field_subtitle
-                label_text: "LISTA / CATEGORÍA"
-                hint_text: "Ej: Despensa, Frutas..."
-
-        Widget:
-            size_hint_y: 1
-
-        FormMessageLabel:
-            text: root.error_text
-
-        # Botones de Acción
-        BoxLayout:
-            size_hint_y: None
-            height: "44dp"
-            spacing: "10dp"
-
-            Button:
-                text: "Cancelar"
-                font_size: "13.5sp"
-                color: app.text_secondary_color
-                background_color: [0, 0, 0, 0]
-                on_release: root.dismiss()
-                canvas.before:
-                    Color:
-                        rgba: app.sage_container_color
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [14, 14, 14, 14]
-
-            Button:
-                text: root.submit_text
-                font_size: "13.5sp"
-                bold: True
-                color: [1, 1, 1, 1]
-                background_color: [0, 0, 0, 0]
-                on_release: root.submit()
-                canvas.before:
-                    Color:
-                        rgba: app.accent_green_color
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [14, 14, 14, 14]
-
-
-# --------------------------------------------------------
 # 2. Modal: Añadir a la Despensa (Con Umbrales y Fecha de Vencimiento)
 # --------------------------------------------------------
 <AddPantryItemModal>:
@@ -738,11 +642,11 @@
                     size_hint_y: None
                     height: "44dp" if root.needs_restock else 0
                     opacity: 1 if root.needs_restock else 0
-                    disabled: not root.needs_restock or root.restock_text != "Añadir al carrito"
+                    disabled: not root.needs_restock or root.restock_text != "Añadir a una lista"
                     disabled_color: app.text_secondary_color
                     color: app.accent_green_color
                     background_color: [0, 0, 0, 0]
-                    on_release: root.add_to_cart()
+                    on_release: root.add_to_list(self)
                     canvas.before:
                         Color:
                             rgba: app.active_pill_color
@@ -1076,13 +980,13 @@
 
 
 # --------------------------------------------------------
-# 3B. Fila de Producto Anotado en Lista de Supermercado
+# 3B. Producto de una Lista (tachar = ya está en el carro)
 # --------------------------------------------------------
 <ShoppingListItemRow>:
     size_hint_y: None
-    height: "46dp"
+    height: "48dp"
     spacing: "8dp"
-    padding: ["10dp", "4dp", "10dp", "4dp"]
+    padding: ["10dp", "4dp", "4dp", "4dp"]
     canvas.before:
         Color:
             # En modo oscuro usa sage_container_color (tono azul medianoche #1D293D)
@@ -1093,7 +997,7 @@
             size: self.size
             radius: [10, 10, 10, 10]
 
-    # Botón Circular de Check / Tachado (icono Material: Roboto no trae el glifo ✓)
+    # Check circular (icono Material: Roboto no trae el glifo ✓)
     TapArea:
         size_hint: None, None
         size: "28dp", "28dp"
@@ -1115,28 +1019,32 @@
                 opacity: 1 if root.is_checked else 0
                 pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-    # Nombre del Producto (con tachado si ya se compró)
-    Label:
-        text: f"[s]{root.name}[/s]" if root.is_checked else root.name
-        markup: True
-        font_size: "13.5sp"
-        # Si está tachado, usa un color secundario adaptativo; si está activo, usa el color principal del tema
-        color: app.text_secondary_color if root.is_checked else app.text_primary_color
-        size_hint_x: 1
-        halign: "left"
-        valign: "middle"
-        text_size: self.size
-
-    # Botón de Edición Rápida
-    MDIconButton:
-        icon: "pencil-outline"
-        style: "standard"
-        theme_icon_color: "Custom"
-        icon_color: app.text_secondary_color
-        pos_hint: {"center_y": 0.5}
+    # Nombre y precio (tocar para editar)
+    TapArea:
+        spacing: "6dp"
         on_release: root.edit()
+        Label:
+            text: f"[s]{root.name}[/s]" if root.is_checked else root.name
+            markup: True
+            font_size: "13.5sp"
+            color: app.text_secondary_color if root.is_checked else app.text_primary_color
+            halign: "left"
+            valign: "middle"
+            text_size: self.size
+            shorten: True
+            shorten_from: "right"
+        Label:
+            text: root.price_str or "+ precio"
+            size_hint_x: None
+            width: "72dp"
+            font_size: "13sp" if root.price_str else "11sp"
+            bold: bool(root.price_str)
+            color: (app.text_secondary_color if root.is_checked else app.text_primary_color) if root.price_str else app.accent_green_color
+            halign: "right"
+            valign: "middle"
+            text_size: self.size
 
-    # Botón Eliminar Producto
+    # Eliminar producto (con "Deshacer")
     MDIconButton:
         icon: "close"
         style: "standard"
@@ -1147,15 +1055,15 @@
 
 
 # --------------------------------------------------------
-# 3C. Modal: Detalle de Lista de Supermercado (Estilo Papel)
+# 3C. Modal: Lista de Compras = Carrito (anotar, tachar, finalizar)
 # --------------------------------------------------------
 <ShoppingListDetailModal>:
     width: "360dp"
-    height: "560dp"
+    height: "620dp"
 
     BoxLayout:
         orientation: "vertical"
-        padding: ["20dp", "18dp", "20dp", "18dp"]
+        padding: ["18dp", "16dp", "18dp", "16dp"]
         spacing: "10dp"
         canvas.before:
             Color:
@@ -1171,7 +1079,6 @@
             height: "36dp"
             spacing: "8dp"
 
-            # Indicador circular de color
             Widget:
                 size_hint: None, None
                 size: "14dp", "14dp"
@@ -1188,10 +1095,11 @@
                 font_size: "17sp"
                 bold: True
                 color: app.text_primary_color
-                size_hint_x: 1
                 halign: "left"
                 valign: "middle"
                 text_size: self.size
+                shorten: True
+                shorten_from: "right"
 
             MDIconButton:
                 icon: "pencil-outline"
@@ -1209,7 +1117,6 @@
                 pos_hint: {"center_y": 0.5}
                 on_release: root.delete_this_list()
 
-        # Subtítulo (contador de items y tachados)
         Label:
             text: root.subtitle_info
             font_size: "12sp"
@@ -1219,14 +1126,13 @@
             halign: "left"
             text_size: self.size
 
-        # Fila para Anotar Producto Rápido (Estilo Papel)
+        # Anotar producto con precio opcional
         BoxLayout:
             size_hint_y: None
-            height: "40dp"
-            spacing: "8dp"
+            height: "42dp"
+            spacing: "6dp"
 
             AnchorLayout:
-                size_hint_x: 1
                 canvas.before:
                     Color:
                         rgba: app.sage_container_color
@@ -1234,18 +1140,37 @@
                         pos: self.pos
                         size: self.size
                         radius: [12, 12, 12, 12]
-                    Color:
-                        rgba: app.divider_color
-                    Line:
-                        rounded_rectangle: (self.x, self.y, self.width, self.height, 12)
-                        width: 1.0
-
                 TextInput:
                     id: new_item_input
-                    hint_text: "Anotar producto (ej: Huevos)..."
+                    hint_text: "Anotar producto..."
                     multiline: False
+                    write_tab: False
                     font_size: "13sp"
-                    padding: ["10dp", "8dp", "10dp", "8dp"]
+                    padding: ["10dp", "11dp", "8dp", "8dp"]
+                    background_color: [0, 0, 0, 0]
+                    cursor_color: app.accent_green_color
+                    foreground_color: app.input_text_color
+                    hint_text_color: app.input_placeholder_color
+                    on_text_validate: root.add_item()
+
+            AnchorLayout:
+                size_hint_x: None
+                width: "84dp"
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12, 12, 12, 12]
+                TextInput:
+                    id: new_item_price
+                    hint_text: "$ precio"
+                    input_filter: numeric_input_filter
+                    multiline: False
+                    write_tab: False
+                    font_size: "13sp"
+                    padding: ["8dp", "11dp", "6dp", "8dp"]
                     background_color: [0, 0, 0, 0]
                     cursor_color: app.accent_green_color
                     foreground_color: app.input_text_color
@@ -1256,8 +1181,8 @@
                 text: "+"
                 font_size: "20sp"
                 bold: True
-                size_hint: None, None
-                size: "40dp", "40dp"
+                size_hint_x: None
+                width: "42dp"
                 color: [1, 1, 1, 1]
                 background_color: [0, 0, 0, 0]
                 on_release: root.add_item()
@@ -1269,26 +1194,13 @@
                         size: self.size
                         radius: [12, 12, 12, 12]
 
-        # Mensaje de validación al anotar producto
         FormMessageLabel:
             text: root.error_text
 
-        # Separador sutil
-        Widget:
-            size_hint_y: None
-            height: "1dp"
-            canvas.before:
-                Color:
-                    rgba: app.divider_color
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-
-        # Lista Scrollable de Productos Anotados
+        # Productos (orden fijo)
         ScrollView:
             size_hint: 1, 1
             do_scroll_x: False
-            do_scroll_y: True
 
             BoxLayout:
                 id: items_list_box
@@ -1297,10 +1209,48 @@
                 height: self.minimum_height
                 spacing: "6dp"
 
-        # Pie: Cerrar + Pasar al carrito (solo si hay productos sin tachar)
+        # Total: parte en $0 y sube al tachar
         BoxLayout:
             size_hint_y: None
-            height: "40dp"
+            height: "46dp"
+            padding: ["12dp", "4dp", "12dp", "4dp"]
+            canvas.before:
+                Color:
+                    rgba: app.sage_container_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [12, 12, 12, 12]
+            BoxLayout:
+                orientation: "vertical"
+                Label:
+                    text: "En el carro"
+                    font_size: "12.5sp"
+                    bold: True
+                    color: app.text_primary_color
+                    halign: "left"
+                    valign: "bottom"
+                    text_size: self.size
+                Label:
+                    text: root.progress_str
+                    font_size: "10.5sp"
+                    color: app.text_secondary_color
+                    halign: "left"
+                    valign: "top"
+                    text_size: self.size
+            Label:
+                text: root.in_cart_str
+                font_size: "21sp"
+                bold: True
+                color: app.text_primary_color
+                halign: "right"
+                valign: "middle"
+                text_size: self.size
+
+        # Pie: Cerrar + Finalizar compra (solo si hay algo en el carro)
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
             spacing: "10dp"
 
             Button:
@@ -1319,15 +1269,15 @@
                         radius: [12, 12, 12, 12]
 
             Button:
-                text: f"Pasar al carrito ({root.pending_count})"
+                text: f"Finalizar compra ({root.checked_count})"
                 font_size: "13sp"
                 bold: True
-                size_hint_x: 1.4 if root.pending_count else 0.001
-                opacity: 1 if root.pending_count else 0
-                disabled: not root.pending_count
+                size_hint_x: 1.6 if root.checked_count else 0.001
+                opacity: 1 if root.checked_count else 0
+                disabled: not root.checked_count
                 color: [1, 1, 1, 1]
                 background_color: [0, 0, 0, 0]
-                on_release: root.send_to_cart()
+                on_release: root.finalize()
                 canvas.before:
                     Color:
                         rgba: app.accent_green_color
@@ -1335,6 +1285,91 @@
                         pos: self.pos
                         size: self.size
                         radius: [12, 12, 12, 12]
+
+
+# --------------------------------------------------------
+# 3D. Modal: Editar Producto de Lista (nombre y precio)
+# --------------------------------------------------------
+<EditListItemModal>:
+    height: "290dp" if root.error_text else "250dp"
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: ["20dp", "18dp", "20dp", "18dp"]
+        spacing: "12dp"
+        canvas.before:
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [24, 24, 24, 24]
+
+        Label:
+            text: "Editar producto"
+            font_size: "17sp"
+            bold: True
+            color: app.text_primary_color
+            size_hint_y: None
+            height: "26dp"
+            halign: "left"
+            text_size: self.size
+
+        BoxLayout:
+            size_hint_y: None
+            height: "56dp"
+            spacing: "10dp"
+            CustomInputField:
+                id: field_name
+                label_text: "PRODUCTO"
+                hint_text: "Ej: Huevos"
+            CustomInputField:
+                id: field_price
+                size_hint_x: None
+                width: "110dp"
+                label_text: "PRECIO ($)"
+                hint_text: "Opcional"
+                input_filter: numeric_input_filter
+
+        Widget:
+            size_hint_y: 1
+
+        FormMessageLabel:
+            text: root.error_text
+
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            spacing: "10dp"
+
+            Button:
+                text: "Cancelar"
+                font_size: "13.5sp"
+                color: app.text_secondary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.dismiss()
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [14, 14, 14, 14]
+
+            Button:
+                text: "Guardar"
+                font_size: "13.5sp"
+                bold: True
+                color: [1, 1, 1, 1]
+                background_color: [0, 0, 0, 0]
+                on_release: root.submit()
+                canvas.before:
+                    Color:
+                        rgba: app.accent_green_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [14, 14, 14, 14]
 
 
 # --------------------------------------------------------

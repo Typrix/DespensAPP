@@ -8,13 +8,13 @@ import os
 from kivy.lang import Builder
 
 from views.dialogs.base import BaseFormModal, EditItemModal
-from views.dialogs.cart_dialog import AddCartItemModal
 from views.dialogs.pantry_dialog import AddPantryItemModal, PantryItemDetailModal
 from views.dialogs.list_dialog import (
     ColorChipButton,
     AddShoppingListModal,
     ShoppingListItemRow,
     ShoppingListDetailModal,
+    EditListItemModal,
 )
 from views.dialogs.auth_dialog import AuthModal
 from views.dialogs.checkout_dialog import CheckoutModal, CheckoutRow
@@ -30,13 +30,13 @@ if os.path.exists(DIALOGS_KV_PATH):
 __all__ = [
     "BaseFormModal",
     "EditItemModal",
-    "AddCartItemModal",
     "AddPantryItemModal",
     "PantryItemDetailModal",
     "ColorChipButton",
     "AddShoppingListModal",
     "ShoppingListItemRow",
     "ShoppingListDetailModal",
+    "EditListItemModal",
     "AuthModal",
     "CheckoutModal",
     "CheckoutRow",

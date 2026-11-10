@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Modal de Finalizar Compra para DespensAPP.
-Muestra una fila por producto marcado del carrito para indicar la cantidad comprada
+Muestra una fila por producto tachado de la lista para indicar la cantidad comprada
 (y la unidad si es un producto nuevo en la despensa) antes de registrar la compra.
 """
 
@@ -21,10 +21,11 @@ class CheckoutRow(BoxLayout):
     unit = StringProperty("un.")
     is_new = BooleanProperty(False)
 
-    def __init__(self, cart_item, unit, is_new, on_change=None, **kwargs):
+    def __init__(self, ref, title, price, unit, is_new, on_change=None, **kwargs):
         super().__init__(**kwargs)
-        self.cart_item = cart_item
-        self.title = cart_item.title
+        self.ref = ref          # producto de la lista que se compra
+        self.price = price
+        self.title = title
         self.unit = unit
         self.is_new = is_new
         self._menu = None
@@ -56,24 +57,25 @@ class CheckoutRow(BoxLayout):
 
 
 class CheckoutModal(BaseFormModal):
-    """Confirma la compra de los productos marcados del carrito."""
+    """Confirma la compra de los productos tachados de una lista."""
     row_count = NumericProperty(0)
     total_str = StringProperty("$0")
 
     def __init__(self, checkout_rows, callback_confirm, **kwargs):
         """
         checkout_rows: salida de PurchaseController.build_checkout.
-        callback_confirm(entries): recibe [{cart_item, quantity, unit}].
+        callback_confirm(entries): recibe [{ref, quantity, unit}].
         """
         super().__init__(**kwargs)
         self.callback_confirm = callback_confirm
         self.rows = []
         for data in checkout_rows:
-            row = CheckoutRow(data["cart_item"], data["unit"], data["is_new"], on_change=self._clear_error)
+            row = CheckoutRow(data["ref"], data["title"], data["price"], data["unit"], data["is_new"],
+                              on_change=self._clear_error)
             self.rows.append(row)
             self.ids.rows_box.add_widget(row)
         self.row_count = len(self.rows)
-        self.total_str = format_money(sum(r.cart_item.price for r in self.rows))
+        self.total_str = format_money(sum(r.price for r in self.rows))
 
     def submit(self):
         """Valida que cada cantidad sea mayor a 0 y confirma la compra."""
@@ -83,7 +85,7 @@ class CheckoutModal(BaseFormModal):
             if error or value <= 0:
                 self.error_text = f"{row.title}: {error or 'la cantidad debe ser mayor a 0.'}"
                 return
-            entries.append({"cart_item": row.cart_item, "quantity": value, "unit": row.unit})
+            entries.append({"ref": row.ref, "quantity": value, "unit": row.unit})
         self.dismiss()
         if self.callback_confirm:
             self.callback_confirm(entries)

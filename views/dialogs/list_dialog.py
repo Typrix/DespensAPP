@@ -11,7 +11,9 @@ from kivy.properties import BooleanProperty, StringProperty, NumericProperty, Li
 from kivy.graphics import Color, Ellipse, Line
 
 from views.dialogs.base import BaseFormModal, EditItemModal
-from controllers.validators import validate_list_form, NAME_MAX_LENGTH
+from controllers.validators import validate_list_form, validate_cart_form, format_number
+from controllers.purchase_controller import summarize_items, format_money
+from views.widgets.empty_state import EmptyState
 
 
 class ColorChipButton(Button):
@@ -97,16 +99,21 @@ class AddShoppingListModal(BaseFormModal):
 
 
 class ShoppingListItemRow(BoxLayout):
-    """Fila de producto individual dentro de una lista de compras de supermercado."""
+    """Producto de una lista: tachar = ya está en el carro; tocar el nombre o el lápiz = editar."""
     item_id = NumericProperty(0)
     name = StringProperty("")
+    price = NumericProperty(0)
+    price_str = StringProperty("")
     is_checked = BooleanProperty(False)
 
-    def __init__(self, item_id, name, is_checked, callback_toggle, callback_edit, callback_delete, **kwargs):
+    def __init__(self, item, callback_toggle, callback_edit, callback_delete, **kwargs):
         super().__init__(**kwargs)
-        self.item_id = item_id
-        self.name = name
-        self.is_checked = is_checked
+        self.item = item
+        self.item_id = item.id
+        self.name = item.name
+        self.price = item.price
+        self.price_str = item.formatted_price if item.price > 0 else ""
+        self.is_checked = item.is_checked
         self.callback_toggle = callback_toggle
         self.callback_edit = callback_edit
         self.callback_delete = callback_delete
@@ -117,31 +124,70 @@ class ShoppingListItemRow(BoxLayout):
 
     def edit(self):
         if self.callback_edit:
-            self.callback_edit(self.item_id, self.name)
+            self.callback_edit(self.item)
 
     def delete(self):
         if self.callback_delete:
             self.callback_delete(self.item_id)
 
 
+class EditListItemModal(BaseFormModal):
+    """Corrige el nombre y el precio de un producto de la lista."""
+
+    def __init__(self, item, callback_save, **kwargs):
+        super().__init__(**kwargs)
+        self.item = item
+        self.callback_save = callback_save
+        self.ids.field_name.ids.text_input.text = item.name
+        self.ids.field_price.ids.text_input.text = format_price_input(item.price)
+        self.clear_error_on_input(self.ids.field_name.ids.text_input, self.ids.field_price.ids.text_input)
+
+    def submit(self):
+        ok, error, data = validate_cart_form(
+            title=self.ids.field_name.ids.text_input.text,
+            price_str=self.ids.field_price.ids.text_input.text,
+            subtitle="",
+        )
+        if not ok:
+            self.error_text = error
+            return
+        if self.callback_save:
+            self.callback_save(self.item.id, data["title"], data["price"])
+        self.dismiss()
+
+
+def format_price_input(price):
+    """Precio editable en formato chileno sin '$' (ej: 1.500); vacío si es 0."""
+    if not price:
+        return ""
+    if price == int(price):
+        return f"{int(price):,}".replace(",", ".")
+    return format_number(price)
+
+
 class ShoppingListDetailModal(BaseFormModal):
-    """Modal de detalle de lista estilo supermercado en papel (productos anotados, tachado y edición)."""
+    """
+    Lista de compras que funciona como carrito: se anotan productos (con precio opcional),
+    se tachan al echarlos al carro y se finaliza la compra desde aquí.
+    """
     list_id = NumericProperty(0)
     list_name = StringProperty("")
     icon_color_rgba = ListProperty([0.157, 0.431, 0.831, 1.0])
     subtitle_info = StringProperty("0 productos")
-    pending_count = NumericProperty(0)
+    checked_count = NumericProperty(0)
+    in_cart_str = StringProperty("$0")
+    progress_str = StringProperty("")
 
     def __init__(self, list_id, list_name, icon_color_rgba, **kwargs):
         super().__init__(**kwargs)
         self.list_id = list_id
         self.list_name = list_name
         self.icon_color_rgba = icon_color_rgba
-        self.clear_error_on_input(self.ids.new_item_input)
+        self.clear_error_on_input(self.ids.new_item_input, self.ids.new_item_price)
         self.load_items()
 
     def load_items(self):
-        """Carga y renderiza todos los productos anotados en la lista."""
+        """Carga los productos (orden fijo) y recalcula el total que va en el carro."""
         app = MDApp.get_running_app()
         if not app or not getattr(app, "db", None):
             return
@@ -149,79 +195,74 @@ class ShoppingListDetailModal(BaseFormModal):
             it for it in app.db.get_shopping_list_items(self.list_id)
             if not app.is_pending_delete("list_item", it.id)
         ]
+        summary = summarize_items(items)
+        self.checked_count = summary["checked"]
+        self.in_cart_str = format_money(summary["in_cart"])
+        self.progress_str = (
+            f"de {format_money(summary['estimated'])} estimado · {summary['checked']} de {summary['total_items']}"
+            if items else ""
+        )
+        self.subtitle_info = (
+            f"{summary['pending']} por comprar · {summary['checked']} en el carro" if items else "Lista vacía"
+        )
+
         container = self.ids.items_list_box
         container.clear_widgets()
-
-        checked_count = sum(1 for it in items if it.is_checked)
-        self.pending_count = len(items) - checked_count
-        self.subtitle_info = f"{len(items)} productos anotados · {checked_count} tachados"
-
         if not items:
-            from kivy.uix.label import Label
-            empty_lbl = Label(
-                text="Lista vacía.\nAñade los productos que vas a comprar arriba.",
-                font_size="13sp",
-                color=app.text_secondary_color,
-                halign="center",
-                size_hint_y=None,
-                height="80dp"
-            )
-            container.add_widget(empty_lbl)
+            container.add_widget(EmptyState(
+                icon="clipboard-text-outline",
+                title="Lista vacía",
+                message="Anota arriba lo que vas a comprar. El precio es opcional.",
+            ))
             return
-
         for it in items:
-            row = ShoppingListItemRow(
-                item_id=it.id,
-                name=it.name,
-                is_checked=it.is_checked,
+            container.add_widget(ShoppingListItemRow(
+                item=it,
                 callback_toggle=self.toggle_item,
                 callback_edit=self.open_edit_item,
-                callback_delete=self.delete_item
-            )
-            container.add_widget(row)
+                callback_delete=self.delete_item,
+            ))
 
     def add_item(self):
-        """Añade un nuevo producto a la lista (sin precios, como en papel)."""
-        name = self.ids.new_item_input.text.strip()
-        if not name:
-            self.error_text = "Escribe el producto que quieres anotar."
-            return
-        if len(name) > NAME_MAX_LENGTH:
-            self.error_text = f"El nombre no puede superar {NAME_MAX_LENGTH} caracteres."
+        """Anota un producto con precio opcional (ej: 'Huevos' y '3.000')."""
+        ok, error, data = validate_cart_form(
+            title=self.ids.new_item_input.text,
+            price_str=self.ids.new_item_price.text,
+            subtitle="",
+        )
+        if not ok:
+            self.error_text = error
             return
         self.error_text = ""
         app = MDApp.get_running_app()
         if app and getattr(app, "db", None):
-            app.db.add_shopping_list_item(self.list_id, name)
+            app.db.add_shopping_list_item(self.list_id, data["title"], price=data["price"])
             if hasattr(app, "analytics") and app.analytics:
-                app.analytics.track_event("add_shopping_list_item", metadata={"list_id": self.list_id, "name": name})
+                app.analytics.track_event("add_shopping_list_item", metadata={"list_id": self.list_id})
             self.ids.new_item_input.text = ""
+            self.ids.new_item_price.text = ""
+            self.ids.new_item_input.focus = True
             self.load_items()
             app.cargar_listas()
 
     def toggle_item(self, item_id, is_checked):
-        """Tacha o desmarca un producto al comprarlo."""
+        """Tachar = el producto ya está en el carro."""
         app = MDApp.get_running_app()
         if app and getattr(app, "db", None):
             app.db.toggle_shopping_list_item(item_id, is_checked)
             self.load_items()
             app.cargar_listas()
 
-    def open_edit_item(self, item_id, current_name):
-        """Abre modal para corregir el nombre del producto."""
-        def save_edit(new_name):
+    def open_edit_item(self, item):
+        """Abre el modal para corregir nombre y precio."""
+        def save_edit(item_id, name, price):
             app = MDApp.get_running_app()
             if app and getattr(app, "db", None):
-                app.db.update_shopping_list_item_name(item_id, new_name)
+                app.db.update_shopping_list_item(item_id, name, price)
                 self.load_items()
                 app.cargar_listas()
 
-        modal = EditItemModal(
-            title_text="Editar Producto",
-            initial_value=current_name,
-            callback_save=save_edit
-        )
-        modal.open()
+        EditListItemModal(item=item, callback_save=save_edit).open()
 
     def delete_item(self, item_id):
         """Elimina un producto individual de la lista (con opción de deshacer)."""
@@ -246,19 +287,17 @@ class ShoppingListDetailModal(BaseFormModal):
                 self.list_name = new_name
                 app.cargar_listas()
 
-        modal = EditItemModal(
-            title_text="Editar Nombre de Lista",
+        EditItemModal(
+            title_text="Editar nombre de la lista",
             initial_value=self.list_name,
-            callback_save=save_list_name
-        )
-        modal.open()
+            callback_save=save_list_name,
+        ).open()
 
-    def send_to_cart(self):
-        """Envía al carrito los productos sin tachar y los marca como comprados en la lista."""
+    def finalize(self):
+        """Finaliza la compra de lo tachado en esta lista."""
         app = MDApp.get_running_app()
         if app:
-            app.pasar_lista_al_carrito(self.list_id, self.list_name)
-            self.load_items()
+            app.abrir_finalizar_compra(self.list_id, self.list_name, on_done=self.load_items)
 
     def delete_this_list(self):
         """Elimina la lista completa (con opción de deshacer)."""

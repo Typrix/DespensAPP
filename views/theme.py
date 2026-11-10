@@ -52,7 +52,6 @@ COLOR_DARK = {
 # Mapeo de Etiquetas de Encabezado por Pantalla
 TAGS_MAP = {
     "home": "INICIO",
-    "cart": "COMPRAS",
     "cupboard": "DESPENSA",
     "lists": "LISTAS",
     "stats": "ESTADÍSTICAS",

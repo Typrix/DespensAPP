@@ -8,7 +8,6 @@ from views.theme import COLOR_LIGHT, COLOR_DARK, TAGS_MAP
 from views.widgets import (
     CustomProgressBar,
     BottomNavButton,
-    CartItemRow,
     PantryItemRow,
     ShoppingListCard,
     AddCircleButton,
@@ -25,7 +24,6 @@ from views.widgets import (
 from views.dialogs import (
     BaseFormModal,
     EditItemModal,
-    AddCartItemModal,
     AddPantryItemModal,
     PantryItemDetailModal,
     ColorChipButton,
@@ -43,7 +41,6 @@ __all__ = [
     "TAGS_MAP",
     "CustomProgressBar",
     "BottomNavButton",
-    "CartItemRow",
     "PantryItemRow",
     "ShoppingListCard",
     "AddCircleButton",
@@ -58,7 +55,6 @@ __all__ = [
     "PurchaseGroupCard",
     "BaseFormModal",
     "EditItemModal",
-    "AddCartItemModal",
     "AddPantryItemModal",
     "PantryItemDetailModal",
     "ColorChipButton",

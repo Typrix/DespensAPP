@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS `shopping_list_items` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `list_id` INT NOT NULL,
     `name` VARCHAR(150) NOT NULL,
+    `price` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
     `is_checked` TINYINT(1) NOT NULL DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT `fk_shopping_list_items_list`

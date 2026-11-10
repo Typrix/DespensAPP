@@ -6,7 +6,6 @@ Reexporta todos los componentes visuales personalizados.
 
 from views.widgets.progress_bar import CustomProgressBar
 from views.widgets.nav_button import BottomNavButton
-from views.widgets.cart_row import CartItemRow
 from views.widgets.pantry_row import PantryItemRow
 from views.widgets.list_card import ShoppingListCard
 from views.widgets.buttons import AddCircleButton, AvatarCircleButton
@@ -19,7 +18,6 @@ from views.widgets.purchase_row import PurchaseHistoryRow, PurchaseGroupCard
 __all__ = [
     "CustomProgressBar",
     "BottomNavButton",
-    "CartItemRow",
     "PantryItemRow",
     "ShoppingListCard",
     "AddCircleButton",

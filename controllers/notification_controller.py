@@ -133,7 +133,7 @@ class NotificationController:
                     title = "DespensAPP: ¡Queda poco stock!"
                     message = (
                         f"'{item.name}' está por agotarse ({item.formatted_quantity} restantes, "
-                        f"umbral: {item.min_threshold} {item.unit}). ¡Agrégalo al carrito!"
+                        f"umbral: {item.min_threshold} {item.unit}). ¡Agrégalo a tu lista!"
                     )
                     self.send_notification(title, message)
                     self._record_sent(item.id, alert_type, now)

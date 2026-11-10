@@ -98,11 +98,19 @@ class SyncController:
 
             for local_list_id, mysql_list_id in list_id_mapping.items():
                 try:
-                    sqlite_cur.execute("""
-                        SELECT name, is_checked 
-                        FROM shopping_list_items 
-                        WHERE list_id = ?;
-                    """, (local_list_id,))
+                    try:
+                        sqlite_cur.execute("""
+                            SELECT name, is_checked, price
+                            FROM shopping_list_items
+                            WHERE list_id = ?;
+                        """, (local_list_id,))
+                    except sqlite3.OperationalError:
+                        # BD local creada antes de que las listas tuvieran precio
+                        sqlite_cur.execute("""
+                            SELECT name, is_checked, 0 AS price
+                            FROM shopping_list_items
+                            WHERE list_id = ?;
+                        """, (local_list_id,))
                     local_list_items = sqlite_cur.fetchall()
                     if local_list_items:
                         existing_items = self.db.get_shopping_list_items(mysql_list_id)
@@ -110,9 +118,11 @@ class SyncController:
                         for it_row in local_list_items:
                             it_name = it_row["name"].strip()
                             if it_name.lower() not in existing_item_names:
-                                new_item_id = self.db.add_shopping_list_item(mysql_list_id, it_name)
-                                if new_item_id and it_row["is_checked"]:
-                                    self.db.toggle_shopping_list_item(new_item_id, True)
+                                self.db.add_shopping_list_item(
+                                    mysql_list_id, it_name,
+                                    price=float(it_row["price"] or 0.0),
+                                    is_checked=bool(it_row["is_checked"]),
+                                )
                 except Exception as e:
                     print(f"[SyncController] Error al sincronizar shopping_list_items: {e}")
 

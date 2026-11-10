@@ -100,7 +100,7 @@ def validate_quantity(quantity_str, label="La cantidad"):
 
 def validate_cart_form(title, price_str, subtitle):
     """
-    Valida el formulario de carrito.
+    Valida un producto con precio opcional (productos de las listas de compras).
     El precio es opcional (vacío = $0 para anotar sin conocerlo aún).
     Retorna (True, "", datos) o (False, mensaje_error, None).
     """

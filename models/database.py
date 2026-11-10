@@ -163,6 +163,7 @@ class DatabaseManager:
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
                         `list_id` INT NOT NULL,
                         `name` VARCHAR(150) NOT NULL,
+                        `price` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
                         `is_checked` TINYINT(1) NOT NULL DEFAULT 0,
                         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         CONSTRAINT `fk_shopping_list_items_list`
@@ -174,6 +175,11 @@ class DatabaseManager:
                 # Migración segura de columnas existentes en MySQL
                 try:
                     cur.execute("ALTER TABLE `pantry_items` ADD COLUMN `expiration_date` VARCHAR(20) NULL;")
+                except Exception:
+                    pass
+                # Las listas funcionan como carrito: cada producto puede llevar precio
+                try:
+                    cur.execute("ALTER TABLE `shopping_list_items` ADD COLUMN `price` DECIMAL(12, 2) NOT NULL DEFAULT 0.00;")
                 except Exception:
                     pass
                 # Historial de compras finalizadas (base del gasto por periodo)
@@ -329,6 +335,7 @@ class DatabaseManager:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 list_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
+                price REAL NOT NULL DEFAULT 0.0,
                 is_checked INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (list_id) REFERENCES shopping_lists (id) ON DELETE CASCADE
@@ -337,6 +344,11 @@ class DatabaseManager:
         # Migración segura en SQLite
         try:
             cur.execute("ALTER TABLE pantry_items ADD COLUMN expiration_date TEXT;")
+        except Exception:
+            pass
+        # Las listas funcionan como carrito: cada producto puede llevar precio
+        try:
+            cur.execute("ALTER TABLE shopping_list_items ADD COLUMN price REAL NOT NULL DEFAULT 0.0;")
         except Exception:
             pass
         # Historial de compras finalizadas (fecha en texto 'AAAA-MM-DD HH:MM:SS', hora local)
@@ -1242,91 +1254,47 @@ class DatabaseManager:
     # ----------------------------------------------------
     def get_shopping_list_items(self, list_id: int) -> List[ShoppingListItem]:
         """
-        Obtiene los productos anotados en una lista de compras de supermercado.
+        Obtiene los productos anotados en una lista (con su precio opcional).
         Orden fijo por creación: tachar un producto no lo mueve de lugar.
         """
-        items = []
-        if self.is_mysql:
-            try:
-                conn = self.get_mysql_connection()
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        SELECT id, list_id, name, is_checked, created_at
-                        FROM shopping_list_items
-                        WHERE list_id = %s
-                        ORDER BY id ASC;
-                    """, (list_id,))
-                    rows = cur.fetchall()
-                conn.close()
-                for r in rows:
-                    items.append(ShoppingListItem(
-                        id=r["id"],
-                        list_id=r["list_id"],
-                        name=r["name"],
-                        is_checked=bool(r["is_checked"]),
-                        created_at=str(r.get("created_at") or "")
-                    ))
-            except Exception as e:
-                print(f"[DB] Error get_shopping_list_items MySQL: {e}")
-        else:
-            try:
-                conn = self.get_sqlite_connection()
-                cur = conn.cursor()
-                cur.execute("""
-                    SELECT id, list_id, name, is_checked, created_at
-                    FROM shopping_list_items
-                    WHERE list_id = ?
-                    ORDER BY id ASC;
-                """, (list_id,))
-                rows = cur.fetchall()
-                conn.close()
-                for r in rows:
-                    items.append(ShoppingListItem(
-                        id=r["id"],
-                        list_id=r["list_id"],
-                        name=r["name"],
-                        is_checked=bool(r["is_checked"]),
-                        created_at=str(r["created_at"] or "")
-                    ))
-            except Exception as e:
-                print(f"[DB] Error get_shopping_list_items SQLite: {e}")
-        return items
+        rows = self._run(
+            """SELECT id, list_id, name, price, is_checked, created_at
+               FROM shopping_list_items WHERE list_id = ? ORDER BY id ASC;""",
+            (list_id,), fetch="all",
+        ) or []
+        return [
+            ShoppingListItem(
+                id=r["id"],
+                list_id=r["list_id"],
+                name=r["name"],
+                is_checked=bool(r["is_checked"]),
+                created_at=str(r["created_at"] or ""),
+                price=float(r["price"] or 0.0),
+            )
+            for r in rows
+        ]
 
-    def add_shopping_list_item(self, list_id: int, name: str) -> Optional[int]:
-        """Añade un producto a la lista de compras del supermercado (sin precio)."""
-        name = name.strip()
+    def add_shopping_list_item(self, list_id: int, name: str, price: float = 0.0,
+                               is_checked: bool = False) -> Optional[int]:
+        """Añade un producto a la lista, con precio opcional."""
+        name = (name or "").strip()
         if not name:
             return None
+        return self._run(
+            "INSERT INTO shopping_list_items (list_id, name, price, is_checked) VALUES (?, ?, ?, ?);",
+            (list_id, name, max(0.0, float(price or 0.0)), 1 if is_checked else 0),
+            fetch="lastrowid",
+        )
 
-        if self.is_mysql:
-            try:
-                conn = self.get_mysql_connection()
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        INSERT INTO shopping_list_items (list_id, name, is_checked)
-                        VALUES (%s, %s, 0);
-                    """, (list_id, name))
-                    new_id = cur.lastrowid
-                conn.close()
-                return new_id
-            except Exception as e:
-                print(f"[DB] Error add_shopping_list_item MySQL: {e}")
-                return None
-        else:
-            try:
-                conn = self.get_sqlite_connection()
-                cur = conn.cursor()
-                cur.execute("""
-                    INSERT INTO shopping_list_items (list_id, name, is_checked)
-                    VALUES (?, ?, 0);
-                """, (list_id, name))
-                new_id = cur.lastrowid
-                conn.commit()
-                conn.close()
-                return new_id
-            except Exception as e:
-                print(f"[DB] Error add_shopping_list_item SQLite: {e}")
-                return None
+    def update_shopping_list_item(self, item_id: int, name: str, price: float) -> bool:
+        """Corrige el nombre y el precio de un producto de la lista."""
+        name = (name or "").strip()
+        if not name:
+            return False
+        return bool(self._run(
+            "UPDATE shopping_list_items SET name = ?, price = ? WHERE id = ?;",
+            (name, max(0.0, float(price or 0.0)), item_id),
+        ))
 
     def toggle_shopping_list_item(self, item_id: int, is_checked: bool) -> bool:
         """Marca o tacha un producto de la lista al ir comprándolo."""
@@ -1413,14 +1381,8 @@ class DatabaseManager:
         Calcula las estadísticas completas de compras, despensa, listas y vencimientos
         para el usuario especificado, tanto en MySQL como en SQLite.
         """
-        cart_items = self.get_cart_items(user_id)
         pantry_items = self.get_pantry_items(user_id)
         shopping_lists = self.get_shopping_lists(user_id)
-
-        # 1. Gasto total del carrito (productos pendientes o en lista)
-        cart_total = sum(it.price for it in cart_items if not it.is_checked)
-        if cart_total == 0 and cart_items:
-            cart_total = sum(it.price for it in cart_items)
 
         # 2. Desglose de estados de despensa y vencimientos
         reponer = [p for p in pantry_items if p.status == "Reponer"]
@@ -1435,13 +1397,10 @@ class DatabaseManager:
         first_vencido = vencidos[0] if vencidos else None
         first_por_vencer = por_vencer[0] if por_vencer else None
 
-        # 3. Lo más comprado / productos más frecuentes
+        # 3. Lo más comprado: veces que cada producto aparece en el historial de compras
         product_freq = {}
-        for it in cart_items:
-            name = it.title.strip()
-            product_freq[name] = product_freq.get(name, 0) + max(1, it.quantity)
-        for it in pantry_items:
-            name = it.name.strip()
+        for rec in self.get_purchase_history(user_id):
+            name = rec.title.strip()
             product_freq[name] = product_freq.get(name, 0) + 1
 
         sorted_freq = sorted(product_freq.items(), key=lambda x: x[1], reverse=True)
@@ -1462,8 +1421,6 @@ class DatabaseManager:
         suggested_recipe = self._generate_suggested_recipe(pantry_names)
 
         return {
-            "cart_total": cart_total,
-            "cart_items_count": len(cart_items),
             "pantry_items_count": len(pantry_items),
             "shopping_lists_count": len(shopping_lists),
             "reponer_count": len(reponer),

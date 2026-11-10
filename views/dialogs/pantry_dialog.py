@@ -134,6 +134,9 @@ class AddPantryItemModal(BaseFormModal):
         self.dismiss()
 
 
+RESTOCK_LABEL = "Añadir a una lista"
+
+
 class PantryItemDetailModal(BaseFormModal):
     """
     Detalle de un producto de la despensa.
@@ -159,19 +162,21 @@ class PantryItemDetailModal(BaseFormModal):
     exp_color = ListProperty([0.5, 0.5, 0.5, 1.0])
     has_expiration = BooleanProperty(False)
     needs_restock = BooleanProperty(False)
-    restock_text = StringProperty("Añadir al carrito")
+    restock_text = StringProperty(RESTOCK_LABEL)
     is_editing = BooleanProperty(False)
     edit_unit = StringProperty("un.")
 
     def __init__(self, item, callback_set_qty=None, callback_finish=None, callback_delete=None,
-                 callback_update_exp=None, callback_add_to_cart=None, callback_update_details=None,
-                 **kwargs):
+                 callback_update_exp=None, callback_add_to_list=None, callback_list_options=None,
+                 callback_update_details=None, **kwargs):
         super().__init__(**kwargs)
         self.callback_set_qty = callback_set_qty
         self.callback_finish = callback_finish
         self.callback_delete = callback_delete
         self.callback_update_exp = callback_update_exp
-        self.callback_add_to_cart = callback_add_to_cart
+        self.callback_add_to_list = callback_add_to_list
+        self.callback_list_options = callback_list_options
+        self._lists_menu = None
         self.callback_update_details = callback_update_details
         self._changed = False
         self._unit_menu = None
@@ -215,7 +220,7 @@ class PantryItemDetailModal(BaseFormModal):
         else:
             self.status_text_color = list(self.status_color)
         self.threshold_hint = f"Te avisamos cuando baje de {format_number(self.min_threshold)} {self.unit}"
-        self.needs_restock = current.status in ("Reponer", "Por agotarse") and self.callback_add_to_cart is not None
+        self.needs_restock = current.status in ("Reponer", "Por agotarse") and self.callback_add_to_list is not None
 
     def _refresh_expiration(self, item):
         """Arma el título y la descripción del vencimiento con su color."""
@@ -332,12 +337,30 @@ class PantryItemDetailModal(BaseFormModal):
     # ------------------------------------------------------------------
     # Vencimiento, reponer y eliminar
     # ------------------------------------------------------------------
-    def add_to_cart(self):
-        """Agrega el producto al carrito para reponerlo (sin cerrar el modal)."""
-        if not self.callback_add_to_cart:
+    def add_to_list(self, caller):
+        """Muestra las listas para anotar el producto (si no hay listas, crea 'Reponer despensa')."""
+        if not self.callback_add_to_list:
             return
-        added = self.callback_add_to_cart(self.item_id)
-        self.restock_text = "Agregado al carrito" if added else "Ya está en el carrito"
+        options = self.callback_list_options() if self.callback_list_options else []
+        if not options:
+            self._add_to_list(None)
+            return
+        if self._lists_menu:
+            self._lists_menu.dismiss()
+        self._lists_menu = MDDropdownMenu(
+            caller=caller,
+            items=[{"text": name, "on_release": lambda lid=lid: self._add_to_list(lid)} for lid, name in options],
+            position="top",
+            width=caller.width,
+            max_height=dp(220),
+        )
+        self._lists_menu.open()
+
+    def _add_to_list(self, list_id):
+        if self._lists_menu:
+            self._lists_menu.dismiss()
+        added, list_name = self.callback_add_to_list(self.item_id, list_id)
+        self.restock_text = f"Anotado en {list_name}" if added else f"Ya estaba en {list_name}"
 
     def edit_expiration(self):
         """Abre el calendario para elegir o cambiar la fecha de vencimiento."""
