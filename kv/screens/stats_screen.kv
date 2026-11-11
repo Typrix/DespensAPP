@@ -153,19 +153,44 @@
                         halign: "left"
                         text_size: self.size
 
-            # Historial de compras del periodo elegido
-            Label:
-                text: "ÚLTIMAS COMPRAS"
+            # Historial: la última compra y "Ver todas" con el resto del periodo
+            BoxLayout:
                 size_hint_y: None
-                height: "22dp"
-                font_size: "10sp"
-                bold: True
-                color: app.category_tag_color
-                halign: "left"
-                valign: "middle"
-                text_size: self.size
+                height: "28dp"
+                Label:
+                    text: "ÚLTIMA COMPRA" if app.stats_purchase_count == 1 else "ÚLTIMAS COMPRAS"
+                    font_size: "10sp"
+                    bold: True
+                    color: app.category_tag_color
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+                TapArea:
+                    size_hint_x: None
+                    width: self.minimum_width
+                    padding: ["10dp", 0, 0, 0]
+                    spacing: "2dp"
+                    opacity: (0.6 if self.state == "down" else 1) if app.stats_purchase_count > 1 else 0
+                    disabled: app.stats_purchase_count <= 1
+                    on_release: app.ver_todas_compras()
+                    Label:
+                        text: f"Ver todas ({app.stats_purchase_count})"
+                        size_hint_x: None
+                        width: self.texture_size[0]
+                        font_size: "12sp"
+                        bold: True
+                        color: app.accent_green_color
+                        disabled_color: app.accent_green_color
+                    MDIcon:
+                        icon: "chevron-right"
+                        size_hint_x: None
+                        width: "18dp"
+                        font_size: "18sp"
+                        theme_text_color: "Custom"
+                        text_color: app.accent_green_color
+                        pos_hint: {"center_y": 0.5}
 
-            # Una tarjeta por lista (PurchaseGroupCard), la más reciente primero
+            # Solo la compra más reciente (PurchaseGroupCard resumida)
             MDBoxLayout:
                 id: purchase_history_container
                 orientation: "vertical"

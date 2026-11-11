@@ -734,9 +734,10 @@
     height: self.minimum_height
     padding: ["14dp", "12dp", "14dp", "8dp"]
     spacing: "4dp"
+    opacity: 0.85 if self.tappable and self.state == "down" else 1
     canvas.before:
         Color:
-            rgba: app.card_white_color
+            rgba: app.sage_container_color if self.in_modal else app.card_white_color
         RoundedRectangle:
             pos: self.pos
             size: self.size

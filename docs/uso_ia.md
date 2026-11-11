@@ -276,3 +276,17 @@
 ## Validación
 - 29 pruebas nuevas (cada ícono existe en KivyMD, tildes, plurales, frases, coincidencias falsas como "pañal"/"pan" y "salsa"/"sal", sugerencia de categoría) más las suites anteriores.
 - Capturas en modo claro y oscuro a 400 px: fila, detalle, formulario con sugerencia y lista de compras. Se corrigió el nombre de categoría cortado en el encabezado del detalle.
+
+---
+
+## Entrada / Prompt del Usuario (Últimas compras compactas)
+> "quizas en ultimas compras deberia aparecer la ultima y una flecha con ver todas para que no se abulte tanto"
+
+## Acciones Realizadas
+1. **Estadísticas**: solo se muestra la compra más reciente con hasta 3 productos ("y N producto(s) más") y el enlace **Ver todas (N) ›** cuando hay más de una compra en el periodo.
+2. **Modal "Historial de compras"** (`views/dialogs/history_dialog.py`): todas las compras del periodo con su total, altura ajustada al contenido y scroll en pantallas chicas.
+3. **Reutilización**: `build_purchase_card` arma la tarjeta en Estadísticas y en el modal; la tarjeta es tocable y usa un fondo que contrasta dentro del modal.
+4. **Inicio**: la tarjeta de gasto abre el historial de la semana sin salir de Inicio.
+
+## Validación
+- Suites anteriores sin fallos y capturas a 400 px en modo claro y oscuro (Estadísticas, modal y apertura desde Inicio).

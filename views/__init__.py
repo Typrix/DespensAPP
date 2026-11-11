@@ -22,6 +22,7 @@ from views.widgets import (
     EmptyState,
     PurchaseHistoryRow,
     PurchaseGroupCard,
+    build_purchase_card,
 )
 from views.dialogs import (
     BaseFormModal,
@@ -35,6 +36,7 @@ from views.dialogs import (
     AuthModal,
     CheckoutModal,
     AlertsModal,
+    PurchaseHistoryModal,
 )
 
 __all__ = [
@@ -57,6 +59,7 @@ __all__ = [
     "EmptyState",
     "PurchaseHistoryRow",
     "PurchaseGroupCard",
+    "build_purchase_card",
     "BaseFormModal",
     "EditItemModal",
     "AddPantryItemModal",
@@ -68,4 +71,5 @@ __all__ = [
     "AuthModal",
     "CheckoutModal",
     "AlertsModal",
+    "PurchaseHistoryModal",
 ]

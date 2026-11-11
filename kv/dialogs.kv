@@ -2,6 +2,7 @@
 # ========================================================
 # Diálogos y Modales Visuales para DespensAPP
 # ========================================================
+#:import Window kivy.core.window.Window
 #:import numeric_input_filter controllers.validators.numeric_input_filter
 
 <BaseFormModal>:
@@ -1993,3 +1994,62 @@
                     pos: self.pos
                     size: self.size
                     radius: [12, 12, 12, 12]
+
+# --------------------------------------------------------
+# Modal: Historial de compras del periodo (Ver todas)
+# --------------------------------------------------------
+<PurchaseHistoryModal>:
+    width: min(dp(440), Window.width - dp(24))
+    # Se ajusta al contenido, con tope en el alto de la pantalla (luego hace scroll)
+    height: min(Window.height - dp(72), dp(96) + history_box.height)
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: ["18dp", "16dp", "18dp", "16dp"]
+        spacing: "10dp"
+        canvas.before:
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [24, 24, 24, 24]
+
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            BoxLayout:
+                orientation: "vertical"
+                Label:
+                    text: "Historial de compras"
+                    font_size: "17sp"
+                    bold: True
+                    color: app.text_primary_color
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+                Label:
+                    text: root.summary
+                    font_size: "11.5sp"
+                    color: app.text_secondary_color
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+                    shorten: True
+            MDIconButton:
+                icon: "close"
+                style: "standard"
+                theme_icon_color: "Custom"
+                icon_color: app.text_secondary_color
+                pos_hint: {"center_y": 0.5}
+                on_release: root.dismiss()
+
+        ScrollView:
+            do_scroll_x: False
+            bar_width: "3dp"
+            BoxLayout:
+                id: history_box
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: "10dp"

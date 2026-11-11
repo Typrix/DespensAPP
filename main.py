@@ -62,6 +62,8 @@ from views import (
     AuthModal,
     CheckoutModal,
     AlertsModal,
+    PurchaseHistoryModal,
+    build_purchase_card,
 )
 
 
@@ -94,6 +96,7 @@ class MainApp(MDApp):
     # Textos derivados (KV no reevalúa expresiones como prop.upper(), por eso se calculan aquí)
     stats_period_tag = StringProperty("ÚLTIMA SEMANA")
     stats_spent_title = StringProperty("Gasto · última semana")
+    stats_purchase_count = NumericProperty(0)  # compras del periodo (para "Ver todas")
 
     # Mi Despensa: búsqueda, filtro activo y reposición en bloque
     pantry_filter = StringProperty("all")
@@ -615,8 +618,8 @@ class MainApp(MDApp):
         self.stats_period = period
         self.cargar_historial_compras()
 
-    def cargar_historial_compras(self, max_rows=20):
-        """Muestra el gasto total y las compras del periodo elegido."""
+    def cargar_historial_compras(self, max_rows=3):
+        """Muestra el gasto del periodo y solo la última compra (el resto en "Ver todas")."""
         if not hasattr(self, 'controller'):
             return
         uid = self.auth.current_user.id if self.auth.current_user else None
@@ -632,6 +635,8 @@ class MainApp(MDApp):
         if not container:
             return
         container.clear_widgets()
+        self._stats_spending = data
+        self.stats_purchase_count = len(data["groups"])
         if not data["records"]:
             container.add_widget(EmptyState(
                 icon="receipt-text-outline",
@@ -641,33 +646,23 @@ class MainApp(MDApp):
                 action=lambda: self.cambiar_pantalla("lists"),
             ))
             return
-        from controllers.validators import format_number
-        # Una tarjeta por lista; como máximo max_rows productos visibles en total
-        shown = 0
-        for group in data["groups"]:
-            card = PurchaseGroupCard(
-                name=group["name"],
-                info=f"{group['date_str']} · {group['count']} {'producto' if group['count'] == 1 else 'productos'}",
-                subtotal_str=group["subtotal_str"],
-            )
-            for rec in group["records"]:
-                if shown >= max_rows:
-                    break
-                card.add_row(PurchaseHistoryRow(
-                    title=rec.title,
-                    detail=f"{rec.formatted_date} · {format_number(rec.quantity)} {rec.unit}",
-                    price_str=rec.formatted_price if rec.price > 0 else "Sin precio",
-                ))
-                shown += 1
-            hidden = group["count"] - len(card.ids.rows_box.children)
-            if hidden > 0:
-                card.add_row(PurchaseHistoryRow(title=f"y {hidden} producto(s) más", detail="", price_str=""))
-            container.add_widget(card)
+        # Solo la compra más reciente, resumida; tocarla abre el historial completo
+        card = build_purchase_card(data["groups"][0], max_rows=max_rows, tappable=True)
+        card.bind(on_release=lambda *_: self.ver_todas_compras())
+        container.add_widget(card)
+
+    def ver_todas_compras(self):
+        """Abre el historial completo del periodo elegido en Estadísticas."""
+        data = getattr(self, "_stats_spending", None)
+        if data is None:
+            uid = self.auth.current_user.id if self.auth.current_user else None
+            data = self.controller.purchases.get_spending(uid, self.stats_period)
+        PurchaseHistoryModal(spending=data).open()
 
     def abrir_historial_compras(self):
-        """Desde Inicio: abre Estadísticas en la vista de la última semana."""
-        self.stats_period = "week"
-        self.cambiar_pantalla("stats")
+        """Desde Inicio: abre el historial de la última semana sin salir de Inicio."""
+        uid = self.auth.current_user.id if self.auth.current_user else None
+        PurchaseHistoryModal(spending=self.controller.purchases.get_spending(uid, "week")).open()
 
     # ----------------------------------------------------
     # Interacción: Botón '+' según Pantalla Activa

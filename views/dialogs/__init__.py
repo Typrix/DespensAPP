@@ -19,6 +19,7 @@ from views.dialogs.list_dialog import (
 from views.dialogs.auth_dialog import AuthModal
 from views.dialogs.checkout_dialog import CheckoutModal, CheckoutRow
 from views.dialogs.alerts_dialog import AlertsModal
+from views.dialogs.history_dialog import PurchaseHistoryModal
 
 # Cargar la definición declarativa dialogs.kv desde la carpeta kv/
 DIALOGS_KV_PATH = os.path.abspath(
@@ -41,4 +42,5 @@ __all__ = [
     "CheckoutModal",
     "CheckoutRow",
     "AlertsModal",
+    "PurchaseHistoryModal",
 ]
