@@ -9,7 +9,7 @@ import os
 import sys
 from typing import Optional, Dict, Any
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -79,6 +79,19 @@ def render_dashboard(request: Request):
         request=request,
         name="index.html",
         context={"kpis": kpis}
+    )
+
+
+@app.get("/remote_config.json", tags=["Configuración"])
+@app.get("/api/v1/remote-config", tags=["Configuración"])
+def get_remote_config():
+    """Sirve el archivo de configuración remota para la aplicación móvil y clientes."""
+    config_path = os.path.join(PARENT_DIR, "remote_config.json")
+    if os.path.isfile(config_path):
+        return FileResponse(config_path, media_type="application/json")
+    return JSONResponse(
+        status_code=404,
+        content={"detail": "Archivo remote_config.json no encontrado"}
     )
 
 
