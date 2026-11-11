@@ -408,11 +408,18 @@
                 size: self.size
                 radius: [24, 24, 24, 24]
 
-        # Encabezado: nombre + estado, editar y cerrar
+        # Encabezado: ícono, nombre + estado, editar y cerrar
         BoxLayout:
             size_hint_y: None
             height: "50dp"
-            spacing: "4dp"
+            spacing: "12dp"
+
+            ProductBadge:
+                icon: root.item_icon
+                tint: root.tint_dark if app.modo_oscuro else root.tint_light
+                badge_size: dp(46)
+                radius: 14
+                pos_hint: {"center_y": 0.5}
 
             BoxLayout:
                 orientation: "vertical"
@@ -445,13 +452,6 @@
                                 pos: self.pos
                                 size: self.size
                                 radius: [10, 10, 10, 10]
-                    MDIcon:
-                        icon: root.item_category_icon
-                        size_hint: None, None
-                        size: "16dp", "20dp"
-                        font_size: "15sp"
-                        theme_text_color: "Custom"
-                        text_color: app.text_secondary_color
                     Label:
                         text: root.item_category
                         font_size: "11sp"
@@ -1123,6 +1123,15 @@
     TapArea:
         spacing: "6dp"
         on_release: root.edit()
+        MDIcon:
+            icon: root.icon
+            size_hint_x: None
+            width: "20dp"
+            font_size: "18sp"
+            theme_text_color: "Custom"
+            text_color: app.text_secondary_color if root.is_checked else (root.tint_dark if app.modo_oscuro else root.tint_light)
+            opacity: 0.6 if root.is_checked else 1
+            pos_hint: {"center_y": 0.5}
         Label:
             text: f"[s]{root.name}[/s]" if root.is_checked else root.name
             markup: True

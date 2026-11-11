@@ -260,3 +260,19 @@
 ## Validación
 - 25 pruebas nuevas (orden, búsqueda con tildes, filtros, conteos, validación y guardado de categoría, reposición sin duplicados) más las suites anteriores, todas sobre SQLite temporal.
 - Recorrido de la pantalla con capturas en modo claro y oscuro, en ancho móvil (400) y escritorio (800).
+
+---
+
+## Entrada / Prompt del Usuario (Íconos por producto)
+> "hay una forma de que los iconos sean mas relacionados al producto, recuerda que al final sera una app para celular"
+
+## Acciones Realizadas
+1. **Ícono según el nombre** (`controllers/product_icons.py`, sin Kivy): diccionario de ~150 palabras y frases comunes → ícono de Material Design incluido en KivyMD (sin internet ni peso extra en el APK). Ignora tildes y plurales, las frases ganan ("pasta de dientes" no es "pasta") y luego la primera palabra reconocida ("leche de almendra" → leche). Si no se reconoce, se usa el ícono de la categoría.
+2. **Color por categoría**: la insignia del ícono toma el tono de su categoría, ajustado para modo claro y oscuro (`ProductBadge` reutilizable en la fila y en el detalle).
+3. **Categoría sugerida**: en "Añadir a Despensa" la categoría se completa al escribir el nombre, salvo que el usuario ya la haya elegido.
+4. **Listas de compras**: cada producto muestra su ícono junto al nombre.
+5. Se descartaron emojis (Kivy no los muestra a color en Android) e imágenes PNG (más peso y licencias).
+
+## Validación
+- 29 pruebas nuevas (cada ícono existe en KivyMD, tildes, plurales, frases, coincidencias falsas como "pañal"/"pan" y "salsa"/"sal", sugerencia de categoría) más las suites anteriores.
+- Capturas en modo claro y oscuro a 400 px: fila, detalle, formulario con sugerencia y lista de compras. Se corrigió el nombre de categoría cortado en el encabezado del detalle.

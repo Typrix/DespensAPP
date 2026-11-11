@@ -91,24 +91,11 @@
     opacity: 0.85 if self.state == "down" else 1
     on_release: root.open_detail()
 
-    # Icono según la categoría, teñido con el estado del stock
-    AnchorLayout:
-        size_hint: None, None
-        size: "38dp", "38dp"
+    # Ícono según el producto; el tono indica la categoría
+    ProductBadge:
+        icon: root.icon
+        tint: root.tint_dark if app.modo_oscuro else root.tint_light
         pos_hint: {"center_y": 0.5}
-        canvas.before:
-            Color:
-                rgba: app.leaf_badge_bg_color
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [12, 12, 12, 12]
-        MDIcon:
-            icon: root.icon
-            font_size: "20sp"
-            theme_text_color: "Custom"
-            text_color: app.accent_green_color
-            pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
     # Nombre, cantidad + estado y vencimiento
     BoxLayout:
@@ -181,6 +168,29 @@
         StockStepButton:
             text: "+"
             on_release: root.quick_adjust(1)
+
+
+# Insignia de producto: ícono con fondo suave del color de su categoría
+<ProductBadge@AnchorLayout>:
+    icon: "leaf"
+    tint: [0.16, 0.52, 0.32, 1.0]
+    badge_size: dp(38)
+    radius: 12
+    size_hint: None, None
+    size: self.badge_size, self.badge_size
+    canvas.before:
+        Color:
+            rgba: self.tint[:3] + [0.20 if app.modo_oscuro else 0.13]
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [self.radius] * 4
+    MDIcon:
+        icon: root.icon
+        font_size: root.badge_size * 0.53
+        theme_text_color: "Custom"
+        text_color: root.tint
+        pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
 
 # Botón circular -/+ de la fila de despensa

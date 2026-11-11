@@ -12,7 +12,9 @@ from kivymd.app import MDApp
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.pickers import MDModalDatePicker
 from views.dialogs.base import BaseFormModal
-from controllers.pantry_organizer import PANTRY_CATEGORIES, DEFAULT_CATEGORY, category_icon, category_of
+from controllers.pantry_organizer import (PANTRY_CATEGORIES, DEFAULT_CATEGORY, category_icon, category_of,
+                                          category_tint)
+from controllers.product_icons import product_icon, suggest_category
 from controllers.validators import (
     PANTRY_UNITS,
     NAME_MAX_LENGTH,
@@ -75,6 +77,8 @@ class AddPantryItemModal(BaseFormModal):
         self.callback_add = callback_add
         self.unit_menu = None
         self.category_menu = None
+        self._category_picked = False
+        self.ids.field_name.ids.text_input.bind(text=lambda inst, val: self._suggest_category(val))
         self.clear_error_on_input(
             self.ids.field_name.ids.text_input,
             self.ids.field_quantity.ids.text_input,
@@ -123,11 +127,18 @@ class AddPantryItemModal(BaseFormModal):
             self.category_menu = _category_menu(caller, self.set_category)
         self.category_menu.open()
 
-    def set_category(self, category):
+    def set_category(self, category, picked=True):
+        """picked=False cuando la categoría viene de la sugerencia automática."""
+        self._category_picked = self._category_picked or picked
         self.selected_category = category
         self.selected_category_icon = category_icon(category)
         if self.category_menu:
             self.category_menu.dismiss()
+
+    def _suggest_category(self, name):
+        """'Yogur' -> Lácteos; respeta la categoría si el usuario ya la eligió."""
+        if not self._category_picked:
+            self.set_category(suggest_category(name) or DEFAULT_CATEGORY, picked=False)
 
     def open_date_picker(self):
         """Abre el selector interactivo de fecha mediante calendario visual (MDModalDatePicker)."""
@@ -205,6 +216,9 @@ class PantryItemDetailModal(BaseFormModal):
     item_category_icon = StringProperty(category_icon(DEFAULT_CATEGORY))
     edit_category = StringProperty(DEFAULT_CATEGORY)
     edit_category_icon = StringProperty(category_icon(DEFAULT_CATEGORY))
+    item_icon = StringProperty(category_icon(DEFAULT_CATEGORY))
+    tint_light = ListProperty(category_tint(DEFAULT_CATEGORY))
+    tint_dark = ListProperty(category_tint(DEFAULT_CATEGORY, dark=True))
 
     def __init__(self, item, callback_set_qty=None, callback_finish=None, callback_delete=None,
                  callback_update_exp=None, callback_add_to_list=None, callback_list_options=None,
@@ -244,6 +258,9 @@ class PantryItemDetailModal(BaseFormModal):
         self.unit = item.unit or "un."
         self.item_category = category_of(item)
         self.item_category_icon = category_icon(self.item_category)
+        self.item_icon = product_icon(item.name, self.item_category)
+        self.tint_light = category_tint(self.item_category)
+        self.tint_dark = category_tint(self.item_category, dark=True)
         self.min_threshold = float(item.min_threshold)
         self.step = step_for_unit(self.unit)
         self.step_display = format_number(self.step)

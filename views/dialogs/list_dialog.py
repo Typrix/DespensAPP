@@ -14,6 +14,8 @@ from views.dialogs.base import BaseFormModal, EditItemModal
 from controllers.validators import validate_list_form, validate_cart_form, format_number
 from controllers.purchase_controller import summarize_items, format_money
 from views.widgets.empty_state import EmptyState
+from controllers.product_icons import name_visual
+from controllers.pantry_organizer import category_tint
 
 
 class ColorChipButton(Button):
@@ -105,12 +107,18 @@ class ShoppingListItemRow(BoxLayout):
     price = NumericProperty(0)
     price_str = StringProperty("")
     is_checked = BooleanProperty(False)
+    icon = StringProperty("leaf")
+    tint_light = ListProperty(category_tint("General"))
+    tint_dark = ListProperty(category_tint("General", dark=True))
 
     def __init__(self, item, callback_toggle, callback_edit, callback_delete, **kwargs):
         super().__init__(**kwargs)
         self.item = item
         self.item_id = item.id
         self.name = item.name
+        self.icon, category = name_visual(item.name)
+        self.tint_light = category_tint(category)
+        self.tint_dark = category_tint(category, dark=True)
         self.price = item.price
         self.price_str = item.formatted_price if item.price > 0 else ""
         self.is_checked = item.is_checked

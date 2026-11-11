@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Widgets de Mi Despensa para DespensAPP.
-- PantryItemRow: fila con icono de categoría, estado, vencimiento y ajuste rápido -/+.
+- PantryItemRow: fila con ícono del producto (color según categoría), estado, vencimiento y ajuste rápido -/+.
 - PantryFilterChip: chip de filtro (Todos, Por vencer, Por agotarse, categorías).
 - PantrySectionHeader: encabezado de sección por urgencia con su conteo.
 """
@@ -12,7 +12,8 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.properties import StringProperty, NumericProperty, ListProperty
 
-from controllers.pantry_organizer import category_icon, category_of
+from controllers.pantry_organizer import category_of, category_tint
+from controllers.product_icons import item_icon
 from controllers.validators import format_number, step_for_unit
 
 
@@ -29,6 +30,8 @@ class PantryItemRow(ButtonBehavior, BoxLayout):
     quantity_val = NumericProperty(0)
     unit = StringProperty("un.")
     icon = StringProperty("leaf")
+    tint_light = ListProperty(category_tint("General"))
+    tint_dark = ListProperty(category_tint("General", dark=True))
     step_label = StringProperty("1")
 
     def __init__(self, item=None, **kwargs):
@@ -50,7 +53,10 @@ class PantryItemRow(ButtonBehavior, BoxLayout):
         self.expiration_str = item.expiration_status if item.expiration_date else ""
         self.expiration_color = item.expiration_text_color
         self.raw_expiration = item.expiration_date or ""
-        self.icon = category_icon(category_of(item))
+        category = category_of(item)
+        self.icon = item_icon(item)
+        self.tint_light = category_tint(category)
+        self.tint_dark = category_tint(category, dark=True)
         self.step_label = format_number(step_for_unit(self.unit))
 
     def open_detail(self):
