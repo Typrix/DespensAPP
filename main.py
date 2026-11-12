@@ -21,7 +21,8 @@ from kivy.properties import (
 from kivy.graphics import Color, Rectangle
 
 from models import DatabaseManager
-from controllers.purchase_controller import summarize_items, format_money
+from controllers.purchase_controller import summarize_items, format_money, PRO_PERIODS
+from controllers.list_controller import FREE_MAX_LISTS
 from controllers.pantry_organizer import (
     FILTER_ALL, FILTER_EXPIRING, FILTER_LOW, CATEGORY_FILTER_PREFIX,
     group_pantry, filter_counts, used_categories, restock_candidates,
@@ -63,6 +64,7 @@ from views import (
     CheckoutModal,
     AlertsModal,
     PurchaseHistoryModal,
+    ProUpgradeModal,
     build_purchase_card,
 )
 
@@ -84,6 +86,7 @@ class MainApp(MDApp):
     user_email_str = StringProperty("sofia@despensapp.com")
     user_initials_str = StringProperty("SO")
     user_greeting_str = StringProperty("Bienvenida, Sofía")
+    user_is_pro = BooleanProperty(False)
 
 
     # Alertas de despensa (campana de Inicio)
@@ -246,6 +249,7 @@ class MainApp(MDApp):
             self.user_name_str = user.name
             self.user_email_str = user.email
             self.user_initials_str = user.avatar_initials
+            self.user_is_pro = bool(user.is_pro)
             first_name = user.name.split()[0] if user.name else "Usuario"
             self.user_greeting_str = f"Bienvenida, {first_name}"
             if hasattr(self, 'analytics') and self.analytics:
@@ -254,7 +258,10 @@ class MainApp(MDApp):
             self.user_name_str = "Iniciar Sesión"
             self.user_email_str = "cuenta@despensapp.com"
             self.user_initials_str = "??"
+            self.user_is_pro = False
             self.user_greeting_str = "Bienvenido a DespensAPP"
+        if not self.user_is_pro and self.stats_period in PRO_PERIODS:
+            self.stats_period = "week"
 
     def actualizar_config_remota(self):
         """Carga o refresca la configuración remota y actualiza el estado reactivo de la UI."""
@@ -514,20 +521,28 @@ class MainApp(MDApp):
         self.actualizar_estadisticas()
 
     def reponer_todo_despensa(self):
-        """Anota en 'Reponer despensa' todo lo que está por agotarse o sin stock (sin duplicar)."""
+        """Anota en 'Reponer despensa' (o en la lista activa si es cuenta básica) todo lo que falta."""
         if not self.auth.current_user:
             return
         candidates = restock_candidates(getattr(self, "_pantry_items", []))
         if not candidates:
             return
         purchases = self.controller.purchases
-        list_id = purchases.find_or_create_list(self.auth.current_user.id, "Reponer despensa", "#F59E0B")
+        active_lists = self.opciones_listas()
+        if not self.user_is_pro and len(active_lists) >= FREE_MAX_LISTS:
+            # En versión básica con 1 lista ya creada, usa su lista existente sin crear una segunda
+            reponer_match = next((lid for lid, name in active_lists if name.strip().lower() == "reponer despensa"), None)
+            list_id = reponer_match if reponer_match is not None else active_lists[0][0]
+            list_name = next((name for lid, name in active_lists if lid == list_id), "tu lista")
+        else:
+            list_id = purchases.find_or_create_list(self.auth.current_user.id, "Reponer despensa", "#F59E0B")
+            list_name = "Reponer despensa"
         added = purchases.add_many_to_list(list_id, candidates)
         self.cargar_listas()
         if added:
-            show_info_toast(f"{added} producto(s) anotados en Reponer despensa")
+            show_info_toast(f"{added} producto(s) anotados en {list_name}")
         else:
-            show_info_toast("Todo lo que falta ya estaba en Reponer despensa")
+            show_info_toast(f"Todo lo que falta ya estaba en {list_name}")
 
     def cargar_listas(self):
         """Carga y renderiza las tarjetas de listas de compras."""
@@ -611,12 +626,47 @@ class MainApp(MDApp):
         self.cargar_historial_compras()
 
     # ----------------------------------------------------
-    # Historial de Compras por Periodo (Semana / Mes / Año)
+    # Historial de Compras por Periodo (Semana / Mes / Año / Todo)
     # ----------------------------------------------------
     def cambiar_periodo_estadisticas(self, period):
-        """Cambia el periodo del historial y recalcula el gasto mostrado."""
+        """Cambia el periodo del historial (exige versión Pro para 'year' y 'all')."""
+        if period in PRO_PERIODS and not self.user_is_pro:
+            self.abrir_modal_pro(target_period=period)
+            return
         self.stats_period = period
         self.cargar_historial_compras()
+
+    def abrir_modal_pro(self, target_period: str = ""):
+        """Despliega el modal para pagar y activar la versión Pro de DespensAPP."""
+        if not hasattr(self, "auth") or not self.auth.current_user:
+            self.abrir_modal_auth(can_cancel=True)
+            return
+        if self.user_is_pro and not target_period:
+            show_info_toast("Ya tienes DespensAPP Pro activado")
+            return
+        ProUpgradeModal(
+            target_period=target_period,
+            callback_confirm=self.activar_version_pro,
+        ).open()
+
+    def activar_version_pro(self, target_period: str = "") -> bool:
+        """Activa is_pro = 1 en la base de datos para el usuario actual tras confirmar el pago."""
+        if not hasattr(self, "auth") or not self.auth.current_user:
+            return False
+        ok, msg = self.auth.upgrade_to_pro()
+        if not ok:
+            show_info_toast(msg)
+            return False
+        self.user_is_pro = True
+        if hasattr(self, "analytics") and self.analytics:
+            self.analytics.track_event("upgrade_to_pro", metadata={"target_period": target_period or "profile"})
+        if target_period in PRO_PERIODS:
+            self.stats_period = target_period
+        self.cargar_historial_compras()
+        show_info_toast(msg)
+        if target_period == "lists":
+            AddShoppingListModal(callback_add=self.agregar_lista_compras).open()
+        return True
 
     def cargar_historial_compras(self, max_rows=3):
         """Muestra el gasto del periodo y solo la última compra (el resto en "Ver todas")."""
@@ -675,6 +725,24 @@ class MainApp(MDApp):
 
         self.abrir_formulario(self.current_screen_name)
 
+    def puede_crear_lista(self) -> bool:
+        """Verifica si el usuario puede crear otra lista (1 gratis en versión básica, ilimitadas en Pro)."""
+        if not self.auth.current_user:
+            return False
+        if self.user_is_pro:
+            return True
+        active_lists = [
+            lst for lst in self.db.get_shopping_lists(self.auth.current_user.id)
+            if not self.is_pending_delete("list", lst.id)
+        ]
+        if hasattr(self, "list_ctrl") and self.list_ctrl:
+            return self.list_ctrl.can_create_list(
+                self.auth.current_user.id,
+                is_pro=self.user_is_pro,
+                active_count=len(active_lists),
+            )
+        return len(active_lists) < FREE_MAX_LISTS
+
     def abrir_formulario(self, scr):
         """Abre el formulario de alta de la sección indicada (despensa o listas)."""
         if not self.auth.current_user:
@@ -684,6 +752,9 @@ class MainApp(MDApp):
             modal = AddPantryItemModal(callback_add=self.agregar_item_despensa)
             modal.open()
         else:  # listas (y el '+' de Inicio): crear una lista nueva
+            if not self.puede_crear_lista():
+                self.abrir_modal_pro(target_period="lists")
+                return
             modal = AddShoppingListModal(callback_add=self.agregar_lista_compras)
             modal.open()
 
@@ -843,6 +914,9 @@ class MainApp(MDApp):
 
     def agregar_lista_compras(self, name, color_hex, initial_items=""):
         if not self.auth.current_user:
+            return
+        if not self.puede_crear_lista():
+            self.abrir_modal_pro(target_period="lists")
             return
         if hasattr(self, 'list_ctrl'):
             self.list_ctrl.add_list(self.auth.current_user.id, name, color_hex, initial_items)

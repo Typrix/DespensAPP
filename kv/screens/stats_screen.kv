@@ -57,7 +57,7 @@
                         text_color: app.accent_green_color
                         pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-            # Selector de periodo del historial (Semana / Mes / Año)
+            # Selector de periodo del historial (Semana / Mes / 6 meses / Año)
             BoxLayout:
                 size_hint_y: None
                 height: "40dp"
@@ -78,8 +78,13 @@
                     text: "Mes"
                     period: "month"
                 PeriodChip:
+                    text: "6 meses"
+                    period: "semester"
+                    requires_pro: True
+                PeriodChip:
                     text: "Año"
                     period: "year"
+                    requires_pro: True
 
             # Tarjetas Resumen (Lado a Lado)
             BoxLayout:

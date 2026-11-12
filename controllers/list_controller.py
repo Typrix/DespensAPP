@@ -8,6 +8,8 @@ from typing import List, Optional
 from models.shopping_list import ShoppingList, ShoppingListItem
 from models.database import DatabaseManager
 
+FREE_MAX_LISTS = 1
+
 
 class ListController:
     """Controlador para operaciones de negocio sobre listas de supermercado."""
@@ -15,6 +17,13 @@ class ListController:
     def __init__(self, db: DatabaseManager, analytics=None):
         self.db = db
         self.analytics = analytics
+
+    def can_create_list(self, user_id: int, is_pro: bool = False, active_count: Optional[int] = None) -> bool:
+        """Indica si el usuario puede crear una nueva lista (1 gratis en versión básica, ilimitadas en Pro)."""
+        if is_pro:
+            return True
+        count = active_count if active_count is not None else len(self.db.get_shopping_lists(user_id))
+        return count < FREE_MAX_LISTS
 
     def get_lists(self, user_id: int) -> List[ShoppingList]:
         """Obtiene todas las listas de compras del usuario."""

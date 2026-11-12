@@ -18,8 +18,10 @@ from models.shopping_list import ShoppingListItem
 PERIODS = {
     "week": (7, "Última semana"),
     "month": (30, "Último mes"),
+    "semester": (180, "Últimos 6 meses"),
     "year": (365, "Último año"),
 }
+PRO_PERIODS = {"semester", "year"}
 DEFAULT_NEW_THRESHOLD = 1.0
 LOOSE_PURCHASES = "Compras sueltas"     # compras sin lista (registros antiguos del carrito)
 MIGRATED_CART_LIST = "Mi carrito"       # lista que recibe lo que estaba en el carrito sin lista
@@ -194,9 +196,11 @@ class PurchaseController:
     # ------------------------------------------------------------------
     # Historial y gasto por periodo
     # ------------------------------------------------------------------
-    def period_start(self, period: str) -> str:
-        """Fecha de inicio del periodo (texto comparable con purchased_at)."""
+    def period_start(self, period: str) -> Optional[str]:
+        """Fecha de inicio del periodo (texto comparable con purchased_at) o None si es todo."""
         days = PERIODS.get(period, PERIODS["week"])[0]
+        if days is None:
+            return None
         return (self.clock() - timedelta(days=days)).strftime(PURCHASE_DATETIME_FORMAT)
 
     def get_spending(self, user_id: Optional[int], period: str = "week") -> Dict[str, Any]:

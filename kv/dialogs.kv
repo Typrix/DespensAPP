@@ -2053,3 +2053,243 @@
                 size_hint_y: None
                 height: self.minimum_height
                 spacing: "10dp"
+
+
+# --------------------------------------------------------
+# 8. Modal: DespensAPP Pro (Desbloqueo de Estadísticas Avanzadas)
+# --------------------------------------------------------
+<ProFeatureRow@BoxLayout>:
+    icon_name: "check-circle-outline"
+    title_text: ""
+    desc_text: ""
+    size_hint_y: None
+    height: "44dp"
+    spacing: "10dp"
+    padding: ["10dp", "6dp", "10dp", "6dp"]
+    canvas.before:
+        Color:
+            rgba: app.sage_container_color
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [12, 12, 12, 12]
+
+    AnchorLayout:
+        size_hint: None, None
+        size: "28dp", "28dp"
+        pos_hint: {"center_y": 0.5}
+        canvas.before:
+            Color:
+                rgba: [0.96, 0.62, 0.04, 0.18]
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [8, 8, 8, 8]
+        MDIcon:
+            icon: root.icon_name
+            font_size: "16sp"
+            theme_text_color: "Custom"
+            text_color: [0.92, 0.58, 0.05, 1.0]
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+    BoxLayout:
+        orientation: "vertical"
+        pos_hint: {"center_y": 0.5}
+        Label:
+            text: root.title_text
+            font_size: "12.5sp"
+            bold: True
+            color: app.text_primary_color
+            halign: "left"
+            valign: "bottom"
+            text_size: self.size
+        Label:
+            text: root.desc_text
+            font_size: "10.5sp"
+            color: app.text_secondary_color
+            halign: "left"
+            valign: "top"
+            text_size: self.size
+
+<ProUpgradeModal>:
+    height: dp(415) + (dp(28) if root.error_text else 0)
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: ["20dp", "18dp", "20dp", "18dp"]
+        spacing: "10dp"
+        canvas.before:
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [24, 24, 24, 24]
+
+        # Encabezado con insignia PRO
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            spacing: "12dp"
+
+            AnchorLayout:
+                size_hint: None, None
+                size: "42dp", "42dp"
+                pos_hint: {"center_y": 0.5}
+                canvas.before:
+                    Color:
+                        rgba: [0.96, 0.62, 0.04, 0.16]
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [14, 14, 14, 14]
+                MDIcon:
+                    icon: "crown"
+                    font_size: "22sp"
+                    theme_text_color: "Custom"
+                    text_color: [0.92, 0.58, 0.05, 1.0]
+                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+            BoxLayout:
+                orientation: "vertical"
+                pos_hint: {"center_y": 0.5}
+                BoxLayout:
+                    size_hint_y: None
+                    height: "22dp"
+                    spacing: "6dp"
+                    Label:
+                        text: "DespensAPP Pro"
+                        font_size: "17sp"
+                        bold: True
+                        color: app.text_primary_color
+                        size_hint_x: None
+                        width: self.texture_size[0]
+                        halign: "left"
+                        valign: "middle"
+                    AnchorLayout:
+                        size_hint: None, None
+                        size: "38dp", "18dp"
+                        pos_hint: {"center_y": 0.5}
+                        canvas.before:
+                            Color:
+                                rgba: [0.92, 0.58, 0.05, 1.0]
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [6, 6, 6, 6]
+                        Label:
+                            text: "PRO"
+                            font_size: "9.5sp"
+                            bold: True
+                            color: [1, 1, 1, 1]
+                Label:
+                    text: "Listas y estadísticas sin límites"
+                    font_size: "11sp"
+                    color: app.text_secondary_color
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+
+        Label:
+            text: root.context_subtitle
+            font_size: "12sp"
+            color: app.text_secondary_color
+            size_hint_y: None
+            height: "34dp"
+            halign: "left"
+            valign: "middle"
+            text_size: self.width, None
+
+        # Beneficios incluidos
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: "144dp"
+            spacing: "6dp"
+
+            ProFeatureRow:
+                icon_name: "clipboard-list-outline"
+                title_text: "Listas de compras ilimitadas"
+                desc_text: "Crea más de 1 lista para organizar todas tus compras."
+
+            ProFeatureRow:
+                icon_name: "calendar-range"
+                title_text: "Estadísticas de 6 meses y Año"
+                desc_text: "Desbloquea el análisis semestral y anual de tus gastos."
+
+            ProFeatureRow:
+                icon_name: "shield-check-outline"
+                title_text: "Activación permanente en tu cuenta"
+                desc_text: "Pago único asociado a tu perfil en la base de datos."
+
+        # Tarjeta de precio
+        BoxLayout:
+            size_hint_y: None
+            height: "36dp"
+            padding: ["12dp", "4dp", "12dp", "4dp"]
+            canvas.before:
+                Color:
+                    rgba: app.leaf_badge_bg_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [10, 10, 10, 10]
+            Label:
+                text: "Licencia completa DespensAPP Pro"
+                font_size: "11.5sp"
+                bold: True
+                color: app.text_primary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+            Label:
+                text: "$4.990"
+                size_hint_x: None
+                width: "64dp"
+                font_size: "14sp"
+                bold: True
+                color: app.accent_green_color
+                halign: "right"
+                valign: "middle"
+                text_size: self.size
+
+        FormMessageLabel:
+            text: root.error_text
+
+        # Botones de acción
+        BoxLayout:
+            size_hint_y: None
+            height: "42dp"
+            spacing: "10dp"
+
+            Button:
+                text: "Más tarde"
+                size_hint_x: 0.42
+                font_size: "13sp"
+                color: app.text_secondary_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.dismiss()
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12, 12, 12, 12]
+
+            Button:
+                text: "Pagar y activar Pro"
+                size_hint_x: 0.58
+                font_size: "13sp"
+                bold: True
+                color: [1, 1, 1, 1]
+                background_color: [0, 0, 0, 0]
+                on_release: root.confirm_upgrade()
+                canvas.before:
+                    Color:
+                        rgba: [0.92, 0.58, 0.05, 1.0]
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12, 12, 12, 12]
+

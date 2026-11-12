@@ -37,6 +37,7 @@ from views.dialogs import (
     CheckoutModal,
     AlertsModal,
     PurchaseHistoryModal,
+    ProUpgradeModal,
 )
 
 __all__ = [
@@ -72,4 +73,5 @@ __all__ = [
     "CheckoutModal",
     "AlertsModal",
     "PurchaseHistoryModal",
+    "ProUpgradeModal",
 ]
