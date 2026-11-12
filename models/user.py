@@ -15,6 +15,7 @@ class User:
     email: str
     avatar_initials: str = "US"
     password_hash: str = ""
+    is_pro: int = 0
 
     @staticmethod
     def generate_initials(full_name: str) -> str:

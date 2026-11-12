@@ -68,10 +68,26 @@ class AuthController:
                 json.dump({
                     "user_id": self.current_user.id,
                     "email": self.current_user.email,
-                    "name": self.current_user.name
+                    "name": self.current_user.name,
+                    "is_pro": int(self.current_user.is_pro or 0),
                 }, f, indent=4)
         except Exception as e:
             print(f"[Auth] Error al guardar sesión: {e}")
+
+    def is_pro_user(self) -> bool:
+        """Indica si el usuario activo tiene la versión Pro activada (is_pro == 1)."""
+        return bool(self.current_user and int(self.current_user.is_pro or 0) == 1)
+
+    def upgrade_to_pro(self) -> Tuple[bool, str]:
+        """Activa la versión Pro (is_pro = 1) en la base de datos para el usuario actual."""
+        if not self.current_user:
+            return False, "Debes iniciar sesión para activar la versión Pro."
+        updated = self.db.update_user_pro_status(self.current_user.id, 1)
+        if not updated:
+            return False, "No se pudo actualizar el estado Pro en la base de datos."
+        self.current_user.is_pro = 1
+        self._save_session()
+        return True, "¡Versión Pro activada con éxito!"
 
     def login(self, email: str, password: str) -> Tuple[bool, str]:
         """Inicia sesión con correo y contraseña, validando disponibilidad de servidor."""

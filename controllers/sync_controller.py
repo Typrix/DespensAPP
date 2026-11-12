@@ -60,12 +60,14 @@ class SyncController:
             sqlite_conn.row_factory = sqlite3.Row
             sqlite_cur = sqlite_conn.cursor()
 
-            sqlite_cur.execute("SELECT id FROM users WHERE LOWER(email) = ?;", (user_email.strip().lower(),))
+            sqlite_cur.execute("SELECT id, is_pro FROM users WHERE LOWER(email) = ?;", (user_email.strip().lower(),))
             user_row = sqlite_cur.fetchone()
             # Si el usuario no existe en SQLite no hay datos offline suyos que migrar.
             # Con None, los filtros "WHERE user_id = ?" no devuelven filas (evita copiar
             # los datos de otro usuario, como la cuenta demo con id 1).
             sqlite_user_id = user_row["id"] if user_row else None
+            if user_row and "is_pro" in user_row.keys() and int(user_row["is_pro"] or 0) == 1 and not mysql_user.is_pro:
+                self.db.update_user_pro_status(mysql_user_id, 1)
 
             # A. Sincronizar Listas de Compras
             sqlite_cur.execute("""

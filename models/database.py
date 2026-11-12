@@ -118,9 +118,14 @@ class DatabaseManager:
                         `email` VARCHAR(150) NOT NULL UNIQUE,
                         `password_hash` VARCHAR(255) NOT NULL,
                         `avatar_initials` VARCHAR(4) DEFAULT 'US',
+                        `is_pro` TINYINT(1) NOT NULL DEFAULT 0,
                         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
                 """)
+                try:
+                    cur.execute("ALTER TABLE `users` ADD COLUMN `is_pro` TINYINT(1) NOT NULL DEFAULT 0;")
+                except Exception:
+                    pass
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS `shopping_lists` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -290,9 +295,14 @@ class DatabaseManager:
                 email TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 avatar_initials TEXT DEFAULT 'US',
+                is_pro INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        try:
+            cur.execute("ALTER TABLE users ADD COLUMN is_pro INTEGER NOT NULL DEFAULT 0;")
+        except Exception:
+            pass
         cur.execute("""
             CREATE TABLE IF NOT EXISTS shopping_lists (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -436,8 +446,23 @@ class DatabaseManager:
     # ----------------------------------------------------
     # Usuarios y Autenticación
     # ----------------------------------------------------
+    @staticmethod
+    def _row_to_user(row) -> User:
+        """Convierte una fila de base de datos (MySQL dict o SQLite Row) en entidad User."""
+        keys = row.keys() if hasattr(row, "keys") else ()
+        is_pro_val = int(row["is_pro"] or 0) if "is_pro" in keys else 0
+        initials = (row["avatar_initials"] if "avatar_initials" in keys else None) or "US"
+        return User(
+            id=row["id"],
+            name=row["name"],
+            email=row["email"],
+            avatar_initials=initials,
+            password_hash=row["password_hash"],
+            is_pro=1 if is_pro_val else 0,
+        )
+
     def register_user(self, name: str, email: str, password_hash: str) -> Tuple[bool, str, Optional[User]]:
-        """Registra un nuevo usuario en la base de datos."""
+        """Registra un nuevo usuario en la base de datos (inicia con is_pro = 0)."""
         name = name.strip()
         email = email.strip().lower()
         initials = User.generate_initials(name)
@@ -454,12 +479,12 @@ class DatabaseManager:
                         conn.close()
                         return False, "Ya existe una cuenta con este correo", None
                     cur.execute("""
-                        INSERT INTO users (name, email, password_hash, avatar_initials)
-                        VALUES (%s, %s, %s, %s);
+                        INSERT INTO users (name, email, password_hash, avatar_initials, is_pro)
+                        VALUES (%s, %s, %s, %s, 0);
                     """, (name, email, password_hash, initials))
                     new_id = cur.lastrowid
                 conn.close()
-                return True, "Cuenta creada con éxito", User(new_id, name, email, initials, password_hash)
+                return True, "Cuenta creada con éxito", User(new_id, name, email, initials, password_hash, 0)
             except Exception as e:
                 return False, f"Error en MySQL: {e}", None
         else:
@@ -471,13 +496,13 @@ class DatabaseManager:
                     conn.close()
                     return False, "Ya existe una cuenta con este correo", None
                 cur.execute("""
-                    INSERT INTO users (name, email, password_hash, avatar_initials)
-                    VALUES (?, ?, ?, ?);
+                    INSERT INTO users (name, email, password_hash, avatar_initials, is_pro)
+                    VALUES (?, ?, ?, ?, 0);
                 """, (name, email, password_hash, initials))
                 new_id = cur.lastrowid
                 conn.commit()
                 conn.close()
-                return True, "Cuenta creada en modo local", User(new_id, name, email, initials, password_hash)
+                return True, "Cuenta creada en modo local", User(new_id, name, email, initials, password_hash, 0)
             except Exception as e:
                 return False, f"Error en BD local: {e}", None
 
@@ -495,14 +520,7 @@ class DatabaseManager:
                     return False, "Usuario no encontrado", None
                 if row["password_hash"] != password_hash:
                     return False, "Contraseña incorrecta", None
-                user = User(
-                    id=row["id"],
-                    name=row["name"],
-                    email=row["email"],
-                    avatar_initials=row.get("avatar_initials", "US"),
-                    password_hash=row["password_hash"]
-                )
-                return True, "Inicio de sesión correcto", user
+                return True, "Inicio de sesión correcto", self._row_to_user(row)
             except Exception as e:
                 return False, f"Error en MySQL: {e}", None
         else:
@@ -516,14 +534,7 @@ class DatabaseManager:
                     return False, "Usuario no encontrado", None
                 if row["password_hash"] != password_hash:
                     return False, "Contraseña incorrecta", None
-                user = User(
-                    id=row["id"],
-                    name=row["name"],
-                    email=row["email"],
-                    avatar_initials=row["avatar_initials"] or "US",
-                    password_hash=row["password_hash"]
-                )
-                return True, "Inicio de sesión correcto", user
+                return True, "Inicio de sesión correcto", self._row_to_user(row)
             except Exception as e:
                 return False, f"Error en BD local: {e}", None
 
@@ -537,7 +548,7 @@ class DatabaseManager:
                     row = cur.fetchone()
                 conn.close()
                 if row:
-                    return User(row["id"], row["name"], row["email"], row.get("avatar_initials", "US"), row["password_hash"])
+                    return self._row_to_user(row)
             except Exception:
                 pass
         else:
@@ -548,7 +559,7 @@ class DatabaseManager:
                 row = cur.fetchone()
                 conn.close()
                 if row:
-                    return User(row["id"], row["name"], row["email"], row["avatar_initials"] or "US", row["password_hash"])
+                    return self._row_to_user(row)
             except Exception:
                 pass
         return None
@@ -566,7 +577,7 @@ class DatabaseManager:
                     row = cur.fetchone()
                 conn.close()
                 if row:
-                    return User(row["id"], row["name"], row["email"], row.get("avatar_initials", "US"), row["password_hash"])
+                    return self._row_to_user(row)
             except Exception:
                 pass
         else:
@@ -577,10 +588,15 @@ class DatabaseManager:
                 row = cur.fetchone()
                 conn.close()
                 if row:
-                    return User(row["id"], row["name"], row["email"], row["avatar_initials"] or "US", row["password_hash"])
+                    return self._row_to_user(row)
             except Exception:
                 pass
         return None
+
+    def update_user_pro_status(self, user_id: int, is_pro: int = 1) -> bool:
+        """Actualiza el estado de la versión Pro (1 = activa, 0 = gratuita) del usuario en la base de datos."""
+        pro_val = 1 if is_pro else 0
+        return bool(self._run("UPDATE users SET is_pro = ? WHERE id = ?;", (pro_val, user_id)))
 
     # ----------------------------------------------------
     # Carrito de Compras
