@@ -83,11 +83,6 @@ class AddPantryItemModal(BaseFormModal):
             self.ids.field_name.ids.text_input,
             self.ids.field_quantity.ids.text_input,
             self.ids.field_threshold.ids.text_input,
-            self.ids.field_expiration_input,
-        )
-        # Avisa en vivo si la fecha escrita o elegida ya pasó
-        self.ids.field_expiration_input.bind(
-            text=lambda inst, val: setattr(self, "warning_text", expiration_warning(val))
         )
 
     def open_unit_menu(self, caller):
@@ -147,7 +142,8 @@ class AddPantryItemModal(BaseFormModal):
 
         def set_date(formatted_date):
             self.expiration_date_str = formatted_date
-            self.ids.field_expiration_input.text = formatted_date
+            self.error_text = ""
+            self.warning_text = expiration_warning(formatted_date)
 
         _open_date_picker(set_date)
 
@@ -157,7 +153,7 @@ class AddPantryItemModal(BaseFormModal):
         self.error_text = ""
         if self.has_no_expiration:
             self.expiration_date_str = ""
-            self.ids.field_expiration_input.text = ""
+            self.warning_text = ""
 
     def submit(self):
         """Valida y registra el alimento en el inventario."""
@@ -166,7 +162,7 @@ class AddPantryItemModal(BaseFormModal):
             quantity_str=self.ids.field_quantity.ids.text_input.text,
             unit=self.selected_unit,
             threshold_str=self.ids.field_threshold.ids.text_input.text,
-            expiration_str=self.ids.field_expiration_input.text,
+            expiration_str=self.expiration_date_str,
             has_no_expiration=self.has_no_expiration,
             category=self.selected_category,
         )
