@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS `shopping_lists` (
     `name` VARCHAR(100) NOT NULL,
     `icon_name` VARCHAR(50) DEFAULT 'clipboard-text-outline',
     `icon_color` VARCHAR(25) DEFAULT '#286ED3',
+    `supermarket` VARCHAR(80) DEFAULT '',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT `fk_shopping_lists_user`
         FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)

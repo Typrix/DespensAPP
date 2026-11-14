@@ -133,9 +133,14 @@ class DatabaseManager:
                         `name` VARCHAR(100) NOT NULL,
                         `icon_name` VARCHAR(50) DEFAULT 'clipboard-text-outline',
                         `icon_color` VARCHAR(25) DEFAULT '#286ED3',
+                        `supermarket` VARCHAR(80) DEFAULT '',
                         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
                 """)
+                try:
+                    cur.execute("ALTER TABLE `shopping_lists` ADD COLUMN `supermarket` VARCHAR(80) DEFAULT '';")
+                except Exception:
+                    pass
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS `cart_items` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -310,9 +315,14 @@ class DatabaseManager:
                 name TEXT NOT NULL,
                 icon_name TEXT DEFAULT 'clipboard-text-outline',
                 icon_color TEXT DEFAULT '#286ED3',
+                supermarket TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        try:
+            cur.execute("ALTER TABLE shopping_lists ADD COLUMN supermarket TEXT DEFAULT '';")
+        except Exception:
+            pass
         cur.execute("""
             CREATE TABLE IF NOT EXISTS cart_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1121,7 +1131,7 @@ class DatabaseManager:
                 conn = self.get_mysql_connection()
                 with conn.cursor() as cur:
                     cur.execute("""
-                        SELECT l.id, l.user_id, l.name, l.icon_name, l.icon_color,
+                        SELECT l.id, l.user_id, l.name, l.icon_name, l.icon_color, l.supermarket,
                                COUNT(s.id) AS items_count,
                                SUM(CASE WHEN s.is_checked = 0 THEN 1 ELSE 0 END) AS pending_count
                         FROM shopping_lists l
@@ -1139,6 +1149,7 @@ class DatabaseManager:
                         name=r["name"],
                         icon_name=r["icon_name"] or "clipboard-text-outline",
                         icon_color=r["icon_color"] or "#286ED3",
+                        supermarket=(r.get("supermarket") or "").strip(),
                         items_count=int(r["items_count"] or 0),
                         pending_count=int(r["pending_count"] or 0)
                     ))
@@ -1149,7 +1160,7 @@ class DatabaseManager:
                 conn = self.get_sqlite_connection()
                 cur = conn.cursor()
                 cur.execute("""
-                    SELECT l.id, l.user_id, l.name, l.icon_name, l.icon_color,
+                    SELECT l.id, l.user_id, l.name, l.icon_name, l.icon_color, l.supermarket,
                            COUNT(s.id) AS items_count,
                            SUM(CASE WHEN s.is_checked = 0 THEN 1 ELSE 0 END) AS pending_count
                     FROM shopping_lists l
@@ -1161,12 +1172,15 @@ class DatabaseManager:
                 rows = cur.fetchall()
                 conn.close()
                 for r in rows:
+                    keys = r.keys() if hasattr(r, "keys") else ()
+                    supermarket_val = (r["supermarket"] if "supermarket" in keys else "") or ""
                     lists.append(ShoppingList(
                         id=r["id"],
                         user_id=r["user_id"],
                         name=r["name"],
                         icon_name=r["icon_name"] or "clipboard-text-outline",
                         icon_color=r["icon_color"] or "#286ED3",
+                        supermarket=supermarket_val.strip(),
                         items_count=int(r["items_count"] or 0),
                         pending_count=int(r["pending_count"] or 0)
                     ))
@@ -1174,20 +1188,22 @@ class DatabaseManager:
                 print(f"[DB] Error get_shopping_lists SQLite: {e}")
         return lists
 
-    def add_shopping_list(self, user_id: int, name: str, icon_color: str = "#286ED3", icon_name: str = "clipboard-text-outline") -> Optional[int]:
-        """Crea una nueva lista de compras con color e icono personalizados."""
+    def add_shopping_list(self, user_id: int, name: str, icon_color: str = "#286ED3",
+                          icon_name: str = "clipboard-text-outline", supermarket: str = "") -> Optional[int]:
+        """Crea una nueva lista de compras con color, icono y supermercado personalizados."""
         name = name.strip()
         icon_color = icon_color.strip() or "#286ED3"
         icon_name = icon_name.strip() or "clipboard-text-outline"
+        supermarket = (supermarket or "").strip()
 
         if self.is_mysql:
             try:
                 conn = self.get_mysql_connection()
                 with conn.cursor() as cur:
                     cur.execute("""
-                        INSERT INTO shopping_lists (user_id, name, icon_name, icon_color)
-                        VALUES (%s, %s, %s, %s);
-                    """, (user_id, name, icon_name, icon_color))
+                        INSERT INTO shopping_lists (user_id, name, icon_name, icon_color, supermarket)
+                        VALUES (%s, %s, %s, %s, %s);
+                    """, (user_id, name, icon_name, icon_color, supermarket))
                     new_id = cur.lastrowid
                 conn.close()
                 return new_id
@@ -1199,9 +1215,9 @@ class DatabaseManager:
                 conn = self.get_sqlite_connection()
                 cur = conn.cursor()
                 cur.execute("""
-                    INSERT INTO shopping_lists (user_id, name, icon_name, icon_color)
-                    VALUES (?, ?, ?, ?);
-                """, (user_id, name, icon_name, icon_color))
+                    INSERT INTO shopping_lists (user_id, name, icon_name, icon_color, supermarket)
+                    VALUES (?, ?, ?, ?, ?);
+                """, (user_id, name, icon_name, icon_color, supermarket))
                 new_id = cur.lastrowid
                 conn.commit()
                 conn.close()

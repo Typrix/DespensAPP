@@ -976,7 +976,7 @@
 # 3. Modal: Nueva Lista de Compras (Con Productos Iniciales)
 # --------------------------------------------------------
 <AddShoppingListModal>:
-    height: "484dp" if root.error_text else "440dp"
+    height: "550dp" if root.error_text else "506dp"
 
     BoxLayout:
         orientation: "vertical"
@@ -1008,6 +1008,14 @@
             id: field_name
             label_text: "NOMBRE DE LA LISTA"
             hint_text: "Ej: Supermercado Lunes, Asado, Verdulería..."
+
+        # Selector de Supermercado
+        DropdownField:
+            id: field_supermarket
+            label_text: "SUPERMERCADO"
+            value: root.selected_supermarket
+            icon: "storefront-outline"
+            on_release: root.open_supermarket_menu(self)
 
         # Campo opcional: Productos iniciales
         CustomInputField:

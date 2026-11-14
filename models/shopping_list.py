@@ -32,6 +32,7 @@ class ShoppingList:
     name: str
     icon_name: str = "clipboard-text-outline"
     icon_color: str = "#286ED3"
+    supermarket: str = ""
     items_count: int = 0
     pending_count: int = 0
     items: Optional[List[ShoppingListItem]] = None

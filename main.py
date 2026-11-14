@@ -576,9 +576,12 @@ class MainApp(MDApp):
                 sub = f"{summary['pending']} por comprar · {format_money(summary['in_cart'])} en el carro"
             else:
                 sub = f"{summary['pending']} por comprar · {summary['checked']} en el carro"
+            if lst.supermarket:
+                sub = f"{lst.supermarket} · {sub}"
             card = ShoppingListCard(
                 list_id=lst.id,
                 list_name=lst.name,
+                supermarket=lst.supermarket,
                 icon_name=lst.icon_name,
                 icon_color_rgba=lst.color_rgba,
                 badge_bg_color=lst.badge_bg_rgba,
@@ -912,16 +915,18 @@ class MainApp(MDApp):
 
         self.programar_borrado("pantry", item_id, f"'{name}' eliminado de la despensa", refresh, commit)
 
-    def agregar_lista_compras(self, name, color_hex, initial_items=""):
+    def agregar_lista_compras(self, name, color_hex, initial_items="", supermarket=""):
         if not self.auth.current_user:
             return
         if not self.puede_crear_lista():
             self.abrir_modal_pro(target_period="lists")
             return
         if hasattr(self, 'list_ctrl'):
-            self.list_ctrl.add_list(self.auth.current_user.id, name, color_hex, initial_items)
+            self.list_ctrl.add_list(self.auth.current_user.id, name, color_hex, initial_items, supermarket)
         else:
-            new_list_id = self.db.add_shopping_list(self.auth.current_user.id, name, color_hex, "clipboard-text-outline")
+            new_list_id = self.db.add_shopping_list(
+                self.auth.current_user.id, name, color_hex, "clipboard-text-outline", supermarket
+            )
             if new_list_id and initial_items:
                 items_list = [it.strip() for it in initial_items.replace("\n", ",").split(",") if it.strip()]
                 for it_name in items_list:

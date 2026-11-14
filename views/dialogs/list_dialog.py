@@ -5,6 +5,8 @@ Gestiona la creación de listas de supermercado, paleta de colores y anotación 
 """
 
 from kivymd.app import MDApp
+from kivymd.uix.menu import MDDropdownMenu
+from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.properties import BooleanProperty, StringProperty, NumericProperty, ListProperty
@@ -13,6 +15,7 @@ from kivy.graphics import Color, Ellipse, Line
 from views.dialogs.base import BaseFormModal, EditItemModal
 from controllers.validators import validate_list_form, validate_cart_form, format_number
 from controllers.purchase_controller import summarize_items, format_money
+from controllers.list_controller import DEFAULT_SUPERMARKET, SUPERMARKET_OPTIONS
 from views.widgets.empty_state import EmptyState
 from controllers.product_icons import name_visual
 from controllers.pantry_organizer import category_tint
@@ -55,13 +58,16 @@ class ColorChipButton(Button):
 
 
 class AddShoppingListModal(BaseFormModal):
-    """Modal para crear una nueva lista de compras con color y productos iniciales opcionales."""
+    """Modal para crear una nueva lista de compras con supermercado, color y productos iniciales."""
     COLOR_PALETTE = ["#286ED3", "#10B981", "#E05A6D", "#F59E0B", "#8B5CF6", "#06B6D4"]
+    selected_supermarket = StringProperty(DEFAULT_SUPERMARKET)
 
     def __init__(self, callback_add, **kwargs):
         super().__init__(**kwargs)
         self.callback_add = callback_add
         self.selected_color = self.COLOR_PALETTE[0]
+        self.selected_supermarket = DEFAULT_SUPERMARKET
+        self.supermarket_menu = None
         self.chip_widgets = []
         self._build_color_chips()
         self.clear_error_on_input(
@@ -86,6 +92,36 @@ class AddShoppingListModal(BaseFormModal):
         for chip in self.chip_widgets:
             chip.is_selected = (chip.color_hex == color_hex)
 
+    def open_supermarket_menu(self, caller):
+        """Despliega el menú con los supermercados disponibles."""
+        if self.supermarket_menu is None:
+            self.supermarket_menu = MDDropdownMenu(
+                caller=caller,
+                items=[
+                    {
+                        "text": market,
+                        "leading_icon": "storefront-outline",
+                        "on_release": lambda m=market: self.set_supermarket(m),
+                    }
+                    for market in SUPERMARKET_OPTIONS
+                ],
+                position="bottom",
+                width=max(caller.width, dp(220)),
+                max_height=dp(260),
+            )
+        self.supermarket_menu.open()
+
+    def set_supermarket(self, supermarket: str):
+        """Asigna el supermercado seleccionado y cierra el menú desplegable."""
+        self.selected_supermarket = supermarket
+        if self.supermarket_menu:
+            self.supermarket_menu.dismiss()
+
+    def on_dismiss(self):
+        """Cierra el menú desplegable de supermercado si quedó abierto."""
+        if self.supermarket_menu:
+            self.supermarket_menu.dismiss()
+
     def submit(self):
         """Valida y crea la lista, mostrando el error si lo hay."""
         ok, error, data = validate_list_form(
@@ -95,8 +131,9 @@ class AddShoppingListModal(BaseFormModal):
         if not ok:
             self.error_text = error
             return
+        market = "" if self.selected_supermarket == DEFAULT_SUPERMARKET else self.selected_supermarket
         if self.callback_add:
-            self.callback_add(data["name"], self.selected_color, data["initial_items"])
+            self.callback_add(data["name"], self.selected_color, data["initial_items"], market)
         self.dismiss()
 
 
@@ -180,16 +217,18 @@ class ShoppingListDetailModal(BaseFormModal):
     """
     list_id = NumericProperty(0)
     list_name = StringProperty("")
+    supermarket = StringProperty("")
     icon_color_rgba = ListProperty([0.157, 0.431, 0.831, 1.0])
     subtitle_info = StringProperty("0 productos")
     checked_count = NumericProperty(0)
     in_cart_str = StringProperty("$0")
     progress_str = StringProperty("")
 
-    def __init__(self, list_id, list_name, icon_color_rgba, **kwargs):
+    def __init__(self, list_id, list_name, icon_color_rgba, supermarket="", **kwargs):
         super().__init__(**kwargs)
         self.list_id = list_id
         self.list_name = list_name
+        self.supermarket = (supermarket or "").strip()
         self.icon_color_rgba = icon_color_rgba
         self.clear_error_on_input(self.ids.new_item_input, self.ids.new_item_price)
         self.load_items()
@@ -210,9 +249,10 @@ class ShoppingListDetailModal(BaseFormModal):
             f"de {format_money(summary['estimated'])} estimado · {summary['checked']} de {summary['total_items']}"
             if items else ""
         )
-        self.subtitle_info = (
+        base_sub = (
             f"{summary['pending']} por comprar · {summary['checked']} en el carro" if items else "Lista vacía"
         )
+        self.subtitle_info = f"{self.supermarket} · {base_sub}" if self.supermarket else base_sub
 
         container = self.ids.items_list_box
         container.clear_widgets()
