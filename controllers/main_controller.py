@@ -90,14 +90,15 @@ class MainController:
             "alert_item_id": alert_item_id,
         }
 
-    # Prioridad y color de cada tipo de alerta (rojo = urgente, ámbar = atención)
+    # Prioridad y color de cada tipo de alerta (rojo = urgente, ámbar = atención, verde = ahorro)
     _ALERT_RED = [0.85, 0.20, 0.25, 1.0]
     _ALERT_AMBER = [0.82, 0.48, 0.12, 1.0]
+    _ALERT_SAVING = [0.10, 0.62, 0.42, 1.0]
 
     def get_alerts(self, user_id: Optional[int]) -> List[Dict[str, Any]]:
         """
-        Lista de alertas de la despensa ordenadas por urgencia:
-        vencidos, por vencer, sin stock y por agotarse. Un producto aparece una sola vez.
+        Lista de alertas de la despensa y oportunidades de ahorro ordenadas por urgencia:
+        vencidos, por vencer, sin stock, por agotarse y productos más baratos en otro supermercado.
         """
         if not user_id:
             return []
@@ -118,6 +119,17 @@ class MainController:
             add(it, "Sin stock · reponer", self._ALERT_RED)
         for it in (i for i in items if i.status == "Por agotarse"):
             add(it, f"Quedan {it.formatted_quantity}", self._ALERT_AMBER)
+
+        # Alertas de productos más baratos en otro supermercado
+        for offer in self.db.get_cheaper_offers_for_user(user_id):
+            price_str = f"${int(round(offer['cheaper_price'])):,}".replace(",", ".")
+            saving_str = f"${int(round(offer['saving'])):,}".replace(",", ".")
+            alerts.append({
+                "item_id": 0,
+                "title": f"{offer['product_name']} · Más barato en {offer['cheaper_supermarket']}",
+                "desc": f"A {price_str} en {offer['cheaper_supermarket']} (ahorras {saving_str})",
+                "color": self._ALERT_SAVING,
+            })
         return alerts
 
     def get_stats_summary(self, user_id: Optional[int]) -> Dict[str, Any]:

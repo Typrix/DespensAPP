@@ -58,7 +58,7 @@ class ColorChipButton(Button):
 
 
 class AddShoppingListModal(BaseFormModal):
-    """Modal para crear una nueva lista de compras con supermercado, color y productos iniciales."""
+    """Modal para crear una nueva lista de compras con supermercado y color."""
     COLOR_PALETTE = ["#286ED3", "#10B981", "#E05A6D", "#F59E0B", "#8B5CF6", "#06B6D4"]
     selected_supermarket = StringProperty(DEFAULT_SUPERMARKET)
 
@@ -72,7 +72,6 @@ class AddShoppingListModal(BaseFormModal):
         self._build_color_chips()
         self.clear_error_on_input(
             self.ids.field_name.ids.text_input,
-            self.ids.field_initial_items.ids.text_input,
         )
 
     def _build_color_chips(self):
@@ -126,14 +125,13 @@ class AddShoppingListModal(BaseFormModal):
         """Valida y crea la lista, mostrando el error si lo hay."""
         ok, error, data = validate_list_form(
             name=self.ids.field_name.ids.text_input.text,
-            initial_items=self.ids.field_initial_items.ids.text_input.text,
         )
         if not ok:
             self.error_text = error
             return
         market = "" if self.selected_supermarket == DEFAULT_SUPERMARKET else self.selected_supermarket
         if self.callback_add:
-            self.callback_add(data["name"], self.selected_color, data["initial_items"], market)
+            self.callback_add(data["name"], self.selected_color, "", market)
         self.dismiss()
 
 
@@ -260,7 +258,7 @@ class ShoppingListDetailModal(BaseFormModal):
             container.add_widget(EmptyState(
                 icon="clipboard-text-outline",
                 title="Lista vacía",
-                message="Anota arriba lo que vas a comprar. El precio es opcional.",
+                message="Anota arriba el producto y su precio para comparar y controlar tu gasto.",
             ))
             return
         for it in items:
@@ -272,7 +270,7 @@ class ShoppingListDetailModal(BaseFormModal):
             ))
 
     def add_item(self):
-        """Anota un producto con precio opcional (ej: 'Huevos' y '3.000')."""
+        """Anota un producto con su precio obligatorio y verifica si existe más barato en otro supermercado."""
         ok, error, data = validate_cart_form(
             title=self.ids.new_item_input.text,
             price_str=self.ids.new_item_price.text,
@@ -284,14 +282,20 @@ class ShoppingListDetailModal(BaseFormModal):
         self.error_text = ""
         app = MDApp.get_running_app()
         if app and getattr(app, "db", None):
-            app.db.add_shopping_list_item(self.list_id, data["title"], price=data["price"])
+            new_id = app.db.add_shopping_list_item(self.list_id, data["title"], price=data["price"])
             if hasattr(app, "analytics") and app.analytics:
                 app.analytics.track_event("add_shopping_list_item", metadata={"list_id": self.list_id})
+            offer = app.db.find_cheaper_supermarket_offer(data["title"], data["price"], self.supermarket)
+            if offer and hasattr(app, "notificar_oferta_supermercado"):
+                offer["item_id"] = new_id or 0
+                app.notificar_oferta_supermercado(offer, force=True)
             self.ids.new_item_input.text = ""
             self.ids.new_item_price.text = ""
             self.ids.new_item_input.focus = True
             self.load_items()
             app.cargar_listas()
+            if hasattr(app, "actualizar_inicio"):
+                app.actualizar_inicio()
 
     def toggle_item(self, item_id, is_checked):
         """Tachar = el producto ya está en el carro."""
@@ -307,8 +311,14 @@ class ShoppingListDetailModal(BaseFormModal):
             app = MDApp.get_running_app()
             if app and getattr(app, "db", None):
                 app.db.update_shopping_list_item(item_id, name, price)
+                offer = app.db.find_cheaper_supermarket_offer(name, price, self.supermarket)
+                if offer and hasattr(app, "notificar_oferta_supermercado"):
+                    offer["item_id"] = item_id
+                    app.notificar_oferta_supermercado(offer, force=True)
                 self.load_items()
                 app.cargar_listas()
+                if hasattr(app, "actualizar_inicio"):
+                    app.actualizar_inicio()
 
         EditListItemModal(item=item, callback_save=save_edit).open()
 

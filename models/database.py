@@ -1409,6 +1409,160 @@ class DatabaseManager:
                 return False
 
     # ----------------------------------------------------
+    # Precios Históricos y Comparador entre Supermercados
+    # ----------------------------------------------------
+    @staticmethod
+    def _norm_key(text: str) -> str:
+        """Normaliza texto para comparación (minúsculas y espacios simples)."""
+        return " ".join((text or "").lower().split())
+
+    def get_last_known_price(self, user_id: int, product_name: str) -> float:
+        """
+        Retorna el último precio conocido (> 0) de un producto para traspasarlo
+        desde la despensa a una lista. Busca primero en el historial y listas del
+        usuario, y como respaldo en el catálogo general de la base de datos.
+        """
+        norm = self._norm_key(product_name)
+        if not norm:
+            return 0.0
+
+        # 1. Historial de compras del usuario (más reciente primero)
+        rows = self._run(
+            "SELECT title, price FROM purchase_history WHERE user_id = ? AND price > 0 ORDER BY purchased_at DESC, id DESC;",
+            (user_id,), fetch="all"
+        ) or []
+        for r in rows:
+            if self._norm_key(r["title"]) == norm:
+                return float(r["price"])
+
+        # 2. Listas de compras del usuario (más reciente primero)
+        rows = self._run(
+            """SELECT i.name AS title, i.price
+               FROM shopping_list_items i
+               JOIN shopping_lists l ON l.id = i.list_id
+               WHERE l.user_id = ? AND i.price > 0
+               ORDER BY i.id DESC;""",
+            (user_id,), fetch="all"
+        ) or []
+        for r in rows:
+            if self._norm_key(r["title"]) == norm:
+                return float(r["price"])
+
+        # 3. Respaldo global en la base de datos (otros usuarios / listas)
+        rows = self._run(
+            "SELECT name AS title, price FROM shopping_list_items WHERE price > 0 ORDER BY id DESC;",
+            (), fetch="all"
+        ) or []
+        for r in rows:
+            if self._norm_key(r["title"]) == norm:
+                return float(r["price"])
+
+        rows = self._run(
+            "SELECT title, price FROM purchase_history WHERE price > 0 ORDER BY id DESC;",
+            (), fetch="all"
+        ) or []
+        for r in rows:
+            if self._norm_key(r["title"]) == norm:
+                return float(r["price"])
+
+        return 0.0
+
+    def find_cheaper_supermarket_offer(
+        self, product_name: str, current_price: float, current_supermarket: str = ""
+    ) -> Optional[dict]:
+        """
+        Busca en todas las listas y compras registradas si el mismo producto está
+        a un precio menor en otro supermercado distinto al actual.
+        """
+        norm_name = self._norm_key(product_name)
+        if not norm_name or not current_price or float(current_price) <= 0:
+            return None
+        norm_market = self._norm_key(current_supermarket)
+        target_price = float(current_price)
+
+        candidates = []
+
+        # A. Productos anotados en listas con supermercado asignado
+        list_rows = self._run(
+            """SELECT i.name AS title, i.price, l.supermarket
+               FROM shopping_list_items i
+               JOIN shopping_lists l ON l.id = i.list_id
+               WHERE i.price > 0 AND l.supermarket IS NOT NULL AND l.supermarket != '';""",
+            (), fetch="all"
+        ) or []
+        candidates.extend(list_rows)
+
+        # B. Historial de compras asociado a listas con supermercado
+        hist_rows = self._run(
+            """SELECT ph.title, ph.price, l.supermarket
+               FROM purchase_history ph
+               JOIN shopping_lists l ON l.id = ph.list_id
+               WHERE ph.price > 0 AND l.supermarket IS NOT NULL AND l.supermarket != '';""",
+            (), fetch="all"
+        ) or []
+        candidates.extend(hist_rows)
+
+        best_market = None
+        best_price = target_price
+
+        for r in candidates:
+            if self._norm_key(r["title"]) != norm_name:
+                continue
+            market = (r["supermarket"] or "").strip()
+            if not market or self._norm_key(market) == norm_market:
+                continue
+            price = float(r["price"] or 0.0)
+            if 0 < price < best_price:
+                best_price = price
+                best_market = market
+
+        if best_market is None:
+            return None
+
+        return {
+            "product_name": (product_name or "").strip(),
+            "cheaper_supermarket": best_market,
+            "cheaper_price": best_price,
+            "current_price": target_price,
+            "current_supermarket": (current_supermarket or "").strip(),
+            "saving": round(target_price - best_price, 2),
+        }
+
+    def get_cheaper_offers_for_user(self, user_id: int) -> List[dict]:
+        """
+        Evalúa todos los productos pendientes en las listas del usuario y retorna
+        aquellos que tienen un precio más económico registrado en otro supermercado.
+        """
+        if not user_id:
+            return []
+        rows = self._run(
+            """SELECT i.id AS item_id, i.name, i.price, l.id AS list_id, l.name AS list_name, l.supermarket
+               FROM shopping_list_items i
+               JOIN shopping_lists l ON l.id = i.list_id
+               WHERE l.user_id = ? AND i.is_checked = 0 AND i.price > 0
+               ORDER BY i.id DESC;""",
+            (user_id,), fetch="all"
+        ) or []
+
+        offers = []
+        seen = set()
+        for r in rows:
+            keys = r.keys() if hasattr(r, "keys") else ()
+            market = (r["supermarket"] if "supermarket" in keys else "") or ""
+            offer = self.find_cheaper_supermarket_offer(r["name"], float(r["price"] or 0.0), market)
+            if not offer:
+                continue
+            dedup_key = (self._norm_key(r["name"]), self._norm_key(offer["cheaper_supermarket"]))
+            if dedup_key in seen:
+                continue
+            seen.add(dedup_key)
+            offer["item_id"] = r["item_id"]
+            offer["list_id"] = r["list_id"]
+            offer["list_name"] = r["list_name"]
+            offers.append(offer)
+        return offers
+
+    # ----------------------------------------------------
     # Estadísticas y Métricas Dinámicas del Usuario
     # ----------------------------------------------------
     def get_user_statistics(self, user_id: int) -> dict:

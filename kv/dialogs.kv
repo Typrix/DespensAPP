@@ -973,10 +973,10 @@
 
 
 # --------------------------------------------------------
-# 3. Modal: Nueva Lista de Compras (Con Productos Iniciales)
+# 3. Modal: Nueva Lista de Compras
 # --------------------------------------------------------
 <AddShoppingListModal>:
-    height: "550dp" if root.error_text else "506dp"
+    height: "474dp" if root.error_text else "430dp"
 
     BoxLayout:
         orientation: "vertical"
@@ -1016,12 +1016,6 @@
             value: root.selected_supermarket
             icon: "storefront-outline"
             on_release: root.open_supermarket_menu(self)
-
-        # Campo opcional: Productos iniciales
-        CustomInputField:
-            id: field_initial_items
-            label_text: "PRODUCTOS INICIALES (OPCIONAL)"
-            hint_text: "Ej: Leche, Pan, Huevos, Café (separados por coma)"
 
         # Selector de Color para el Icono
         BoxLayout:
@@ -1152,7 +1146,7 @@
             shorten: True
             shorten_from: "right"
         Label:
-            text: root.price_str or "+ precio"
+            text: root.price_str or "Editar $"
             size_hint_x: None
             width: "72dp"
             font_size: "13sp" if root.price_str else "11sp"
@@ -1446,7 +1440,7 @@
                 size_hint_x: None
                 width: "110dp"
                 label_text: "PRECIO ($)"
-                hint_text: "Opcional"
+                hint_text: "Ej: 1.990"
                 input_filter: numeric_input_filter
 
         Widget:

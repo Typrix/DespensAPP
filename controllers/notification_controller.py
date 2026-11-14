@@ -52,6 +52,7 @@ class NotificationController:
     ALERT_LOW_STOCK = "low_stock"
     ALERT_EXPIRED = "expired"
     ALERT_EXPIRING_SOON = "expiring_soon"
+    ALERT_CHEAPER_PRICE = "cheaper_price"
 
     def __init__(self, cooldown_seconds: int = 900):
         """
@@ -194,6 +195,46 @@ class NotificationController:
             total_sent += len(alerts)
 
         return total_sent
+
+    def notify_cheaper_offer(self, offer: dict, force: bool = False) -> Optional[str]:
+        """
+        Emite una notificación cuando se detecta que un producto de la lista del usuario
+        está registrado a un precio más económico en otro supermercado.
+        Retorna el mensaje de ahorro formateado si aplica.
+        """
+        if not offer:
+            return None
+        product_name = offer.get("product_name", "Producto")
+        cheaper_market = offer.get("cheaper_supermarket", "")
+        cheaper_price = float(offer.get("cheaper_price") or 0)
+        saving = float(offer.get("saving") or 0)
+        if not cheaper_market or cheaper_price <= 0 or saving <= 0:
+            return None
+
+        price_str = f"${int(round(cheaper_price)):,}".replace(",", ".")
+        saving_str = f"${int(round(saving)):,}".replace(",", ".")
+        item_key = int(offer.get("item_id") or hash((product_name.lower(), cheaper_market.lower())))
+        now = time.time()
+
+        msg = f"'{product_name}' está a {price_str} en {cheaper_market} (ahorras {saving_str})."
+        if self._can_send_alert(item_key, self.ALERT_CHEAPER_PRICE, now, force):
+            title = f"DespensAPP: ¡Más barato en {cheaper_market}!"
+            self.send_notification(title, msg)
+            self._record_sent(item_key, self.ALERT_CHEAPER_PRICE, now)
+        return msg
+
+    def check_price_alerts(self, offers: List[dict], force: bool = False) -> int:
+        """Evalúa una lista de ofertas más baratas y emite notificaciones del sistema."""
+        if not offers:
+            return 0
+        sent = 0
+        for offer in offers:
+            item_key = int(offer.get("item_id") or 0)
+            now = time.time()
+            if self._can_send_alert(item_key, self.ALERT_CHEAPER_PRICE, now, force):
+                if self.notify_cheaper_offer(offer, force=force):
+                    sent += 1
+        return sent
 
     def _can_send_alert(self, item_id: int, alert_type: str, now: float, force: bool) -> bool:
         """Determina si una alerta puede enviarse en base a la configuración de cooldown."""
