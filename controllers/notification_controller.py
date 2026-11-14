@@ -224,17 +224,53 @@ class NotificationController:
         return msg
 
     def check_price_alerts(self, offers: List[dict], force: bool = False) -> int:
-        """Evalúa una lista de ofertas más baratas y emite notificaciones del sistema."""
+        """
+        Evalúa las ofertas más baratas del usuario.
+        - Si hay 1 oferta nueva, envía la notificación individual del producto.
+        - Si hay 2 o más ofertas nuevas, envía 1 única notificación resumen agrupada
+          para evitar saturar de avisos al usuario.
+        """
         if not offers:
             return 0
-        sent = 0
+        now = time.time()
+        pending = []
         for offer in offers:
-            item_key = int(offer.get("item_id") or 0)
-            now = time.time()
+            product_name = (offer.get("product_name") or "").strip()
+            cheaper_market = (offer.get("cheaper_supermarket") or "").strip()
+            cheaper_price = float(offer.get("cheaper_price") or 0)
+            saving = float(offer.get("saving") or 0)
+            if not cheaper_market or cheaper_price <= 0 or saving <= 0:
+                continue
+            item_key = int(offer.get("item_id") or hash((product_name.lower(), cheaper_market.lower())))
             if self._can_send_alert(item_key, self.ALERT_CHEAPER_PRICE, now, force):
-                if self.notify_cheaper_offer(offer, force=force):
-                    sent += 1
-        return sent
+                pending.append((item_key, offer))
+
+        if not pending:
+            return 0
+
+        if len(pending) == 1:
+            _, single_offer = pending[0]
+            return 1 if self.notify_cheaper_offer(single_offer, force=force) else 0
+
+        # Notificación agrupada para 2 o más ofertas
+        total_saving = sum(float(o.get("saving") or 0) for _, o in pending)
+        market_counts = {}
+        for _, o in pending:
+            m = (o.get("cheaper_supermarket") or "").strip()
+            if m:
+                market_counts[m] = market_counts.get(m, 0) + 1
+        top_market = max(market_counts, key=market_counts.get) if market_counts else "otros supermercados"
+        total_saving_str = f"${int(round(total_saving)):,}".replace(",", ".")
+
+        title = f"DespensAPP: {len(pending)} productos más baratos"
+        msg = (
+            f"Puedes ahorrar {total_saving_str} en total (destaca {top_market}). "
+            f"Revisa la campana de alertas."
+        )
+        self.send_notification(title, msg)
+        for item_key, _ in pending:
+            self._record_sent(item_key, self.ALERT_CHEAPER_PRICE, now)
+        return len(pending)
 
     def _can_send_alert(self, item_id: int, alert_type: str, now: float, force: bool) -> bool:
         """Determina si una alerta puede enviarse en base a la configuración de cooldown."""

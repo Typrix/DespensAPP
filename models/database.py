@@ -8,6 +8,7 @@ para SQLite local como fallback de contingencia offline.
 import os
 import json
 import sqlite3
+from datetime import datetime, timedelta
 from typing import Optional, List, Tuple
 try:
     import pymysql
@@ -1322,12 +1323,12 @@ class DatabaseManager:
         )
 
     def update_shopping_list_item(self, item_id: int, name: str, price: float) -> bool:
-        """Corrige el nombre y el precio de un producto de la lista."""
+        """Corrige el nombre y el precio de un producto de la lista, renovando su fecha de vigencia."""
         name = (name or "").strip()
         if not name:
             return False
         return bool(self._run(
-            "UPDATE shopping_list_items SET name = ?, price = ? WHERE id = ?;",
+            "UPDATE shopping_list_items SET name = ?, price = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?;",
             (name, max(0.0, float(price or 0.0)), item_id),
         ))
 
@@ -1411,6 +1412,11 @@ class DatabaseManager:
     # ----------------------------------------------------
     # Precios Históricos y Comparador entre Supermercados
     # ----------------------------------------------------
+    OFFER_MAX_AGE_DAYS = 15
+    MIN_SAVING_AMOUNT = 100.0
+    MIN_SAVING_RATIO = 0.05
+    MIN_VALID_PRICE_RATIO = 0.25
+
     @staticmethod
     def _norm_key(text: str) -> str:
         """Normaliza texto para comparación (minúsculas y espacios simples)."""
@@ -1468,37 +1474,47 @@ class DatabaseManager:
         return 0.0
 
     def find_cheaper_supermarket_offer(
-        self, product_name: str, current_price: float, current_supermarket: str = ""
+        self,
+        product_name: str,
+        current_price: float,
+        current_supermarket: str = "",
+        max_age_days: int = OFFER_MAX_AGE_DAYS,
     ) -> Optional[dict]:
         """
-        Busca en todas las listas y compras registradas si el mismo producto está
-        a un precio menor en otro supermercado distinto al actual.
+        Busca en las listas y compras de los últimos `max_age_days` días si el mismo
+        producto está a un precio menor válido en otro supermercado distinto al actual.
         """
         norm_name = self._norm_key(product_name)
         if not norm_name or not current_price or float(current_price) <= 0:
             return None
         norm_market = self._norm_key(current_supermarket)
         target_price = float(current_price)
+        min_valid_price = target_price * self.MIN_VALID_PRICE_RATIO
+        cutoff = (datetime.now() - timedelta(days=max_age_days)).strftime("%Y-%m-%d %H:%M:%S")
 
         candidates = []
 
-        # A. Productos anotados en listas con supermercado asignado
+        # A. Productos anotados en listas con supermercado asignado dentro de la ventana de vigencia
         list_rows = self._run(
             """SELECT i.name AS title, i.price, l.supermarket
                FROM shopping_list_items i
                JOIN shopping_lists l ON l.id = i.list_id
-               WHERE i.price > 0 AND l.supermarket IS NOT NULL AND l.supermarket != '';""",
-            (), fetch="all"
+               WHERE i.price > 0
+                 AND l.supermarket IS NOT NULL AND l.supermarket != ''
+                 AND (i.created_at IS NULL OR i.created_at >= ?);""",
+            (cutoff,), fetch="all"
         ) or []
         candidates.extend(list_rows)
 
-        # B. Historial de compras asociado a listas con supermercado
+        # B. Historial de compras asociado a listas con supermercado dentro de la ventana de vigencia
         hist_rows = self._run(
             """SELECT ph.title, ph.price, l.supermarket
                FROM purchase_history ph
                JOIN shopping_lists l ON l.id = ph.list_id
-               WHERE ph.price > 0 AND l.supermarket IS NOT NULL AND l.supermarket != '';""",
-            (), fetch="all"
+               WHERE ph.price > 0
+                 AND l.supermarket IS NOT NULL AND l.supermarket != ''
+                 AND (ph.purchased_at IS NULL OR ph.purchased_at >= ?);""",
+            (cutoff,), fetch="all"
         ) or []
         candidates.extend(hist_rows)
 
@@ -1512,11 +1528,18 @@ class DatabaseManager:
             if not market or self._norm_key(market) == norm_market:
                 continue
             price = float(r["price"] or 0.0)
+            # Descarta errores de digitación anormalmente bajos (< 25% del precio actual)
+            if price < min_valid_price:
+                continue
             if 0 < price < best_price:
                 best_price = price
                 best_market = market
 
         if best_market is None:
+            return None
+
+        saving = round(target_price - best_price, 2)
+        if saving < self.MIN_SAVING_AMOUNT or (saving / target_price) < self.MIN_SAVING_RATIO:
             return None
 
         return {
@@ -1525,7 +1548,7 @@ class DatabaseManager:
             "cheaper_price": best_price,
             "current_price": target_price,
             "current_supermarket": (current_supermarket or "").strip(),
-            "saving": round(target_price - best_price, 2),
+            "saving": saving,
         }
 
     def get_cheaper_offers_for_user(self, user_id: int) -> List[dict]:
