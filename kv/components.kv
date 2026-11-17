@@ -318,7 +318,8 @@
     size_hint: None, None
     size: "270dp", "260dp"
     pos_hint: {"top": 0.90, "right": 0.96}
-    background_color: [0, 0, 0, 0.25]
+    background_color: [0, 0, 0, 0]
+    overlay_color: [0, 0, 0, 0.18]
     background: ""
     auto_dismiss: True
 
@@ -616,11 +617,11 @@
 
 
 # ---------------------------------------------------------
-# Píldora de Periodo (Semana / Mes / Año / Todo) en Estadísticas
+# Píldora de Periodo (Mes / 3 meses / 6 meses / Año) en Estadísticas
 # ---------------------------------------------------------
 <PeriodChip@ButtonBehavior+AnchorLayout>:
     text: ""
-    period: "week"
+    period: "month"
     requires_pro: False
     is_active: app.stats_period == self.period
     is_locked: self.requires_pro and not app.user_is_pro
