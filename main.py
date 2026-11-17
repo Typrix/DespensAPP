@@ -82,10 +82,10 @@ class MainApp(MDApp):
     splash_status_text = StringProperty("Iniciando DespensAPP...")
 
     # Datos Dinámicos del Usuario
-    user_name_str = StringProperty("Sofía Martínez")
-    user_email_str = StringProperty("sofia@despensapp.com")
-    user_initials_str = StringProperty("SO")
-    user_greeting_str = StringProperty("Bienvenida, Sofía")
+    user_name_str = StringProperty("Invitado")
+    user_email_str = StringProperty("Sin sesión activa")
+    user_initials_str = StringProperty("US")
+    user_greeting_str = StringProperty("Bienvenido/a")
     user_is_pro = BooleanProperty(False)
 
 
@@ -176,9 +176,15 @@ class MainApp(MDApp):
         return None
 
     def on_stop(self):
-        """Confirma borrados pendientes y cierra la sesión de telemetría."""
+        """Confirma borrados pendientes, respalda caché offline y cierra la sesión de telemetría."""
         if getattr(self, "undo", None):
             self.undo.flush()
+        if (
+            hasattr(self, "sync") and self.sync
+            and hasattr(self, "db") and self.db and self.db.is_mysql
+            and hasattr(self, "auth") and self.auth and self.auth.current_user
+        ):
+            self.sync.refresh_cache_for_user(self.auth.current_user)
         if hasattr(self, 'analytics') and self.analytics:
             self.analytics.end_session()
 

@@ -38,13 +38,6 @@ class AuthModal(BaseFormModal):
         else:
             self.message_text = ""
 
-    def fill_demo(self):
-        """Autocompleta los campos con la cuenta de Sofía Martínez."""
-        self.set_mode(True)
-        self.ids.field_auth_email.ids.text_input.text = "sofia@despensapp.com"
-        self.ids.field_auth_password.text = "despensapp123"
-        self.submit()
-
     def submit(self):
         """Procesa el envío del formulario de login o registro."""
         email = self.ids.field_auth_email.ids.text_input.text.strip()

@@ -1442,7 +1442,7 @@
 # 4. Modal: Cuenta de Usuario (Inicio de Sesión y Registro)
 # --------------------------------------------------------
 <AuthModal>:
-    height: "545dp"
+    height: "505dp"
     auto_dismiss: root.can_cancel
 
     BoxLayout:
@@ -1641,16 +1641,6 @@
                     pos: self.pos
                     size: self.size
                     radius: [14, 14, 14, 14]
-
-        # Botón de demostración rápida
-        Button:
-            size_hint_y: None
-            height: "30dp"
-            text: "Usar cuenta demo (Sofía Martínez)"
-            font_size: "11sp"
-            color: app.category_tag_color
-            background_color: [0, 0, 0, 0]
-            on_release: root.fill_demo()
 
         # Botón para cerrar (solo disponible si el usuario ya inició sesión previamente)
         Button:

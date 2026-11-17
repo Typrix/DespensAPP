@@ -26,33 +26,101 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 CONFIG_PATH = os.path.join(PROJECT_ROOT, 'db_config.json')
 LOCAL_DB_PATH = os.path.join(PROJECT_ROOT, 'despensapp_local.db')
 
+# Métodos de DatabaseManager que se delegan a ApiDatabaseClient en modo API remota
+_API_DELEGATED_METHODS = frozenset({
+    "authenticate_user",
+    "register_user",
+    "get_user_by_email",
+    "get_user_by_id",
+    "update_user_pro_status",
+    "get_pantry_items",
+    "get_pantry_item_by_id",
+    "add_pantry_item",
+    "update_pantry_quantity",
+    "set_pantry_quantity",
+    "update_pantry_expiration",
+    "update_pantry_item_details",
+    "delete_pantry_item",
+    "get_shopping_lists",
+    "add_shopping_list",
+    "update_shopping_list_name",
+    "delete_shopping_list",
+    "get_shopping_list_items",
+    "add_shopping_list_item",
+    "toggle_shopping_list_item",
+    "update_shopping_list_item",
+    "update_shopping_list_item_name",
+    "delete_shopping_list_item",
+    "get_cart_items",
+    "add_cart_item",
+    "toggle_cart_item",
+    "update_cart_item",
+    "delete_cart_item",
+    "get_purchase_history",
+    "add_purchase_record",
+    "get_last_known_price",
+    "find_cheaper_supermarket_offer",
+    "get_cheaper_offers_for_user",
+    "get_user_statistics",
+    "create_session",
+    "close_session",
+    "log_event",
+})
 
 
 class DatabaseManager:
     """Administrador centralizado de base de datos."""
 
-    def __init__(self):
+    def __init__(self, force_direct: bool = False, api_client=None):
         self.is_mysql = False
+        self.use_api = False
+        self.force_direct = force_direct
+        self.api_client = api_client
         self.status_message = "Inicializando..."
         self.config = self._load_config()
         self.init_database()
 
+    def __getattribute__(self, name: str):
+        if name in _API_DELEGATED_METHODS:
+            if object.__getattribute__(self, "use_api"):
+                client = object.__getattribute__(self, "api_client")
+                if client is not None:
+                    return getattr(client, name)
+        return object.__getattribute__(self, name)
+
     def _load_config(self) -> dict:
-        """Carga la configuración de MySQL desde db_config.json."""
-        default_cfg = {
+        """Carga la configuración desde db_config.json y variables de entorno."""
+        cfg = {
             "host": "localhost",
             "port": 3306,
             "user": "root",
             "password": "",
-            "database": "despensapp_db"
+            "database": "despensapp_db",
+            "api_url": "",
+            "api_key": "",
         }
         if os.path.exists(CONFIG_PATH):
             try:
                 with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    cfg.update(json.load(f))
             except Exception as e:
                 print(f"[DB] Error al leer db_config.json: {e}")
-        return default_cfg
+
+        # Permitir sobreescritura por variables de entorno (ideal para el servidor externo)
+        env_map = {
+            "host": "DESPENSAPP_DB_HOST",
+            "port": "DESPENSAPP_DB_PORT",
+            "user": "DESPENSAPP_DB_USER",
+            "password": "DESPENSAPP_DB_PASSWORD",
+            "database": "DESPENSAPP_DB_NAME",
+            "api_url": "DESPENSAPP_API_URL",
+            "api_key": "DESPENSAPP_API_KEY",
+        }
+        for key, env_var in env_map.items():
+            val = os.environ.get(env_var)
+            if val is not None and val != "":
+                cfg[key] = int(val) if key == "port" else val
+        return cfg
 
     def save_config(self, host: str, port: int, user: str, password: str, database: str) -> bool:
         """Guarda la nueva configuración en db_config.json."""
@@ -92,7 +160,28 @@ class DatabaseManager:
         return conn
 
     def init_database(self):
-        """Intenta inicializar las tablas en MySQL; si falla, inicializa SQLite."""
+        """Intenta conectar vía API externa, luego MySQL directo; si falla, inicializa SQLite."""
+        api_url = (self.config.get("api_url") or "").strip()
+        if not self.force_direct and (self.api_client is not None or api_url):
+            try:
+                from models.api_client import ApiDatabaseClient
+
+                client = self.api_client or ApiDatabaseClient(
+                    base_url=api_url,
+                    api_key=self.config.get("api_key", ""),
+                )
+                ok, info = client.check_health()
+                if ok:
+                    self.api_client = client
+                    self.use_api = True
+                    self.is_mysql = bool(info.get("is_mysql", True))
+                    self.status_message = "Conectado a API externa"
+                    print(f"[DB] Conectado a API externa ({api_url or 'inyectada'})")
+                    return
+                print("[DB] API externa no respondió /health. Intentando conexión directa/respaldo...")
+            except Exception as e:
+                print(f"[DB] Error conectando a API externa ({e}). Intentando respaldo...")
+
         try:
             # 1. Intentar conectar al servidor MySQL sin especificar BD para crearla si no existe
             server_conn = pymysql.connect(
@@ -237,12 +326,6 @@ class DatabaseManager:
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
                 """)
 
-                # Semilla si no hay usuarios
-                cur.execute("SELECT COUNT(*) AS total FROM `users`;")
-                row = cur.fetchone()
-                if row and row["total"] == 0:
-                    self._seed_mysql(cur)
-
             conn.close()
             self.is_mysql = True
             self.status_message = "Conectado a MySQL"
@@ -253,42 +336,6 @@ class DatabaseManager:
             self.status_message = "Modo Local (MySQL no disponible)"
             print(f"[DB] MySQL no accesible ({e}). Iniciando respaldo local SQLite...")
             self._init_sqlite()
-
-    def _seed_mysql(self, cur):
-        """Inserta los datos iniciales de Sofía Martínez en MySQL."""
-        cur.execute("""
-            INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `avatar_initials`)
-            VALUES (1, 'Sofía Martínez', 'sofia@despensapp.com', '3863ba7b7e6ba371d3897dc4fb569e8c6ae524af16f46abab3ab04c3aa32b31c', 'SO');
-        """)
-        cur.execute("""
-            INSERT INTO `shopping_lists` (`id`, `user_id`, `name`, `icon_name`, `icon_color`) VALUES
-            (1, 1, 'Compra quincenal', 'clipboard-text-outline', '#286ED3'),
-            (2, 1, 'Cena de cumpleaños', 'clipboard-text-outline', '#E05A6D');
-        """)
-        cur.execute("""
-            INSERT INTO `cart_items` (`id`, `user_id`, `list_id`, `title`, `subtitle`, `price`, `quantity`, `is_checked`) VALUES
-            (1, 1, 1, 'Leche entera', 'Lista quincenal', 2500.00, 1, 0),
-            (2, 1, 1, 'Arroz integral', 'Lista quincenal', 1200.00, 1, 0),
-            (3, 1, 1, 'Huevos · docena', 'Lista quincenal', 3000.00, 1, 0),
-            (4, 1, 1, 'Pan de molde', 'Lista quincenal', 2100.00, 1, 0);
-        """)
-        cur.execute("""
-            INSERT INTO `pantry_items` (`id`, `user_id`, `name`, `quantity`, `unit`, `min_threshold`, `category`, `expiration_date`) VALUES
-            (1, 1, 'Frijoles', 500.00, 'g', 200.00, 'Legumbres', NULL),
-            (2, 1, 'Aceite de oliva', 1.00, 'L', 2.00, 'Aceites', NULL),
-            (3, 1, 'Huevos', 2.00, 'un.', 6.00, 'Frescos', '2026-10-23'),
-            (4, 1, 'Café en grano', 0.00, 'g', 100.00, 'Bebidas', NULL);
-        """)
-        cur.execute("""
-            INSERT INTO `shopping_list_items` (`id`, `list_id`, `name`, `is_checked`) VALUES
-            (1, 1, 'Leche entera', 0),
-            (2, 1, 'Arroz integral', 0),
-            (3, 1, 'Huevos · docena', 1),
-            (4, 1, 'Pan de molde', 0),
-            (5, 2, 'Vino tinto', 0),
-            (6, 2, 'Queso maduro', 0),
-            (7, 2, 'Pasta fresca', 1);
-        """)
 
     def _init_sqlite(self):
         """Inicializa la base de datos local SQLite si MySQL está apagado."""
@@ -415,44 +462,43 @@ class DatabaseManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pending_deletes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                entity_type TEXT NOT NULL,
+                remote_id INTEGER,
+                item_key TEXT DEFAULT '',
+                parent_key TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        # Columnas de estado de sincronización para caché espejo offline
+        for tbl in ("shopping_lists", "shopping_list_items", "pantry_items", "cart_items", "purchase_history"):
+            for col_def in ("is_synced INTEGER NOT NULL DEFAULT 0", "remote_id INTEGER"):
+                try:
+                    cur.execute(f"ALTER TABLE {tbl} ADD COLUMN {col_def};")
+                except Exception:
+                    pass
 
-        cur.execute("SELECT COUNT(*) AS total FROM users;")
-        if cur.fetchone()["total"] == 0:
-            cur.execute("""
-                INSERT INTO users (id, name, email, password_hash, avatar_initials)
-                VALUES (1, 'Sofía Martínez', 'sofia@despensapp.com', '3863ba7b7e6ba371d3897dc4fb569e8c6ae524af16f46abab3ab04c3aa32b31c', 'SO');
-            """)
-            cur.execute("""
-                INSERT INTO shopping_lists (id, user_id, name, icon_name, icon_color) VALUES
-                (1, 1, 'Compra quincenal', 'clipboard-text-outline', '#286ED3'),
-                (2, 1, 'Cena de cumpleaños', 'clipboard-text-outline', '#E05A6D');
-            """)
-            cur.execute("""
-                INSERT INTO cart_items (id, user_id, list_id, title, subtitle, price, quantity, is_checked) VALUES
-                (1, 1, 1, 'Leche entera', 'Lista quincenal', 2500.0, 1, 0),
-                (2, 1, 1, 'Arroz integral', 'Lista quincenal', 1200.0, 1, 0),
-                (3, 1, 1, 'Huevos · docena', 'Lista quincenal', 3000.0, 1, 0),
-                (4, 1, 1, 'Pan de molde', 'Lista quincenal', 2100.0, 1, 0);
-            """)
-            cur.execute("""
-                INSERT INTO pantry_items (id, user_id, name, quantity, unit, min_threshold, category, expiration_date) VALUES
-                (1, 1, 'Frijoles', 500.0, 'g', 200.0, 'Legumbres', NULL),
-                (2, 1, 'Aceite de oliva', 1.0, 'L', 2.0, 'Aceites', NULL),
-                (3, 1, 'Huevos', 2.0, 'un.', 6.0, 'Frescos', '2026-10-23'),
-                (4, 1, 'Café en grano', 0.0, 'g', 100.0, 'Bebidas', NULL);
-            """)
-            cur.execute("""
-                INSERT INTO shopping_list_items (id, list_id, name, is_checked) VALUES
-                (1, 1, 'Leche entera', 0),
-                (2, 1, 'Arroz integral', 0),
-                (3, 1, 'Huevos · docena', 1),
-                (4, 1, 'Pan de molde', 0),
-                (5, 2, 'Vino tinto', 0),
-                (6, 2, 'Queso maduro', 0),
-                (7, 2, 'Pasta fresca', 1);
-            """)
         conn.commit()
         conn.close()
+
+    @staticmethod
+    def _record_pending_delete(
+        cur,
+        user_id: int,
+        entity_type: str,
+        remote_id: Optional[int],
+        item_key: str = "",
+        parent_key: str = "",
+    ):
+        """Registra un borrado realizado sin conexión para aplicarlo al servidor al sincronizar."""
+        cur.execute(
+            """INSERT INTO pending_deletes (user_id, entity_type, remote_id, item_key, parent_key)
+               VALUES (?, ?, ?, ?, ?);""",
+            (user_id, entity_type, remote_id, (item_key or "").strip(), (parent_key or "").strip()),
+        )
 
     # ----------------------------------------------------
     # Usuarios y Autenticación
@@ -1113,6 +1159,12 @@ class DatabaseManager:
             try:
                 conn = self.get_sqlite_connection()
                 cur = conn.cursor()
+                cur.execute("SELECT user_id, name, is_synced, remote_id FROM pantry_items WHERE id = ?;", (item_id,))
+                row = cur.fetchone()
+                if row and int(row["is_synced"] or 0) == 1:
+                    self._record_pending_delete(
+                        cur, row["user_id"], "pantry_item", row["remote_id"], row["name"]
+                    )
                 cur.execute("DELETE FROM pantry_items WHERE id = ?;", (item_id,))
                 conn.commit()
                 conn.close()
@@ -1277,6 +1329,13 @@ class DatabaseManager:
             try:
                 conn = self.get_sqlite_connection()
                 cur = conn.cursor()
+                cur.execute("SELECT user_id, name, is_synced, remote_id FROM shopping_lists WHERE id = ?;", (list_id,))
+                row = cur.fetchone()
+                if row and int(row["is_synced"] or 0) == 1:
+                    self._record_pending_delete(
+                        cur, row["user_id"], "shopping_list", row["remote_id"], row["name"]
+                    )
+                cur.execute("DELETE FROM shopping_list_items WHERE list_id = ?;", (list_id,))
                 cur.execute("DELETE FROM shopping_lists WHERE id = ?;", (list_id,))
                 conn.commit()
                 conn.close()
@@ -1401,6 +1460,23 @@ class DatabaseManager:
             try:
                 conn = self.get_sqlite_connection()
                 cur = conn.cursor()
+                cur.execute(
+                    """SELECT i.name, i.is_synced, i.remote_id, l.user_id, l.name AS list_name
+                       FROM shopping_list_items i
+                       JOIN shopping_lists l ON l.id = i.list_id
+                       WHERE i.id = ?;""",
+                    (item_id,),
+                )
+                row = cur.fetchone()
+                if row and int(row["is_synced"] or 0) == 1:
+                    self._record_pending_delete(
+                        cur,
+                        row["user_id"],
+                        "shopping_list_item",
+                        row["remote_id"],
+                        row["name"],
+                        row["list_name"],
+                    )
                 cur.execute("DELETE FROM shopping_list_items WHERE id = ?;", (item_id,))
                 conn.commit()
                 conn.close()
