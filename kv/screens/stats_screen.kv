@@ -6,348 +6,366 @@
 <StatsScreen@MDScreen>:
     name: "stats"
 
-    MDScrollView:
-        do_scroll_x: False
-        bar_width: 0
+    BoxLayout:
+        orientation: "vertical"
+        size_hint: 1, 1
+        padding: ["14dp", "4dp", "14dp", "8dp"]
 
-        MDBoxLayout:
+        BoxLayout:
             orientation: "vertical"
-            adaptive_height: True
-            spacing: "14dp"
+            size_hint: 1, 1
+            padding: ["16dp", "16dp", "16dp", "16dp"]
+            spacing: "10dp"
+            canvas.before:
+                Color:
+                    rgba: app.sage_container_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [28, 28, 28, 28]
 
-            # Encabezado de Sección
-            BoxLayout:
-                size_hint_y: None
-                height: "46dp"
+            MDScrollView:
+                do_scroll_x: False
+                bar_width: 0
 
-                BoxLayout:
+                MDBoxLayout:
                     orientation: "vertical"
-                    size_hint_x: 1
+                    adaptive_height: True
+                    spacing: "14dp"
+
+                    # Encabezado de Sección
+                    BoxLayout:
+                        size_hint_y: None
+                        height: "46dp"
+
+                        BoxLayout:
+                            orientation: "vertical"
+                            size_hint_x: 1
+                            Label:
+                                text: app.stats_period_tag
+                                font_size: "10sp"
+                                bold: True
+                                color: app.category_tag_color
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+                            Label:
+                                text: "Tus estadísticas"
+                                font_size: "22sp"
+                                bold: True
+                                color: app.text_primary_color
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+
+                        AnchorLayout:
+                            size_hint: None, None
+                            size: "38dp", "38dp"
+                            pos_hint: {"center_y": 0.5}
+                            canvas.before:
+                                Color:
+                                    rgba: app.card_white_color
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [12, 12, 12, 12]
+                            MDIcon:
+                                icon: "finance"
+                                theme_text_color: "Custom"
+                                text_color: app.accent_green_color
+                                pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                    # Selector de periodo del historial (Mes / 3 meses / 6 meses / Año)
+                    BoxLayout:
+                        size_hint_y: None
+                        height: "40dp"
+                        padding: "4dp"
+                        spacing: "4dp"
+                        canvas.before:
+                            Color:
+                                rgba: app.card_white_color
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [14, 14, 14, 14]
+
+                        PeriodChip:
+                            text: "Mes"
+                            period: "month"
+                        PeriodChip:
+                            text: "3 meses"
+                            period: "quarter"
+                        PeriodChip:
+                            text: "6 meses"
+                            period: "semester"
+                            requires_pro: True
+                        PeriodChip:
+                            text: "Año"
+                            period: "year"
+                            requires_pro: True
+
+                    # Tarjetas Resumen (Lado a Lado)
+                    BoxLayout:
+                        size_hint_y: None
+                        height: "105dp"
+                        spacing: "10dp"
+
+                        # Tarjeta Azul Marino / Gasto Mensual
+                        BoxLayout:
+                            orientation: "vertical"
+                            padding: ["14dp", "12dp", "14dp", "12dp"]
+                            spacing: "4dp"
+                            canvas.before:
+                                Color:
+                                    rgba: app.chart_card_dark_color
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [18, 18, 18, 18]
+
+                            Label:
+                                text: app.stats_spent_title
+                                font_size: "11sp"
+                                color: app.chart_card_text_dim_color
+                                halign: "left"
+                                text_size: self.size
+                            Label:
+                                text: app.stats_spent_str
+                                font_size: "20sp"
+                                bold: True
+                                color: [1, 1, 1, 1]
+                                halign: "left"
+                                text_size: self.size
+                            Label:
+                                text: app.stats_spent_sub
+                                font_size: "9.5sp"
+                                color: app.chart_card_text_dim_color
+                                halign: "left"
+                                text_size: self.size
+
+                        # Tarjeta Blanca Productos
+                        BoxLayout:
+                            orientation: "vertical"
+                            padding: ["14dp", "12dp", "14dp", "12dp"]
+                            spacing: "4dp"
+                            canvas.before:
+                                Color:
+                                    rgba: app.card_white_color
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [18, 18, 18, 18]
+
+                            Label:
+                                text: "Productos despensa"
+                                font_size: "10.5sp"
+                                color: app.text_secondary_color
+                                halign: "left"
+                                text_size: self.size
+                            Label:
+                                text: app.stats_products_str
+                                font_size: "23sp"
+                                bold: True
+                                color: app.text_primary_color
+                                halign: "left"
+                                text_size: self.size
+                            Label:
+                                text: app.stats_purchases_str
+                                font_size: "9.5sp"
+                                color: app.text_secondary_color
+                                halign: "left"
+                                text_size: self.size
+
+                    # Historial: la última compra y "Ver todas" con el resto del periodo
+                    BoxLayout:
+                        size_hint_y: None
+                        height: "28dp"
+                        Label:
+                            text: "ÚLTIMA COMPRA" if app.stats_purchase_count == 1 else "ÚLTIMAS COMPRAS"
+                            font_size: "10sp"
+                            bold: True
+                            color: app.category_tag_color
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+                        TapArea:
+                            size_hint_x: None
+                            width: self.minimum_width
+                            padding: ["10dp", 0, 0, 0]
+                            spacing: "2dp"
+                            opacity: (0.6 if self.state == "down" else 1) if app.stats_purchase_count > 1 else 0
+                            disabled: app.stats_purchase_count <= 1
+                            on_release: app.ver_todas_compras()
+                            Label:
+                                text: f"Ver todas ({app.stats_purchase_count})"
+                                size_hint_x: None
+                                width: self.texture_size[0]
+                                font_size: "12sp"
+                                bold: True
+                                color: app.accent_green_color
+                                disabled_color: app.accent_green_color
+                            MDIcon:
+                                icon: "chevron-right"
+                                size_hint_x: None
+                                width: "18dp"
+                                font_size: "18sp"
+                                theme_text_color: "Custom"
+                                text_color: app.accent_green_color
+                                pos_hint: {"center_y": 0.5}
+
+                    # Solo la compra más reciente (PurchaseGroupCard resumida)
+                    MDBoxLayout:
+                        id: purchase_history_container
+                        orientation: "vertical"
+                        adaptive_height: True
+                        spacing: "10dp"
+
+                    # Subtítulo: Lo Más Frecuente
                     Label:
-                        text: app.stats_period_tag
+                        text: "LO MÁS COMPRADO"
+                        size_hint_y: None
+                        height: "22dp"
                         font_size: "10sp"
                         bold: True
                         color: app.category_tag_color
                         halign: "left"
                         valign: "middle"
                         text_size: self.size
-                    Label:
-                        text: "Tus estadísticas"
-                        font_size: "22sp"
-                        bold: True
-                        color: app.text_primary_color
-                        halign: "left"
-                        valign: "middle"
-                        text_size: self.size
 
-                AnchorLayout:
-                    size_hint: None, None
-                    size: "38dp", "38dp"
-                    pos_hint: {"center_y": 0.5}
-                    canvas.before:
-                        Color:
-                            rgba: app.card_white_color
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [12, 12, 12, 12]
-                    MDIcon:
-                        icon: "finance"
-                        theme_text_color: "Custom"
-                        text_color: app.accent_green_color
-                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                    # Item 01
+                    BoxLayout:
+                        orientation: "vertical"
+                        size_hint_y: None
+                        height: "38dp"
+                        spacing: "6dp"
+                        BoxLayout:
+                            Label:
+                                text: "01   "
+                                size_hint_x: None
+                                width: "28dp"
+                                font_size: "12sp"
+                                color: app.text_secondary_color
+                            Label:
+                                text: app.stats_p1_name
+                                font_size: "13.5sp"
+                                bold: True
+                                color: app.text_primary_color
+                                halign: "left"
+                                text_size: self.size
+                            Label:
+                                text: app.stats_p1_lbl
+                                size_hint_x: None
+                                width: "60dp"
+                                font_size: "11sp"
+                                color: app.text_secondary_color
+                                halign: "right"
+                                text_size: self.size
+                        CustomProgressBar:
+                            value: app.stats_p1_pct
+                            track_color: app.progress_track_color
+                            fill_color: app.accent_green_color
 
-            # Selector de periodo del historial (Mes / 3 meses / 6 meses / Año)
-            BoxLayout:
-                size_hint_y: None
-                height: "40dp"
-                padding: "4dp"
-                spacing: "4dp"
-                canvas.before:
-                    Color:
-                        rgba: app.card_white_color
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [14, 14, 14, 14]
+                    # Item 02
+                    BoxLayout:
+                        orientation: "vertical"
+                        size_hint_y: None
+                        height: "38dp"
+                        spacing: "6dp"
+                        BoxLayout:
+                            Label:
+                                text: "02   "
+                                size_hint_x: None
+                                width: "28dp"
+                                font_size: "12sp"
+                                color: app.text_secondary_color
+                            Label:
+                                text: app.stats_p2_name
+                                font_size: "13.5sp"
+                                bold: True
+                                color: app.text_primary_color
+                                halign: "left"
+                                text_size: self.size
+                            Label:
+                                text: app.stats_p2_lbl
+                                size_hint_x: None
+                                width: "60dp"
+                                font_size: "11sp"
+                                color: app.text_secondary_color
+                                halign: "right"
+                                text_size: self.size
+                        CustomProgressBar:
+                            value: app.stats_p2_pct
+                            track_color: app.progress_track_color
+                            fill_color: app.accent_green_color
 
-                PeriodChip:
-                    text: "Mes"
-                    period: "month"
-                PeriodChip:
-                    text: "3 meses"
-                    period: "quarter"
-                PeriodChip:
-                    text: "6 meses"
-                    period: "semester"
-                    requires_pro: True
-                PeriodChip:
-                    text: "Año"
-                    period: "year"
-                    requires_pro: True
+                    # Item 03
+                    BoxLayout:
+                        orientation: "vertical"
+                        size_hint_y: None
+                        height: "38dp"
+                        spacing: "6dp"
+                        BoxLayout:
+                            Label:
+                                text: "03   "
+                                size_hint_x: None
+                                width: "28dp"
+                                font_size: "12sp"
+                                color: app.text_secondary_color
+                            Label:
+                                text: app.stats_p3_name
+                                font_size: "13.5sp"
+                                bold: True
+                                color: app.text_primary_color
+                                halign: "left"
+                                text_size: self.size
+                            Label:
+                                text: app.stats_p3_lbl
+                                size_hint_x: None
+                                width: "60dp"
+                                font_size: "11sp"
+                                color: app.text_secondary_color
+                                halign: "right"
+                                text_size: self.size
+                        CustomProgressBar:
+                            value: app.stats_p3_pct
+                            track_color: app.progress_track_color
+                            fill_color: app.accent_green_color
 
-            # Tarjetas Resumen (Lado a Lado)
-            BoxLayout:
-                size_hint_y: None
-                height: "105dp"
-                spacing: "10dp"
+                    # Tarjeta Inferior "Buen progreso"
+                    BoxLayout:
+                        size_hint_y: None
+                        height: "68dp"
+                        padding: ["14dp", "10dp", "14dp", "10dp"]
+                        spacing: "12dp"
+                        canvas.before:
+                            Color:
+                                rgba: app.card_white_color
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [18, 18, 18, 18]
 
-                # Tarjeta Azul Marino / Gasto Mensual
-                BoxLayout:
-                    orientation: "vertical"
-                    padding: ["14dp", "12dp", "14dp", "12dp"]
-                    spacing: "4dp"
-                    canvas.before:
-                        Color:
-                            rgba: app.chart_card_dark_color
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [18, 18, 18, 18]
+                        AnchorLayout:
+                            size_hint: None, None
+                            size: "36dp", "46dp"
+                            MDIcon:
+                                icon: "leaf"
+                                theme_text_color: "Custom"
+                                text_color: app.accent_green_color
 
-                    Label:
-                        text: app.stats_spent_title
-                        font_size: "11sp"
-                        color: app.chart_card_text_dim_color
-                        halign: "left"
-                        text_size: self.size
-                    Label:
-                        text: app.stats_spent_str
-                        font_size: "20sp"
-                        bold: True
-                        color: [1, 1, 1, 1]
-                        halign: "left"
-                        text_size: self.size
-                    Label:
-                        text: app.stats_spent_sub
-                        font_size: "9.5sp"
-                        color: app.chart_card_text_dim_color
-                        halign: "left"
-                        text_size: self.size
-
-                # Tarjeta Blanca Productos
-                BoxLayout:
-                    orientation: "vertical"
-                    padding: ["14dp", "12dp", "14dp", "12dp"]
-                    spacing: "4dp"
-                    canvas.before:
-                        Color:
-                            rgba: app.card_white_color
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [18, 18, 18, 18]
-
-                    Label:
-                        text: "Productos despensa"
-                        font_size: "10.5sp"
-                        color: app.text_secondary_color
-                        halign: "left"
-                        text_size: self.size
-                    Label:
-                        text: app.stats_products_str
-                        font_size: "23sp"
-                        bold: True
-                        color: app.text_primary_color
-                        halign: "left"
-                        text_size: self.size
-                    Label:
-                        text: app.stats_purchases_str
-                        font_size: "9.5sp"
-                        color: app.text_secondary_color
-                        halign: "left"
-                        text_size: self.size
-
-            # Historial: la última compra y "Ver todas" con el resto del periodo
-            BoxLayout:
-                size_hint_y: None
-                height: "28dp"
-                Label:
-                    text: "ÚLTIMA COMPRA" if app.stats_purchase_count == 1 else "ÚLTIMAS COMPRAS"
-                    font_size: "10sp"
-                    bold: True
-                    color: app.category_tag_color
-                    halign: "left"
-                    valign: "middle"
-                    text_size: self.size
-                TapArea:
-                    size_hint_x: None
-                    width: self.minimum_width
-                    padding: ["10dp", 0, 0, 0]
-                    spacing: "2dp"
-                    opacity: (0.6 if self.state == "down" else 1) if app.stats_purchase_count > 1 else 0
-                    disabled: app.stats_purchase_count <= 1
-                    on_release: app.ver_todas_compras()
-                    Label:
-                        text: f"Ver todas ({app.stats_purchase_count})"
-                        size_hint_x: None
-                        width: self.texture_size[0]
-                        font_size: "12sp"
-                        bold: True
-                        color: app.accent_green_color
-                        disabled_color: app.accent_green_color
-                    MDIcon:
-                        icon: "chevron-right"
-                        size_hint_x: None
-                        width: "18dp"
-                        font_size: "18sp"
-                        theme_text_color: "Custom"
-                        text_color: app.accent_green_color
-                        pos_hint: {"center_y": 0.5}
-
-            # Solo la compra más reciente (PurchaseGroupCard resumida)
-            MDBoxLayout:
-                id: purchase_history_container
-                orientation: "vertical"
-                adaptive_height: True
-                spacing: "10dp"
-
-            # Subtítulo: Lo Más Frecuente
-            Label:
-                text: "LO MÁS COMPRADO"
-                size_hint_y: None
-                height: "22dp"
-                font_size: "10sp"
-                bold: True
-                color: app.category_tag_color
-                halign: "left"
-                valign: "middle"
-                text_size: self.size
-
-            # Item 01
-            BoxLayout:
-                orientation: "vertical"
-                size_hint_y: None
-                height: "38dp"
-                spacing: "6dp"
-                BoxLayout:
-                    Label:
-                        text: "01   "
-                        size_hint_x: None
-                        width: "28dp"
-                        font_size: "12sp"
-                        color: app.text_secondary_color
-                    Label:
-                        text: app.stats_p1_name
-                        font_size: "13.5sp"
-                        bold: True
-                        color: app.text_primary_color
-                        halign: "left"
-                        text_size: self.size
-                    Label:
-                        text: app.stats_p1_lbl
-                        size_hint_x: None
-                        width: "60dp"
-                        font_size: "11sp"
-                        color: app.text_secondary_color
-                        halign: "right"
-                        text_size: self.size
-                CustomProgressBar:
-                    value: app.stats_p1_pct
-                    track_color: app.progress_track_color
-                    fill_color: app.accent_green_color
-
-            # Item 02
-            BoxLayout:
-                orientation: "vertical"
-                size_hint_y: None
-                height: "38dp"
-                spacing: "6dp"
-                BoxLayout:
-                    Label:
-                        text: "02   "
-                        size_hint_x: None
-                        width: "28dp"
-                        font_size: "12sp"
-                        color: app.text_secondary_color
-                    Label:
-                        text: app.stats_p2_name
-                        font_size: "13.5sp"
-                        bold: True
-                        color: app.text_primary_color
-                        halign: "left"
-                        text_size: self.size
-                    Label:
-                        text: app.stats_p2_lbl
-                        size_hint_x: None
-                        width: "60dp"
-                        font_size: "11sp"
-                        color: app.text_secondary_color
-                        halign: "right"
-                        text_size: self.size
-                CustomProgressBar:
-                    value: app.stats_p2_pct
-                    track_color: app.progress_track_color
-                    fill_color: app.accent_green_color
-
-            # Item 03
-            BoxLayout:
-                orientation: "vertical"
-                size_hint_y: None
-                height: "38dp"
-                spacing: "6dp"
-                BoxLayout:
-                    Label:
-                        text: "03   "
-                        size_hint_x: None
-                        width: "28dp"
-                        font_size: "12sp"
-                        color: app.text_secondary_color
-                    Label:
-                        text: app.stats_p3_name
-                        font_size: "13.5sp"
-                        bold: True
-                        color: app.text_primary_color
-                        halign: "left"
-                        text_size: self.size
-                    Label:
-                        text: app.stats_p3_lbl
-                        size_hint_x: None
-                        width: "60dp"
-                        font_size: "11sp"
-                        color: app.text_secondary_color
-                        halign: "right"
-                        text_size: self.size
-                CustomProgressBar:
-                    value: app.stats_p3_pct
-                    track_color: app.progress_track_color
-                    fill_color: app.accent_green_color
-
-            # Tarjeta Inferior "Buen progreso"
-            BoxLayout:
-                size_hint_y: None
-                height: "68dp"
-                padding: ["14dp", "10dp", "14dp", "10dp"]
-                spacing: "12dp"
-                canvas.before:
-                    Color:
-                        rgba: app.card_white_color
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [18, 18, 18, 18]
-
-                AnchorLayout:
-                    size_hint: None, None
-                    size: "36dp", "46dp"
-                    MDIcon:
-                        icon: "leaf"
-                        theme_text_color: "Custom"
-                        text_color: app.accent_green_color
-
-                BoxLayout:
-                    orientation: "vertical"
-                    pos_hint: {"center_y": 0.5}
-                    Label:
-                        text: app.stats_status_title
-                        font_size: "13.5sp"
-                        bold: True
-                        color: app.text_primary_color
-                        halign: "left"
-                        text_size: self.size
-                    Label:
-                        text: app.stats_status_desc
-                        font_size: "10.5sp"
-                        color: app.text_secondary_color
-                        halign: "left"
-                        text_size: self.size
+                        BoxLayout:
+                            orientation: "vertical"
+                            pos_hint: {"center_y": 0.5}
+                            Label:
+                                text: app.stats_status_title
+                                font_size: "13.5sp"
+                                bold: True
+                                color: app.text_primary_color
+                                halign: "left"
+                                text_size: self.size
+                            Label:
+                                text: app.stats_status_desc
+                                font_size: "10.5sp"
+                                color: app.text_secondary_color
+                                halign: "left"
+                                text_size: self.size

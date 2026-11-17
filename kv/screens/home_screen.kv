@@ -6,240 +6,258 @@
 <HomeScreen@MDScreen>:
     name: "home"
 
-    MDScrollView:
-        do_scroll_x: False
-        bar_width: 0
+    BoxLayout:
+        orientation: "vertical"
+        size_hint: 1, 1
+        padding: ["14dp", "4dp", "14dp", "8dp"]
 
-        MDBoxLayout:
+        BoxLayout:
             orientation: "vertical"
-            adaptive_height: True
-            spacing: "14dp"
+            size_hint: 1, 1
+            padding: ["16dp", "16dp", "16dp", "16dp"]
+            spacing: "10dp"
+            canvas.before:
+                Color:
+                    rgba: app.sage_container_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [28, 28, 28, 28]
 
-            # Encabezado de Sección
-            BoxLayout:
-                size_hint_y: None
-                height: "46dp"
+            MDScrollView:
+                do_scroll_x: False
+                bar_width: 0
 
-                BoxLayout:
+                MDBoxLayout:
                     orientation: "vertical"
-                    size_hint_x: 1
-                    Label:
-                        text: "RESUMEN GENERAL"
-                        font_size: "10sp"
-                        bold: True
-                        color: app.category_tag_color
-                        halign: "left"
-                        valign: "middle"
-                        text_size: self.size
-                    Label:
-                        text: app.user_greeting_str
-                        font_size: "22sp"
-                        bold: True
-                        color: app.text_primary_color
-                        halign: "left"
-                        valign: "middle"
-                        text_size: self.size
+                    adaptive_height: True
+                    spacing: "14dp"
 
-                # Campana de alertas: el contenedor deja margen para que el
-                # indicador quede completo dentro (antes se cortaba por la derecha)
-                FloatLayout:
-                    size_hint: None, None
-                    size: "46dp", "46dp"
-                    pos_hint: {"center_y": 0.5}
+                    # Encabezado de Sección
+                    BoxLayout:
+                        size_hint_y: None
+                        height: "46dp"
 
+                        BoxLayout:
+                            orientation: "vertical"
+                            size_hint_x: 1
+                            Label:
+                                text: "RESUMEN GENERAL"
+                                font_size: "10sp"
+                                bold: True
+                                color: app.category_tag_color
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+                            Label:
+                                text: app.user_greeting_str
+                                font_size: "22sp"
+                                bold: True
+                                color: app.text_primary_color
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+
+                        # Campana de alertas: el contenedor deja margen para que el
+                        # indicador quede completo dentro (antes se cortaba por la derecha)
+                        FloatLayout:
+                            size_hint: None, None
+                            size: "46dp", "46dp"
+                            pos_hint: {"center_y": 0.5}
+
+                            TapCard:
+                                size_hint: None, None
+                                size: "40dp", "40dp"
+                                pos: self.parent.x, self.parent.y
+                                on_release: app.abrir_alertas()
+                                canvas.before:
+                                    Color:
+                                        rgba: app.card_white_color
+                                    RoundedRectangle:
+                                        pos: self.pos
+                                        size: self.size
+                                        radius: [12, 12, 12, 12]
+                                AnchorLayout:
+                                    MDIcon:
+                                        icon: "bell-outline"
+                                        font_size: "22sp"
+                                        theme_text_color: "Custom"
+                                        text_color: app.accent_green_color
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                            # Indicador con la cantidad de alertas (borde del color de fondo)
+                            Label:
+                                text: str(app.alerts_count) if app.alerts_count < 10 else "9+"
+                                font_size: "10sp"
+                                bold: True
+                                color: [1, 1, 1, 1]
+                                size_hint: None, None
+                                size: "20dp", "20dp"
+                                pos: self.parent.right - dp(20), self.parent.top - dp(20)
+                                opacity: 1 if app.alerts_count else 0
+                                canvas.before:
+                                    Color:
+                                        rgba: app.sage_container_color
+                                    Ellipse:
+                                        pos: self.pos
+                                        size: self.size
+                                    Color:
+                                        rgba: [0.85, 0.20, 0.25, 1.0]
+                                    Ellipse:
+                                        pos: self.x + dp(2), self.y + dp(2)
+                                        size: self.width - dp(4), self.height - dp(4)
+
+                    # Banner de Configuración Remota (Remote Config)
+                    RemoteConfigBanner:
+                        id: remote_config_banner
+                        title: app.remote_banner_title
+                        message: app.remote_banner_message
+                        badge_text: app.remote_banner_badge
+                        banner_type: app.remote_banner_type
+                        is_active: app.remote_banner_visible
+
+                    # Tarjeta 1: Gasto real de los últimos 7 días (abre el historial)
                     TapCard:
-                        size_hint: None, None
-                        size: "40dp", "40dp"
-                        pos: self.parent.x, self.parent.y
-                        on_release: app.abrir_alertas()
+                        on_release: app.abrir_historial_compras()
+                        size_hint_y: None
+                        height: "76dp"
+                        padding: ["14dp", "12dp", "14dp", "12dp"]
+                        spacing: "12dp"
                         canvas.before:
                             Color:
                                 rgba: app.card_white_color
                             RoundedRectangle:
                                 pos: self.pos
                                 size: self.size
-                                radius: [12, 12, 12, 12]
+                                radius: [20, 20, 20, 20]
+
                         AnchorLayout:
+                            size_hint: None, None
+                            size: "42dp", "42dp"
+                            pos_hint: {"center_y": 0.5}
+                            canvas.before:
+                                Color:
+                                    rgba: app.leaf_badge_bg_color
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [12, 12, 12, 12]
                             MDIcon:
-                                icon: "bell-outline"
-                                font_size: "22sp"
+                                icon: "currency-usd"
                                 theme_text_color: "Custom"
                                 text_color: app.accent_green_color
                                 pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-                    # Indicador con la cantidad de alertas (borde del color de fondo)
-                    Label:
-                        text: str(app.alerts_count) if app.alerts_count < 10 else "9+"
-                        font_size: "10sp"
-                        bold: True
-                        color: [1, 1, 1, 1]
-                        size_hint: None, None
-                        size: "20dp", "20dp"
-                        pos: self.parent.right - dp(20), self.parent.top - dp(20)
-                        opacity: 1 if app.alerts_count else 0
+                        BoxLayout:
+                            orientation: "vertical"
+                            pos_hint: {"center_y": 0.5}
+                            Label:
+                                text: "Gastado en los últimos 7 días"
+                                font_size: "11sp"
+                                color: app.text_secondary_color
+                                halign: "left"
+                                text_size: self.size
+                            Label:
+                                text: app.home_spent_str
+                                font_size: "18sp"
+                                bold: True
+                                color: app.text_primary_color
+                                halign: "left"
+                                text_size: self.size
+
+                    # Tarjeta 2: Por Caducar / Reponer (abre el producto de la alerta)
+                    TapCard:
+                        on_release: app.abrir_alerta_principal()
+                        size_hint_y: None
+                        height: "76dp"
+                        padding: ["14dp", "12dp", "14dp", "12dp"]
+                        spacing: "12dp"
                         canvas.before:
                             Color:
-                                rgba: app.sage_container_color
-                            Ellipse:
+                                rgba: app.icon_badge_pink_color
+                            RoundedRectangle:
                                 pos: self.pos
                                 size: self.size
+                                radius: [20, 20, 20, 20]
+
+                        AnchorLayout:
+                            size_hint: None, None
+                            size: "42dp", "42dp"
+                            pos_hint: {"center_y": 0.5}
+                            canvas.before:
+                                Color:
+                                    rgba: app.icon_badge_pink_color
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [12, 12, 12, 12]
+                            MDIcon:
+                                icon: "alert-circle-outline"
+                                theme_text_color: "Custom"
+                                text_color: [0.72, 0.35, 0.30, 1]
+                                pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                        BoxLayout:
+                            orientation: "vertical"
+                            pos_hint: {"center_y": 0.5}
+                            Label:
+                                text: app.home_alert_title_str
+                                font_size: "11sp"
+                                color: app.text_secondary_color
+                                halign: "left"
+                                text_size: self.size
+                            Label:
+                                text: app.home_alert_desc_str
+                                font_size: "15sp"
+                                bold: True
+                                color: app.text_primary_color
+                                halign: "left"
+                                text_size: self.size
+
+                    # Tarjeta 3: Receta Sugerida
+                    BoxLayout:
+                        size_hint_y: None
+                        height: "76dp"
+                        padding: ["14dp", "12dp", "14dp", "12dp"]
+                        spacing: "12dp"
+                        canvas.before:
                             Color:
-                                rgba: [0.85, 0.20, 0.25, 1.0]
-                            Ellipse:
-                                pos: self.x + dp(2), self.y + dp(2)
-                                size: self.width - dp(4), self.height - dp(4)
+                                rgba: app.card_white_color
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [20, 20, 20, 20]
 
-            # Banner de Configuración Remota (Remote Config)
-            RemoteConfigBanner:
-                id: remote_config_banner
-                title: app.remote_banner_title
-                message: app.remote_banner_message
-                badge_text: app.remote_banner_badge
-                banner_type: app.remote_banner_type
-                is_active: app.remote_banner_visible
+                        AnchorLayout:
+                            size_hint: None, None
+                            size: "42dp", "42dp"
+                            pos_hint: {"center_y": 0.5}
+                            canvas.before:
+                                Color:
+                                    rgba: app.icon_badge_amber_color
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [12, 12, 12, 12]
+                            MDIcon:
+                                icon: "chef-hat"
+                                theme_text_color: "Custom"
+                                text_color: [0.65, 0.48, 0.16, 1]
+                                pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-            # Tarjeta 1: Gasto real de los últimos 7 días (abre el historial)
-            TapCard:
-                on_release: app.abrir_historial_compras()
-                size_hint_y: None
-                height: "76dp"
-                padding: ["14dp", "12dp", "14dp", "12dp"]
-                spacing: "12dp"
-                canvas.before:
-                    Color:
-                        rgba: app.card_white_color
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [20, 20, 20, 20]
-
-                AnchorLayout:
-                    size_hint: None, None
-                    size: "42dp", "42dp"
-                    pos_hint: {"center_y": 0.5}
-                    canvas.before:
-                        Color:
-                            rgba: app.leaf_badge_bg_color
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [12, 12, 12, 12]
-                    MDIcon:
-                        icon: "currency-usd"
-                        theme_text_color: "Custom"
-                        text_color: app.accent_green_color
-                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
-
-                BoxLayout:
-                    orientation: "vertical"
-                    pos_hint: {"center_y": 0.5}
-                    Label:
-                        text: "Gastado en los últimos 7 días"
-                        font_size: "11sp"
-                        color: app.text_secondary_color
-                        halign: "left"
-                        text_size: self.size
-                    Label:
-                        text: app.home_spent_str
-                        font_size: "18sp"
-                        bold: True
-                        color: app.text_primary_color
-                        halign: "left"
-                        text_size: self.size
-
-            # Tarjeta 2: Por Caducar / Reponer (abre el producto de la alerta)
-            TapCard:
-                on_release: app.abrir_alerta_principal()
-                size_hint_y: None
-                height: "76dp"
-                padding: ["14dp", "12dp", "14dp", "12dp"]
-                spacing: "12dp"
-                canvas.before:
-                    Color:
-                        rgba: app.icon_badge_pink_color
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [20, 20, 20, 20]
-
-                AnchorLayout:
-                    size_hint: None, None
-                    size: "42dp", "42dp"
-                    pos_hint: {"center_y": 0.5}
-                    canvas.before:
-                        Color:
-                            rgba: app.icon_badge_pink_color
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [12, 12, 12, 12]
-                    MDIcon:
-                        icon: "alert-circle-outline"
-                        theme_text_color: "Custom"
-                        text_color: [0.72, 0.35, 0.30, 1]
-                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
-
-                BoxLayout:
-                    orientation: "vertical"
-                    pos_hint: {"center_y": 0.5}
-                    Label:
-                        text: app.home_alert_title_str
-                        font_size: "11sp"
-                        color: app.text_secondary_color
-                        halign: "left"
-                        text_size: self.size
-                    Label:
-                        text: app.home_alert_desc_str
-                        font_size: "15sp"
-                        bold: True
-                        color: app.text_primary_color
-                        halign: "left"
-                        text_size: self.size
-
-            # Tarjeta 3: Receta Sugerida
-            BoxLayout:
-                size_hint_y: None
-                height: "76dp"
-                padding: ["14dp", "12dp", "14dp", "12dp"]
-                spacing: "12dp"
-                canvas.before:
-                    Color:
-                        rgba: app.card_white_color
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [20, 20, 20, 20]
-
-                AnchorLayout:
-                    size_hint: None, None
-                    size: "42dp", "42dp"
-                    pos_hint: {"center_y": 0.5}
-                    canvas.before:
-                        Color:
-                            rgba: app.icon_badge_amber_color
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [12, 12, 12, 12]
-                    MDIcon:
-                        icon: "chef-hat"
-                        theme_text_color: "Custom"
-                        text_color: [0.65, 0.48, 0.16, 1]
-                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
-
-                BoxLayout:
-                    orientation: "vertical"
-                    pos_hint: {"center_y": 0.5}
-                    Label:
-                        text: "Receta recomendada hoy"
-                        font_size: "11sp"
-                        color: app.text_secondary_color
-                        halign: "left"
-                        text_size: self.size
-                    Label:
-                        text: app.home_recipe_str
-                        font_size: "14.5sp"
-                        bold: True
-                        color: app.text_primary_color
-                        halign: "left"
-                        text_size: self.size
+                        BoxLayout:
+                            orientation: "vertical"
+                            pos_hint: {"center_y": 0.5}
+                            Label:
+                                text: "Receta recomendada hoy"
+                                font_size: "11sp"
+                                color: app.text_secondary_color
+                                halign: "left"
+                                text_size: self.size
+                            Label:
+                                text: app.home_recipe_str
+                                font_size: "14.5sp"
+                                bold: True
+                                color: app.text_primary_color
+                                halign: "left"
+                                text_size: self.size

@@ -288,23 +288,35 @@ class MainApp(MDApp):
                     return scr.ids[name]
         return None
 
+    SCREEN_ORDER = ("home", "cupboard", "lists", "stats")
+
     def cambiar_pantalla(self, name_option):
-        """Cambia suavemente a la pantalla seleccionada y registra tiempo en telemetría."""
+        """Cambia suavemente a la pantalla seleccionada con deslizamiento direccional y registra tiempo en telemetría."""
+        prev_screen = self.current_screen_name
         self.current_screen_name = name_option
         self.screen_header_tag = self.TAGS_MAP.get(name_option, "DESPENSAPP")
 
         if hasattr(self, 'analytics') and self.analytics:
             self.analytics.track_screen(name_option)
 
-        sm = self.root.ids.get("screen_manager") if self.root else None
-        if sm:
-            sm.current = name_option
-
-        # Actualizar vistas dinámicas al entrar
+        # Actualizar vistas dinámicas antes de deslizar para que la pantalla entrante ya esté lista
         if name_option == "home":
             self.actualizar_inicio()
         elif name_option == "stats":
             self.actualizar_estadisticas()
+
+        sm = self.root.ids.get("screen_manager") if self.root else None
+        if sm:
+            if (
+                prev_screen in self.SCREEN_ORDER
+                and name_option in self.SCREEN_ORDER
+                and prev_screen != name_option
+                and hasattr(sm.transition, "direction")
+            ):
+                prev_idx = self.SCREEN_ORDER.index(prev_screen)
+                next_idx = self.SCREEN_ORDER.index(name_option)
+                sm.transition.direction = "left" if next_idx > prev_idx else "right"
+            sm.current = name_option
 
     def toggle_menu_perfil(self):
         """Abre o cierra el modal flotante de perfil de usuario."""
