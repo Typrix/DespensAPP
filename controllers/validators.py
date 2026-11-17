@@ -100,23 +100,23 @@ def validate_quantity(quantity_str, label="La cantidad"):
     return value, ""
 
 
-def validate_cart_form(title, price_str, subtitle):
+def validate_cart_form(title, price_str, subtitle=""):
     """
-    Valida un producto con precio opcional (productos de las listas de compras).
-    El precio es opcional (vacío = $0 para anotar sin conocerlo aún).
+    Valida un producto con precio obligatorio (> $0) para las listas de compras.
     Retorna (True, "", datos) o (False, mensaje_error, None).
     """
     title, error = _validate_name(title, "el nombre del producto")
     if error:
         return False, error, None
 
-    price = 0.0
-    if (price_str or "").strip():
-        price = parse_number(price_str)
-        if price is None:
-            return False, "El precio debe ser un número (ej: 1.500 o $2.990).", None
-        if price < 0 or price > PRICE_MAX:
-            return False, "El precio está fuera de rango.", None
+    if not (price_str or "").strip():
+        return False, "Ingresa el precio del producto.", None
+
+    price = parse_number(price_str)
+    if price is None:
+        return False, "El precio debe ser un número (ej: 1.500 o $2.990).", None
+    if price <= 0 or price > PRICE_MAX:
+        return False, "El precio debe ser mayor a $0.", None
 
     subtitle = (subtitle or "").strip() or "General"
     if len(subtitle) > SUBTITLE_MAX_LENGTH:
@@ -125,7 +125,7 @@ def validate_cart_form(title, price_str, subtitle):
     return True, "", {"title": title, "price": price, "subtitle": subtitle}
 
 
-def validate_list_form(name, initial_items):
+def validate_list_form(name, initial_items=""):
     """
     Valida el formulario de nueva lista de compras.
     Los productos iniciales se separan por coma o salto de línea.

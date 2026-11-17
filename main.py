@@ -554,6 +554,10 @@ class MainApp(MDApp):
         if not self.auth.current_user:
             return
 
+        if hasattr(self, 'notifications') and self.notifications:
+            offers = self.db.get_cheaper_offers_for_user(self.auth.current_user.id)
+            self.notifications.check_price_alerts(offers)
+
         lists = [lst for lst in self.db.get_shopping_lists(self.auth.current_user.id)
                  if not self.is_pending_delete("list", lst.id)]
         if not lists:
@@ -576,9 +580,12 @@ class MainApp(MDApp):
                 sub = f"{summary['pending']} por comprar · {format_money(summary['in_cart'])} en el carro"
             else:
                 sub = f"{summary['pending']} por comprar · {summary['checked']} en el carro"
+            if lst.supermarket:
+                sub = f"{lst.supermarket} · {sub}"
             card = ShoppingListCard(
                 list_id=lst.id,
                 list_name=lst.name,
+                supermarket=lst.supermarket,
                 icon_name=lst.icon_name,
                 icon_color_rgba=lst.color_rgba,
                 badge_bg_color=lst.badge_bg_rgba,
@@ -841,14 +848,28 @@ class MainApp(MDApp):
         else:
             self.cambiar_pantalla("cupboard")
 
+    def notificar_oferta_supermercado(self, offer: dict, force: bool = False):
+        """Dispara notificación del sistema y aviso visual cuando un producto está más barato en otro supermercado."""
+        if not offer:
+            return
+        if hasattr(self, 'notifications') and self.notifications:
+            self.notifications.notify_cheaper_offer(offer, force=force)
+        market = offer.get("cheaper_supermarket") or "otro supermercado"
+        price_str = format_money(offer.get("cheaper_price", 0))
+        saving_str = format_money(offer.get("saving", 0))
+        show_info_toast(f"Más barato en {market}: {price_str} (ahorras {saving_str})")
+
     def abrir_alertas(self):
-        """Campana de Inicio: muestra todas las alertas de la despensa."""
+        """Campana de Inicio: muestra todas las alertas de la despensa y precios más baratos."""
         uid = self.auth.current_user.id if self.auth.current_user else None
         alerts = self.controller.get_alerts(uid) if hasattr(self, 'controller') else []
 
         def open_item(item_id):
-            self.cambiar_pantalla("cupboard")
-            self.abrir_detalle_despensa(item_id)
+            if item_id:
+                self.cambiar_pantalla("cupboard")
+                self.abrir_detalle_despensa(item_id)
+            else:
+                self.cambiar_pantalla("lists")
 
         AlertsModal(alerts=alerts, callback_open_item=open_item).open()
 
@@ -912,16 +933,18 @@ class MainApp(MDApp):
 
         self.programar_borrado("pantry", item_id, f"'{name}' eliminado de la despensa", refresh, commit)
 
-    def agregar_lista_compras(self, name, color_hex, initial_items=""):
+    def agregar_lista_compras(self, name, color_hex, initial_items="", supermarket=""):
         if not self.auth.current_user:
             return
         if not self.puede_crear_lista():
             self.abrir_modal_pro(target_period="lists")
             return
         if hasattr(self, 'list_ctrl'):
-            self.list_ctrl.add_list(self.auth.current_user.id, name, color_hex, initial_items)
+            self.list_ctrl.add_list(self.auth.current_user.id, name, color_hex, initial_items, supermarket)
         else:
-            new_list_id = self.db.add_shopping_list(self.auth.current_user.id, name, color_hex, "clipboard-text-outline")
+            new_list_id = self.db.add_shopping_list(
+                self.auth.current_user.id, name, color_hex, "clipboard-text-outline", supermarket
+            )
             if new_list_id and initial_items:
                 items_list = [it.strip() for it in initial_items.replace("\n", ",").split(",") if it.strip()]
                 for it_name in items_list:
@@ -1004,11 +1027,14 @@ class MainApp(MDApp):
             print(f"[DespensAPP] {summary.get('message')}")
 
     def _verificar_notificaciones_periodicas(self, dt=None):
-        """Revisa periódicamente el estado de la despensa para alertar sobre stock o vencimientos."""
+        """Revisa periódicamente el estado de la despensa y ofertas más baratas de otros supermercados."""
         if hasattr(self, 'auth') and self.auth and self.auth.current_user:
             if hasattr(self, 'notifications') and self.notifications:
-                items = self.db.get_pantry_items(self.auth.current_user.id)
+                uid = self.auth.current_user.id
+                items = self.db.get_pantry_items(uid)
                 self.notifications.check_pantry_items(items)
+                offers = self.db.get_cheaper_offers_for_user(uid)
+                self.notifications.check_price_alerts(offers)
 
     def cerrar_sesion_usuario(self):
         """Cierra la sesión, limpia las pantallas y exige inicio de sesión."""

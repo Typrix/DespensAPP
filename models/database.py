@@ -8,6 +8,7 @@ para SQLite local como fallback de contingencia offline.
 import os
 import json
 import sqlite3
+from datetime import datetime, timedelta
 from typing import Optional, List, Tuple
 try:
     import pymysql
@@ -133,9 +134,14 @@ class DatabaseManager:
                         `name` VARCHAR(100) NOT NULL,
                         `icon_name` VARCHAR(50) DEFAULT 'clipboard-text-outline',
                         `icon_color` VARCHAR(25) DEFAULT '#286ED3',
+                        `supermarket` VARCHAR(80) DEFAULT '',
                         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
                 """)
+                try:
+                    cur.execute("ALTER TABLE `shopping_lists` ADD COLUMN `supermarket` VARCHAR(80) DEFAULT '';")
+                except Exception:
+                    pass
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS `cart_items` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -310,9 +316,14 @@ class DatabaseManager:
                 name TEXT NOT NULL,
                 icon_name TEXT DEFAULT 'clipboard-text-outline',
                 icon_color TEXT DEFAULT '#286ED3',
+                supermarket TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        try:
+            cur.execute("ALTER TABLE shopping_lists ADD COLUMN supermarket TEXT DEFAULT '';")
+        except Exception:
+            pass
         cur.execute("""
             CREATE TABLE IF NOT EXISTS cart_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1121,7 +1132,7 @@ class DatabaseManager:
                 conn = self.get_mysql_connection()
                 with conn.cursor() as cur:
                     cur.execute("""
-                        SELECT l.id, l.user_id, l.name, l.icon_name, l.icon_color,
+                        SELECT l.id, l.user_id, l.name, l.icon_name, l.icon_color, l.supermarket,
                                COUNT(s.id) AS items_count,
                                SUM(CASE WHEN s.is_checked = 0 THEN 1 ELSE 0 END) AS pending_count
                         FROM shopping_lists l
@@ -1139,6 +1150,7 @@ class DatabaseManager:
                         name=r["name"],
                         icon_name=r["icon_name"] or "clipboard-text-outline",
                         icon_color=r["icon_color"] or "#286ED3",
+                        supermarket=(r.get("supermarket") or "").strip(),
                         items_count=int(r["items_count"] or 0),
                         pending_count=int(r["pending_count"] or 0)
                     ))
@@ -1149,7 +1161,7 @@ class DatabaseManager:
                 conn = self.get_sqlite_connection()
                 cur = conn.cursor()
                 cur.execute("""
-                    SELECT l.id, l.user_id, l.name, l.icon_name, l.icon_color,
+                    SELECT l.id, l.user_id, l.name, l.icon_name, l.icon_color, l.supermarket,
                            COUNT(s.id) AS items_count,
                            SUM(CASE WHEN s.is_checked = 0 THEN 1 ELSE 0 END) AS pending_count
                     FROM shopping_lists l
@@ -1161,12 +1173,15 @@ class DatabaseManager:
                 rows = cur.fetchall()
                 conn.close()
                 for r in rows:
+                    keys = r.keys() if hasattr(r, "keys") else ()
+                    supermarket_val = (r["supermarket"] if "supermarket" in keys else "") or ""
                     lists.append(ShoppingList(
                         id=r["id"],
                         user_id=r["user_id"],
                         name=r["name"],
                         icon_name=r["icon_name"] or "clipboard-text-outline",
                         icon_color=r["icon_color"] or "#286ED3",
+                        supermarket=supermarket_val.strip(),
                         items_count=int(r["items_count"] or 0),
                         pending_count=int(r["pending_count"] or 0)
                     ))
@@ -1174,20 +1189,22 @@ class DatabaseManager:
                 print(f"[DB] Error get_shopping_lists SQLite: {e}")
         return lists
 
-    def add_shopping_list(self, user_id: int, name: str, icon_color: str = "#286ED3", icon_name: str = "clipboard-text-outline") -> Optional[int]:
-        """Crea una nueva lista de compras con color e icono personalizados."""
+    def add_shopping_list(self, user_id: int, name: str, icon_color: str = "#286ED3",
+                          icon_name: str = "clipboard-text-outline", supermarket: str = "") -> Optional[int]:
+        """Crea una nueva lista de compras con color, icono y supermercado personalizados."""
         name = name.strip()
         icon_color = icon_color.strip() or "#286ED3"
         icon_name = icon_name.strip() or "clipboard-text-outline"
+        supermarket = (supermarket or "").strip()
 
         if self.is_mysql:
             try:
                 conn = self.get_mysql_connection()
                 with conn.cursor() as cur:
                     cur.execute("""
-                        INSERT INTO shopping_lists (user_id, name, icon_name, icon_color)
-                        VALUES (%s, %s, %s, %s);
-                    """, (user_id, name, icon_name, icon_color))
+                        INSERT INTO shopping_lists (user_id, name, icon_name, icon_color, supermarket)
+                        VALUES (%s, %s, %s, %s, %s);
+                    """, (user_id, name, icon_name, icon_color, supermarket))
                     new_id = cur.lastrowid
                 conn.close()
                 return new_id
@@ -1199,9 +1216,9 @@ class DatabaseManager:
                 conn = self.get_sqlite_connection()
                 cur = conn.cursor()
                 cur.execute("""
-                    INSERT INTO shopping_lists (user_id, name, icon_name, icon_color)
-                    VALUES (?, ?, ?, ?);
-                """, (user_id, name, icon_name, icon_color))
+                    INSERT INTO shopping_lists (user_id, name, icon_name, icon_color, supermarket)
+                    VALUES (?, ?, ?, ?, ?);
+                """, (user_id, name, icon_name, icon_color, supermarket))
                 new_id = cur.lastrowid
                 conn.commit()
                 conn.close()
@@ -1306,12 +1323,12 @@ class DatabaseManager:
         )
 
     def update_shopping_list_item(self, item_id: int, name: str, price: float) -> bool:
-        """Corrige el nombre y el precio de un producto de la lista."""
+        """Corrige el nombre y el precio de un producto de la lista, renovando su fecha de vigencia."""
         name = (name or "").strip()
         if not name:
             return False
         return bool(self._run(
-            "UPDATE shopping_list_items SET name = ?, price = ? WHERE id = ?;",
+            "UPDATE shopping_list_items SET name = ?, price = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?;",
             (name, max(0.0, float(price or 0.0)), item_id),
         ))
 
@@ -1391,6 +1408,182 @@ class DatabaseManager:
             except Exception as e:
                 print(f"[DB] Error delete_shopping_list_item SQLite: {e}")
                 return False
+
+    # ----------------------------------------------------
+    # Precios Históricos y Comparador entre Supermercados
+    # ----------------------------------------------------
+    OFFER_MAX_AGE_DAYS = 15
+    MIN_SAVING_AMOUNT = 100.0
+    MIN_SAVING_RATIO = 0.05
+    MIN_VALID_PRICE_RATIO = 0.25
+
+    @staticmethod
+    def _norm_key(text: str) -> str:
+        """Normaliza texto para comparación (minúsculas y espacios simples)."""
+        return " ".join((text or "").lower().split())
+
+    def get_last_known_price(self, user_id: int, product_name: str) -> float:
+        """
+        Retorna el último precio conocido (> 0) de un producto para traspasarlo
+        desde la despensa a una lista. Busca primero en el historial y listas del
+        usuario, y como respaldo en el catálogo general de la base de datos.
+        """
+        norm = self._norm_key(product_name)
+        if not norm:
+            return 0.0
+
+        # 1. Historial de compras del usuario (más reciente primero)
+        rows = self._run(
+            "SELECT title, price FROM purchase_history WHERE user_id = ? AND price > 0 ORDER BY purchased_at DESC, id DESC;",
+            (user_id,), fetch="all"
+        ) or []
+        for r in rows:
+            if self._norm_key(r["title"]) == norm:
+                return float(r["price"])
+
+        # 2. Listas de compras del usuario (más reciente primero)
+        rows = self._run(
+            """SELECT i.name AS title, i.price
+               FROM shopping_list_items i
+               JOIN shopping_lists l ON l.id = i.list_id
+               WHERE l.user_id = ? AND i.price > 0
+               ORDER BY i.id DESC;""",
+            (user_id,), fetch="all"
+        ) or []
+        for r in rows:
+            if self._norm_key(r["title"]) == norm:
+                return float(r["price"])
+
+        # 3. Respaldo global en la base de datos (otros usuarios / listas)
+        rows = self._run(
+            "SELECT name AS title, price FROM shopping_list_items WHERE price > 0 ORDER BY id DESC;",
+            (), fetch="all"
+        ) or []
+        for r in rows:
+            if self._norm_key(r["title"]) == norm:
+                return float(r["price"])
+
+        rows = self._run(
+            "SELECT title, price FROM purchase_history WHERE price > 0 ORDER BY id DESC;",
+            (), fetch="all"
+        ) or []
+        for r in rows:
+            if self._norm_key(r["title"]) == norm:
+                return float(r["price"])
+
+        return 0.0
+
+    def find_cheaper_supermarket_offer(
+        self,
+        product_name: str,
+        current_price: float,
+        current_supermarket: str = "",
+        max_age_days: int = OFFER_MAX_AGE_DAYS,
+    ) -> Optional[dict]:
+        """
+        Busca en las listas y compras de los últimos `max_age_days` días si el mismo
+        producto está a un precio menor válido en otro supermercado distinto al actual.
+        """
+        norm_name = self._norm_key(product_name)
+        if not norm_name or not current_price or float(current_price) <= 0:
+            return None
+        norm_market = self._norm_key(current_supermarket)
+        target_price = float(current_price)
+        min_valid_price = target_price * self.MIN_VALID_PRICE_RATIO
+        cutoff = (datetime.now() - timedelta(days=max_age_days)).strftime("%Y-%m-%d %H:%M:%S")
+
+        candidates = []
+
+        # A. Productos anotados en listas con supermercado asignado dentro de la ventana de vigencia
+        list_rows = self._run(
+            """SELECT i.name AS title, i.price, l.supermarket
+               FROM shopping_list_items i
+               JOIN shopping_lists l ON l.id = i.list_id
+               WHERE i.price > 0
+                 AND l.supermarket IS NOT NULL AND l.supermarket != ''
+                 AND (i.created_at IS NULL OR i.created_at >= ?);""",
+            (cutoff,), fetch="all"
+        ) or []
+        candidates.extend(list_rows)
+
+        # B. Historial de compras asociado a listas con supermercado dentro de la ventana de vigencia
+        hist_rows = self._run(
+            """SELECT ph.title, ph.price, l.supermarket
+               FROM purchase_history ph
+               JOIN shopping_lists l ON l.id = ph.list_id
+               WHERE ph.price > 0
+                 AND l.supermarket IS NOT NULL AND l.supermarket != ''
+                 AND (ph.purchased_at IS NULL OR ph.purchased_at >= ?);""",
+            (cutoff,), fetch="all"
+        ) or []
+        candidates.extend(hist_rows)
+
+        best_market = None
+        best_price = target_price
+
+        for r in candidates:
+            if self._norm_key(r["title"]) != norm_name:
+                continue
+            market = (r["supermarket"] or "").strip()
+            if not market or self._norm_key(market) == norm_market:
+                continue
+            price = float(r["price"] or 0.0)
+            # Descarta errores de digitación anormalmente bajos (< 25% del precio actual)
+            if price < min_valid_price:
+                continue
+            if 0 < price < best_price:
+                best_price = price
+                best_market = market
+
+        if best_market is None:
+            return None
+
+        saving = round(target_price - best_price, 2)
+        if saving < self.MIN_SAVING_AMOUNT or (saving / target_price) < self.MIN_SAVING_RATIO:
+            return None
+
+        return {
+            "product_name": (product_name or "").strip(),
+            "cheaper_supermarket": best_market,
+            "cheaper_price": best_price,
+            "current_price": target_price,
+            "current_supermarket": (current_supermarket or "").strip(),
+            "saving": saving,
+        }
+
+    def get_cheaper_offers_for_user(self, user_id: int) -> List[dict]:
+        """
+        Evalúa todos los productos pendientes en las listas del usuario y retorna
+        aquellos que tienen un precio más económico registrado en otro supermercado.
+        """
+        if not user_id:
+            return []
+        rows = self._run(
+            """SELECT i.id AS item_id, i.name, i.price, l.id AS list_id, l.name AS list_name, l.supermarket
+               FROM shopping_list_items i
+               JOIN shopping_lists l ON l.id = i.list_id
+               WHERE l.user_id = ? AND i.is_checked = 0 AND i.price > 0
+               ORDER BY i.id DESC;""",
+            (user_id,), fetch="all"
+        ) or []
+
+        offers = []
+        seen = set()
+        for r in rows:
+            keys = r.keys() if hasattr(r, "keys") else ()
+            market = (r["supermarket"] if "supermarket" in keys else "") or ""
+            offer = self.find_cheaper_supermarket_offer(r["name"], float(r["price"] or 0.0), market)
+            if not offer:
+                continue
+            dedup_key = (self._norm_key(r["name"]), self._norm_key(offer["cheaper_supermarket"]))
+            if dedup_key in seen:
+                continue
+            seen.add(dedup_key)
+            offer["item_id"] = r["item_id"]
+            offer["list_id"] = r["list_id"]
+            offer["list_name"] = r["list_name"]
+            offers.append(offer)
+        return offers
 
     # ----------------------------------------------------
     # Estadísticas y Métricas Dinámicas del Usuario

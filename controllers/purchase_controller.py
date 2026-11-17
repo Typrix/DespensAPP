@@ -108,22 +108,24 @@ class PurchaseController:
     # Despensa -> Lista (reponer)
     # ------------------------------------------------------------------
     def add_pantry_item_to_list(self, list_id: int, pantry_item: PantryItem) -> bool:
-        """Anota un producto de la despensa en una lista. False si ya estaba pendiente ahí."""
+        """Anota un producto de la despensa en una lista con su último precio conocido. False si ya estaba pendiente."""
         pending = {_normalize(it.name) for it in self.db.get_shopping_list_items(list_id) if not it.is_checked}
         if _normalize(pantry_item.name) in pending:
             return False
-        self.db.add_shopping_list_item(list_id, pantry_item.name)
+        last_price = self.db.get_last_known_price(pantry_item.user_id, pantry_item.name)
+        self.db.add_shopping_list_item(list_id, pantry_item.name, price=last_price)
         return True
 
     def add_many_to_list(self, list_id: int, pantry_items: List[PantryItem]) -> int:
-        """Anota varios productos de la despensa en una lista. Retorna cuántos se agregaron."""
+        """Anota varios productos de la despensa en una lista conservando su precio anterior."""
         pending = {_normalize(it.name) for it in self.db.get_shopping_list_items(list_id) if not it.is_checked}
         added = 0
         for item in pantry_items:
             key = _normalize(item.name)
             if key in pending:
                 continue
-            self.db.add_shopping_list_item(list_id, item.name)
+            last_price = self.db.get_last_known_price(item.user_id, item.name)
+            self.db.add_shopping_list_item(list_id, item.name, price=last_price)
             pending.add(key)
             added += 1
         if self.analytics and added:

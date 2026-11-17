@@ -70,11 +70,18 @@ class SyncController:
                 self.db.update_user_pro_status(mysql_user_id, 1)
 
             # A. Sincronizar Listas de Compras
-            sqlite_cur.execute("""
-                SELECT id, name, icon_name, icon_color 
-                FROM shopping_lists 
-                WHERE user_id = ?;
-            """, (sqlite_user_id,))
+            try:
+                sqlite_cur.execute("""
+                    SELECT id, name, icon_name, icon_color, supermarket
+                    FROM shopping_lists
+                    WHERE user_id = ?;
+                """, (sqlite_user_id,))
+            except sqlite3.OperationalError:
+                sqlite_cur.execute("""
+                    SELECT id, name, icon_name, icon_color, '' AS supermarket
+                    FROM shopping_lists
+                    WHERE user_id = ?;
+                """, (sqlite_user_id,))
             local_lists = sqlite_cur.fetchall()
 
             existing_mysql_lists = self.db.get_shopping_lists(mysql_user_id)
@@ -85,11 +92,14 @@ class SyncController:
                 l_name = l_row["name"].strip()
                 l_key = l_name.lower()
                 if l_key not in existing_list_names:
+                    l_keys = l_row.keys() if hasattr(l_row, "keys") else ()
+                    market_val = (l_row["supermarket"] if "supermarket" in l_keys else "") or ""
                     new_id = self.db.add_shopping_list(
                         user_id=mysql_user_id,
                         name=l_name,
                         icon_name=l_row["icon_name"] or "clipboard-text-outline",
-                        icon_color=l_row["icon_color"] or "#286ED3"
+                        icon_color=l_row["icon_color"] or "#286ED3",
+                        supermarket=market_val,
                     )
                     if new_id:
                         list_id_mapping[l_row["id"]] = new_id

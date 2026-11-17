@@ -9,6 +9,20 @@ from models.shopping_list import ShoppingList, ShoppingListItem
 from models.database import DatabaseManager
 
 FREE_MAX_LISTS = 1
+DEFAULT_SUPERMARKET = "Cualquiera / General"
+SUPERMARKET_OPTIONS = [
+    DEFAULT_SUPERMARKET,
+    "Lider",
+    "Jumbo",
+    "Santa Isabel",
+    "Unimarc",
+    "Tottus",
+    "Mayorista 10",
+    "Acuenta",
+    "Alvi",
+    "Feria / Verdulería",
+    "Otro",
+]
 
 
 class ListController:
@@ -29,13 +43,18 @@ class ListController:
         """Obtiene todas las listas de compras del usuario."""
         return self.db.get_shopping_lists(user_id)
 
-    def add_list(self, user_id: int, name: str, color_hex: str, initial_items: str = "") -> Optional[int]:
-        """Crea una nueva lista de compras con color y posibles productos iniciales."""
+    def add_list(self, user_id: int, name: str, color_hex: str, initial_items: str = "",
+                 supermarket: str = "") -> Optional[int]:
+        """Crea una nueva lista de compras con color, supermercado y posibles productos iniciales."""
+        clean_market = (supermarket or "").strip()
+        if clean_market == DEFAULT_SUPERMARKET:
+            clean_market = ""
         new_list_id = self.db.add_shopping_list(
             user_id=user_id,
             name=name,
             icon_color=color_hex,
-            icon_name="clipboard-text-outline"
+            icon_name="clipboard-text-outline",
+            supermarket=clean_market,
         )
         if new_list_id and initial_items:
             items_list = [it.strip() for it in initial_items.replace("\n", ",").split(",") if it.strip()]
@@ -45,7 +64,7 @@ class ListController:
         if self.analytics:
             self.analytics.track_event(
                 "create_shopping_list",
-                metadata={"name": name, "initial_items": initial_items}
+                metadata={"name": name, "supermarket": clean_market or DEFAULT_SUPERMARKET, "initial_items": initial_items}
             )
         return new_list_id
 

@@ -13,6 +13,7 @@ class ShoppingListCard(ButtonBehavior, BoxLayout):
     """Tarjeta interactiva de lista de compras estilo supermercado."""
     list_id = NumericProperty(0)
     list_name = StringProperty("")
+    supermarket = StringProperty("")
     icon_name = StringProperty("clipboard-text-outline")
     icon_color_rgba = ListProperty([0.157, 0.431, 0.831, 1.0])
     badge_bg_color = ListProperty([0.157, 0.431, 0.831, 0.15])
@@ -24,6 +25,7 @@ class ShoppingListCard(ButtonBehavior, BoxLayout):
         modal = ShoppingListDetailModal(
             list_id=self.list_id,
             list_name=self.list_name,
-            icon_color_rgba=self.icon_color_rgba
+            icon_color_rgba=self.icon_color_rgba,
+            supermarket=self.supermarket,
         )
         modal.open()

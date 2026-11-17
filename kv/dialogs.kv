@@ -263,62 +263,15 @@
                 icon: root.selected_category_icon
                 on_release: root.open_category_menu(self)
 
-        # Campo: Fecha de Vencimiento con selector de calendario integrado
-        BoxLayout:
-            orientation: "vertical"
-            size_hint_y: None
-            height: "56dp"
-            spacing: "4dp"
-
-            Label:
-                text: "FECHA DE VENCIMIENTO"
-                font_size: "11sp"
-                bold: True
-                color: app.text_secondary_color
-                size_hint_y: None
-                height: "16dp"
-                halign: "left"
-                text_size: self.size
-
-            BoxLayout:
-                size_hint_y: None
-                height: "36dp"
-                spacing: "4dp"
-                canvas.before:
-                    Color:
-                        rgba: app.sage_container_color
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [10, 10, 10, 10]
-                    Color:
-                        rgba: app.divider_color
-                    Line:
-                        rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
-                        width: 1.0
-
-                TextInput:
-                    id: field_expiration_input
-                    text: root.expiration_date_str
-                    hint_text: "No vence (no perecible)" if root.has_no_expiration else "Toca el calendario (AAAA-MM-DD)"
-                    disabled: root.has_no_expiration
-                    multiline: False
-                    font_size: "13.5sp"
-                    padding: ["10dp", "8dp", "6dp", "8dp"]
-                    background_color: [0, 0, 0, 0]
-                    cursor_color: app.accent_green_color
-                    foreground_color: app.input_text_color
-                    hint_text_color: app.input_placeholder_color
-                    size_hint_x: 1
-
-                MDIconButton:
-                    icon: "calendar-month-outline"
-                    style: "standard"
-                    theme_icon_color: "Custom"
-                    icon_color: app.accent_green_color if not root.has_no_expiration else app.text_secondary_color
-                    disabled: root.has_no_expiration
-                    pos_hint: {"center_y": 0.5}
-                    on_release: root.open_date_picker()
+        # Campo: Fecha de Vencimiento mediante selector de calendario obligatorio
+        DropdownField:
+            id: field_expiration_picker
+            label_text: "FECHA DE VENCIMIENTO"
+            value: "No vence (no perecible)" if root.has_no_expiration else (root.expiration_date_str or "Seleccionar en el calendario")
+            icon: "infinity" if root.has_no_expiration else "calendar-month-outline"
+            disabled: root.has_no_expiration
+            opacity: 0.65 if root.has_no_expiration else 1
+            on_release: root.open_date_picker()
 
         # Botón / Toggle: Sin fecha de vencimiento
         BoxLayout:
@@ -973,10 +926,10 @@
 
 
 # --------------------------------------------------------
-# 3. Modal: Nueva Lista de Compras (Con Productos Iniciales)
+# 3. Modal: Nueva Lista de Compras
 # --------------------------------------------------------
 <AddShoppingListModal>:
-    height: "484dp" if root.error_text else "440dp"
+    height: "474dp" if root.error_text else "430dp"
 
     BoxLayout:
         orientation: "vertical"
@@ -1009,11 +962,13 @@
             label_text: "NOMBRE DE LA LISTA"
             hint_text: "Ej: Supermercado Lunes, Asado, Verdulería..."
 
-        # Campo opcional: Productos iniciales
-        CustomInputField:
-            id: field_initial_items
-            label_text: "PRODUCTOS INICIALES (OPCIONAL)"
-            hint_text: "Ej: Leche, Pan, Huevos, Café (separados por coma)"
+        # Selector de Supermercado
+        DropdownField:
+            id: field_supermarket
+            label_text: "SUPERMERCADO"
+            value: root.selected_supermarket
+            icon: "storefront-outline"
+            on_release: root.open_supermarket_menu(self)
 
         # Selector de Color para el Icono
         BoxLayout:
@@ -1144,7 +1099,7 @@
             shorten: True
             shorten_from: "right"
         Label:
-            text: root.price_str or "+ precio"
+            text: root.price_str or "Editar $"
             size_hint_x: None
             width: "72dp"
             font_size: "13sp" if root.price_str else "11sp"
@@ -1438,7 +1393,7 @@
                 size_hint_x: None
                 width: "110dp"
                 label_text: "PRECIO ($)"
-                hint_text: "Opcional"
+                hint_text: "Ej: 1.990"
                 input_filter: numeric_input_filter
 
         Widget:
