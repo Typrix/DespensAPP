@@ -57,7 +57,7 @@
                         text_color: app.accent_green_color
                         pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-            # Selector de periodo del historial (Semana / Mes / 6 meses / Año)
+            # Selector de periodo del historial (Mes / 3 meses / 6 meses / Año)
             BoxLayout:
                 size_hint_y: None
                 height: "40dp"
@@ -72,11 +72,11 @@
                         radius: [14, 14, 14, 14]
 
                 PeriodChip:
-                    text: "Semana"
-                    period: "week"
-                PeriodChip:
                     text: "Mes"
                     period: "month"
+                PeriodChip:
+                    text: "3 meses"
+                    period: "quarter"
                 PeriodChip:
                     text: "6 meses"
                     period: "semester"

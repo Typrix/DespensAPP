@@ -18,6 +18,7 @@ from models.shopping_list import ShoppingListItem
 PERIODS = {
     "week": (7, "Última semana"),
     "month": (30, "Último mes"),
+    "quarter": (90, "Últimos 3 meses"),
     "semester": (180, "Últimos 6 meses"),
     "year": (365, "Último año"),
 }
@@ -200,14 +201,14 @@ class PurchaseController:
     # ------------------------------------------------------------------
     def period_start(self, period: str) -> Optional[str]:
         """Fecha de inicio del periodo (texto comparable con purchased_at) o None si es todo."""
-        days = PERIODS.get(period, PERIODS["week"])[0]
+        days = PERIODS.get(period, PERIODS["month"])[0]
         if days is None:
             return None
         return (self.clock() - timedelta(days=days)).strftime(PURCHASE_DATETIME_FORMAT)
 
-    def get_spending(self, user_id: Optional[int], period: str = "week") -> Dict[str, Any]:
+    def get_spending(self, user_id: Optional[int], period: str = "month") -> Dict[str, Any]:
         """Total gastado, cantidad de productos y compras (agrupadas por fecha) del periodo."""
-        label = PERIODS.get(period, PERIODS["week"])[1]
+        label = PERIODS.get(period, PERIODS["month"])[1]
         if not user_id:
             return {"period": period, "label": label, "total": 0.0, "total_str": "$0",
                     "count": 0, "records": [], "groups": []}

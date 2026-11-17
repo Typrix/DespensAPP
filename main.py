@@ -94,11 +94,11 @@ class MainApp(MDApp):
     home_alert_item_id = NumericProperty(0)
 
     # Historial de compras por periodo (Estadísticas)
-    stats_period = StringProperty("week")
-    stats_period_label = StringProperty("Última semana")
+    stats_period = StringProperty("month")
+    stats_period_label = StringProperty("Último mes")
     # Textos derivados (KV no reevalúa expresiones como prop.upper(), por eso se calculan aquí)
-    stats_period_tag = StringProperty("ÚLTIMA SEMANA")
-    stats_spent_title = StringProperty("Gasto · última semana")
+    stats_period_tag = StringProperty("ÚLTIMO MES")
+    stats_spent_title = StringProperty("Gasto · último mes")
     stats_purchase_count = NumericProperty(0)  # compras del periodo (para "Ver todas")
 
     # Mi Despensa: búsqueda, filtro activo y reposición en bloque
@@ -261,7 +261,7 @@ class MainApp(MDApp):
             self.user_is_pro = False
             self.user_greeting_str = "Bienvenido a DespensAPP"
         if not self.user_is_pro and self.stats_period in PRO_PERIODS:
-            self.stats_period = "week"
+            self.stats_period = "month"
 
     def actualizar_config_remota(self):
         """Carga o refresca la configuración remota y actualiza el estado reactivo de la UI."""
