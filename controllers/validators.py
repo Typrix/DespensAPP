@@ -64,6 +64,23 @@ def parse_number(raw):
     return value
 
 
+def parse_price(raw):
+    """
+    Convierte un precio en pesos a float. En CLP el punto siempre es separador de miles,
+    sin importar cuántos dígitos haya después: '2.000' -> 2000 y '2.0000' -> 20000
+    (pasa al agregar un 0 a un precio ya formateado). La coma se acepta como decimal.
+    Retorna None si el texto está vacío o no es un número válido.
+    """
+    text = (raw or "").strip().replace("$", "").replace(" ", "")
+    if not text or text.count(",") > 1:
+        return None
+    int_part, _, dec_part = text.partition(",")
+    int_part = int_part.replace(".", "")
+    if not int_part.isdigit() or (dec_part and not dec_part.isdigit()):
+        return None
+    return float(f"{int_part}.{dec_part or 0}")
+
+
 def format_number(value):
     """Muestra un número sin decimales innecesarios y con coma decimal (ej: 1,5 / 500)."""
     if value == int(value):
@@ -112,7 +129,7 @@ def validate_cart_form(title, price_str, subtitle=""):
     if not (price_str or "").strip():
         return False, "Ingresa el precio del producto.", None
 
-    price = parse_number(price_str)
+    price = parse_price(price_str)
     if price is None:
         return False, "El precio debe ser un número (ej: 1.500 o $2.990).", None
     if price <= 0 or price > PRICE_MAX:

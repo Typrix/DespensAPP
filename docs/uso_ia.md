@@ -318,3 +318,18 @@
 - Prueba funcional con base SQLite y sesión temporales (10 de 10): agregar con medida sugerida, error con texto inválido, cambio de kg a g con mínimo convertido, stock desde el detalle y compra con cantidad editada.
 - Capturas a 400 px en modo claro y oscuro de las 4 pantallas y de los diálogos.
 - Corregido: una etiqueta de la edición del producto crecía sin fin por tener dos `text_size`.
+
+---
+
+## Entrada / Prompt del Usuario (Precio que pierde ceros)
+> "cuando por ejemplo pongo 2000 cuando anoto un producto se guarda como 2.000 que esta bien pero si agrego otro 0 este se pone como 2 y no como 20.000"
+
+## Causa raíz
+El precio se leía con `parse_number`, pensada para cantidades: el punto solo cuenta como separador de miles si después vienen exactamente 3 dígitos. Al editar "2.000" y agregar un 0 queda "2.0000", que se leía como el decimal 2,0000.
+
+## Acciones Realizadas
+1. Nueva `parse_price` en `controllers/validators.py`: en pesos chilenos el punto siempre es de miles y la coma es decimal.
+2. `validate_cart_form` (anotar y editar productos de una lista) usa `parse_price`.
+
+## Validación
+- 5 pruebas nuevas en `tests/test_price_parsing.py` ("2.0000" → 20.000, "20.00" → 2.000, miles, coma decimal y textos inválidos), junto con las del selector (17 de 17).
