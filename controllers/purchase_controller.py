@@ -13,6 +13,7 @@ from models.database import DatabaseManager
 from models.pantry_item import PantryItem
 from models.purchase_record import PURCHASE_DATETIME_FORMAT
 from models.shopping_list import ShoppingListItem
+from controllers.unit_selector import to_stock_quantity
 
 # Periodos del historial: clave -> (días hacia atrás, etiqueta visible)
 PERIODS = {
@@ -37,6 +38,11 @@ def _normalize(name: str) -> str:
 def format_money(value: float) -> str:
     """Formatea montos a moneda local (ej: $12.500)."""
     return f"${int(round(value)):,}".replace(",", ".")
+
+
+def sort_by_creation(items) -> List[ShoppingListItem]:
+    """Productos en el orden en que se anotaron (id creciente), estén tachados o no."""
+    return sorted(items, key=lambda it: int(it.id or 0))
 
 
 def summarize_items(items: List[ShoppingListItem]) -> Dict[str, Any]:
@@ -149,22 +155,26 @@ class PurchaseController:
 
     def build_checkout(self, user_id: int, list_items: List[ShoppingListItem]) -> List[Dict[str, Any]]:
         """
-        Una fila por producto tachado con la unidad sugerida:
-        la unidad elegida en la lista, la del producto en la despensa o 'un.' si es nuevo.
+        Una fila por producto tachado, con la cantidad y la medida anotadas en la lista
+        (para el subtotal) y lo que se suma al stock en la medida de la despensa.
         """
         pantry = {_normalize(p.name): p for p in self.db.get_pantry_items(user_id)}
         rows = []
-        for item in list_items:
+        for item in sort_by_creation(list_items):
             if not item.is_checked:
                 continue
             match = pantry.get(_normalize(item.name))
             item_unit = getattr(item, "unit", None) or "un."
+            quantity = float(getattr(item, "quantity", 1.0) or 1.0)
+            stock_unit = match.unit if match else item_unit
             rows.append({
                 "ref": item,
                 "title": item.name,
                 "price": item.price,
-                "quantity": float(getattr(item, "quantity", 1.0) or 1.0),
-                "unit": match.unit if match else item_unit,
+                "quantity": quantity,
+                "unit": item_unit,
+                "stock_quantity": to_stock_quantity(quantity, item_unit, stock_unit),
+                "stock_unit": stock_unit,
                 "is_new": match is None,
             })
         return rows
@@ -182,14 +192,16 @@ class PurchaseController:
         from models.purchase_record import PurchaseRecord
         for entry in entries:
             item: ShoppingListItem = entry["ref"]
+            # Cantidad y medida de la lista: el precio es por esa medida (subtotal e historial)
             quantity = float(entry["quantity"])
+            unit = entry.get("unit") or getattr(item, "unit", "un.") or "un."
             match = self.find_pantry_match(user_id, item.name)
             if match:
-                self.db.set_pantry_quantity(match.id, match.quantity + quantity)
-                unit = match.unit
+                # Al stock se suma en la medida de la despensa (500 g -> 0,5 kg)
+                added = float(entry.get("stock_quantity", to_stock_quantity(quantity, unit, match.unit)))
+                self.db.set_pantry_quantity(match.id, match.quantity + added)
                 summary["updated"] += 1
             else:
-                unit = entry.get("unit") or getattr(item, "unit", "un.") or "un."
                 self.db.add_pantry_item(user_id, item.name, quantity, unit, DEFAULT_NEW_THRESHOLD, "General", None)
                 summary["created"] += 1
             rec_id = self.db.add_purchase_record(user_id, item.name, item.price, quantity, unit, now,

@@ -333,3 +333,24 @@ El precio se leía con `parse_number`, pensada para cantidades: el punto solo cu
 
 ## Validación
 - 5 pruebas nuevas en `tests/test_price_parsing.py` ("2.0000" → 20.000, "20.00" → 2.000, miles, coma decimal y textos inválidos), junto con las del selector (17 de 17).
+
+---
+
+## Entrada / Prompt del Usuario (Listas y finalizar compra)
+> "que en lista se mantenga cantidad y medida para anotar y despues cuando uno va a hacer finalizar compra salga de la suma de todo pero no se pueda editar / que cuando tache un producto como sumado este mantenga su posicion"
+
+## Causa raíz
+- La lista se dibujaba en el orden que entrega la base; la API puede devolver los tachados al final, por eso la fila saltaba de lugar.
+- La hoja de cantidad de la lista forzaba enteros en "un.", así que un producto en kg o g no se podía corregir con su medida.
+- Al finalizar, la cantidad se sumaba al stock en la medida de la despensa sin convertir (500 g anotados sumaban 500 kg).
+
+## Acciones Realizadas
+1. `sort_by_creation` en `controllers/purchase_controller.py`: la lista y el resumen se ordenan por creación, tachados o no.
+2. La hoja de cantidad de la lista usa la medida del producto (píldoras + número) y guarda cantidad y medida.
+3. Finalizar compra es de solo lectura: cantidad y medida anotadas, subtotal y total; sin lápiz ni hoja de edición.
+4. `to_stock_quantity` en `controllers/unit_selector.py`: convierte solo dentro de la misma familia (500 g → 0,5 kg); el historial y el total usan la cantidad de la lista.
+5. `clamp_quantity` no redondea bajo el mínimo en medidas que se cuentan.
+
+## Validación
+- 6 pruebas nuevas en `tests/test_checkout.py`; 24 de 24 en total.
+- Prueba funcional con base temporal: tachar no mueve filas, 1,5 kg guardado en la lista, resumen sin edición con total $12.640 y Arroz 3 → 3,5 kg.

@@ -5,6 +5,8 @@ Define las medidas disponibles, los atajos de cantidad, la conversión entre
 kg/g y L/ml y el ajuste de valores para el componente QuantityPicker.
 """
 
+import math
+
 from controllers.validators import PANTRY_UNITS, QUANTITY_MAX, step_for_unit, parse_number, format_number
 
 # Medidas que se convierten entre sí: unidad -> (familia, factor respecto a la base)
@@ -60,7 +62,8 @@ def clamp_quantity(value, unit, integer_only=False, minimum=0.0):
     """Ajusta la cantidad al rango válido y a los decimales que admite la medida."""
     value = max(float(minimum), min(float(QUANTITY_MAX), float(value)))
     if integer_only or is_count_unit(unit):
-        return float(round(value))
+        # Al redondear no se baja del mínimo (mínimo 0,01 en una medida que se cuenta = 1)
+        return float(max(round(value), math.ceil(float(minimum))))
     return round(value, 2)
 
 
@@ -79,6 +82,18 @@ def convert_quantity(value, from_unit, to_unit):
     if is_count_unit(to_unit):
         return float(max(1, round(value)))
     return value
+
+
+def to_stock_quantity(value, list_unit, stock_unit):
+    """Cantidad a sumar al stock en la medida de la despensa.
+
+    Solo convierte entre medidas de la misma familia (500 g -> 0,5 kg); si no se
+    pueden convertir (paquete y kg), se suma el número tal cual.
+    """
+    src, dst = _CONVERTIBLE.get(list_unit), _CONVERTIBLE.get(stock_unit)
+    if src and dst and src[0] == dst[0]:
+        return convert_quantity(value, list_unit, stock_unit)
+    return float(value)
 
 
 def parse_typed_quantity(text, minimum=0.0):

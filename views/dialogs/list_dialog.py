@@ -22,7 +22,7 @@ from controllers.validators import (
     format_number,
     step_for_unit,
 )
-from controllers.purchase_controller import summarize_items, format_money
+from controllers.purchase_controller import summarize_items, format_money, sort_by_creation
 from controllers.list_controller import DEFAULT_SUPERMARKET, SUPERMARKET_OPTIONS
 from views.widgets.empty_state import EmptyState
 from controllers.product_icons import name_visual
@@ -205,17 +205,16 @@ class ShoppingListItemRow(BoxLayout):
             self.callback_quantity(self.item, new_qty)
 
     def open_quantity(self):
-        """Hoja compacta para escribir cuántas unidades anotar (en listas, solo enteros)."""
+        """Hoja compacta para corregir la cantidad y la medida anotadas (1,5 kg, 500 g, 2 un.)."""
         if not self.callback_quantity:
             return
         QuantitySheet(
             title=self.name,
             quantity=self.quantity,
-            unit="un.",
-            show_units=False,
-            integer_only=True,
-            minimum=1,
-            on_save=lambda quantity, _unit: self.callback_quantity(self.item, int(quantity)),
+            unit=self.unit,
+            show_units=True,
+            minimum=0.01,
+            on_save=lambda quantity, unit: self.callback_quantity(self.item, quantity, unit),
         ).open()
 
 
@@ -338,10 +337,11 @@ class ShoppingListDetailModal(BaseFormModal):
         app = MDApp.get_running_app()
         if not app or not getattr(app, "db", None):
             return
-        items = [
+        # Orden por creación: la API puede devolver los tachados al final, y tachar no debe mover filas
+        items = sort_by_creation(
             it for it in app.db.get_shopping_list_items(self.list_id)
             if not app.is_pending_delete("list_item", it.id)
-        ]
+        )
         summary = summarize_items(items)
         self.checked_count = summary["checked"]
         self.in_cart_str = format_money(summary["in_cart"])
@@ -423,8 +423,8 @@ class ShoppingListDetailModal(BaseFormModal):
             self.load_items()
             app.cargar_listas()
 
-    def update_item_quantity(self, item, quantity):
-        """Ajusta la cantidad del producto respetando su unidad y actualiza el total en el carro."""
+    def update_item_quantity(self, item, quantity, unit=None):
+        """Guarda la cantidad (y la medida si cambió) del producto y actualiza el total en el carro."""
         app = MDApp.get_running_app()
         if app and getattr(app, "db", None):
             app.db.update_shopping_list_item(
@@ -432,7 +432,7 @@ class ShoppingListDetailModal(BaseFormModal):
                 item.name,
                 item.price,
                 quantity,
-                getattr(item, "unit", "un."),
+                unit or getattr(item, "unit", "un."),
             )
             self.load_items()
             app.cargar_listas()

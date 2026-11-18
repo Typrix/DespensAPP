@@ -1714,43 +1714,17 @@
             shorten: True
             shorten_from: "right"
 
-    # Cantidad comprada: toca para cambiarla (y la medida si es nuevo)
-    TapArea:
+    # Cantidad y medida anotadas en la lista (solo lectura: se corrige en la lista)
+    Label:
+        text: root.amount_str
         size_hint_x: None
-        width: max(dp(82), amount_lbl.texture_size[0] + dp(38))
-        padding: ["12dp", 0, "8dp", 0]
-        spacing: "4dp"
-        opacity: 0.7 if self.state == "down" else 1
-        on_release: root.open_quantity()
-        canvas.before:
-            Color:
-                rgba: app.card_white_color
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [22, 22, 22, 22]
-            Color:
-                rgba: app.divider_color
-            Line:
-                rounded_rectangle: (self.x, self.y, self.width, self.height, dp(22))
-                width: 1
-        Label:
-            id: amount_lbl
-            text: root.amount_str
-            font_size: "14sp"
-            bold: True
-            color: app.text_primary_color
-            halign: "center"
-            valign: "middle"
-            text_size: self.size
-        MDIcon:
-            icon: "pencil-outline"
-            size_hint_x: None
-            width: "16dp"
-            font_size: "15sp"
-            theme_text_color: "Custom"
-            text_color: app.accent_green_color
-            pos_hint: {"center_y": 0.5}
+        width: max(dp(56), self.texture_size[0])
+        font_size: "14sp"
+        bold: True
+        color: app.text_primary_color
+        halign: "right"
+        valign: "middle"
+        text_size: None, self.height
 
     # Subtotal de la fila
     Label:
@@ -1790,7 +1764,7 @@
             text_size: self.size
 
         Label:
-            text: f"{root.summary_subtitle} · Verifica cantidades y medidas antes de confirmar."
+            text: f"{root.summary_subtitle} · Para cambiar una cantidad, edítala en la lista."
             font_size: "11.5sp"
             color: app.text_secondary_color
             size_hint_y: None
