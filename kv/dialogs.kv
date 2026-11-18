@@ -6,12 +6,22 @@
 #:import numeric_input_filter controllers.validators.numeric_input_filter
 
 <BaseFormModal>:
+    # Hoja inferior: todo el ancho en celular, máximo 560dp en pantallas anchas
     size_hint: None, None
-    width: "350dp"
+    width: min(Window.width, dp(560))
     background_color: [0, 0, 0, 0]
-    overlay_color: [0, 0, 0, 0.45]
+    overlay_color: [0, 0, 0, 0.40]
     background: ""
     auto_dismiss: True
+    _anim_duration: 0.18
+    # Barrita para arrastrar la hoja hacia abajo
+    canvas.after:
+        Color:
+            rgba: app.divider_color if self.as_sheet else (0, 0, 0, 0)
+        RoundedRectangle:
+            pos: self.center_x - dp(18), self.top - dp(12)
+            size: dp(36), dp(4)
+            radius: [2, 2, 2, 2]
 
 # Mensaje de validación del formulario (rojo = error, ámbar = aviso).
 # Ocupa espacio solo cuando hay texto.
@@ -19,7 +29,7 @@
     is_warning: False
     font_size: "12sp"
     bold: True
-    color: [0.82, 0.48, 0.12, 1.0] if self.is_warning else [0.85, 0.20, 0.25, 1.0]
+    color: app.legible([0.82, 0.48, 0.12, 1.0] if self.is_warning else [0.85, 0.20, 0.25, 1.0], app.modo_oscuro)
     size_hint_y: None
     height: (self.texture_size[1] + dp(6)) if self.text else 0
     opacity: 1 if self.text else 0
@@ -39,7 +49,7 @@
 
     Label:
         text: root.label_text
-        font_size: "11sp"
+        font_size: "12.5sp"
         bold: True
         color: app.text_secondary_color
         size_hint_y: None
@@ -90,7 +100,7 @@
 
     Label:
         text: root.label_text
-        font_size: "11sp"
+        font_size: "12.5sp"
         bold: True
         color: app.text_secondary_color
         size_hint_y: None
@@ -148,11 +158,15 @@
 # 2. Modal: Añadir a la Despensa (Con Umbrales y Fecha de Vencimiento)
 # --------------------------------------------------------
 <AddPantryItemModal>:
-    height: dp(530) + (dp(44) if root.error_text else 0) + (dp(26) if root.warning_text else 0)
+    # El alto se ajusta al contenido (con tope en el alto de la pantalla)
+    height: min(content.minimum_height, Window.height - dp(24))
 
     BoxLayout:
+        id: content
         orientation: "vertical"
-        padding: ["20dp", "18dp", "20dp", "18dp"]
+        size_hint_y: None
+        height: self.minimum_height
+        padding: ["20dp", "22dp", "20dp", "18dp"]
         spacing: "10dp"
         canvas.before:
             Color:
@@ -160,14 +174,14 @@
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [24, 24, 24, 24]
+                radius: [24, 24, 0, 0]
 
         # Encabezado
         BoxLayout:
             size_hint_y: None
             height: "32dp"
             Label:
-                text: "Añadir a Despensa"
+                text: "Agregar a la despensa"
                 font_size: "17sp"
                 bold: True
                 color: app.text_primary_color
@@ -178,72 +192,13 @@
         # Campo: Nombre del producto
         CustomInputField:
             id: field_name
-            label_text: "NOMBRE DEL PRODUCTO"
+            label_text: "Nombre del producto"
             hint_text: "Ej: Leche descremada, Arroz, Sal..."
 
-        # Fila: Cantidad Actual y Unidad
-        BoxLayout:
-            size_hint_y: None
-            height: "56dp"
-            spacing: "10dp"
-
-            CustomInputField:
-                id: field_quantity
-                label_text: "CANTIDAD ACTUAL"
-                hint_text: "Ej: 2, 1,5, 500"
-                input_filter: numeric_input_filter
-
-            # Selector de unidad: menú desplegable con unidades predefinidas
-            BoxLayout:
-                orientation: "vertical"
-                size_hint_y: None
-                height: "56dp"
-                spacing: "4dp"
-
-                Label:
-                    text: "UNIDAD"
-                    font_size: "11sp"
-                    bold: True
-                    color: app.text_secondary_color
-                    size_hint_y: None
-                    height: "16dp"
-                    halign: "left"
-                    text_size: self.size
-
-                BoxLayout:
-                    size_hint_y: None
-                    height: "36dp"
-                    canvas.before:
-                        Color:
-                            rgba: app.sage_container_color
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [10, 10, 10, 10]
-                        Color:
-                            rgba: app.divider_color
-                        Line:
-                            rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
-                            width: 1.0
-
-                    Button:
-                        id: field_unit
-                        text: root.selected_unit
-                        font_size: "13.5sp"
-                        color: app.input_text_color
-                        background_color: [0, 0, 0, 0]
-                        halign: "left"
-                        valign: "middle"
-                        text_size: self.width - dp(20), self.height
-                        on_release: root.open_unit_menu(self)
-
-                    MDIconButton:
-                        icon: "menu-down"
-                        style: "standard"
-                        theme_icon_color: "Custom"
-                        icon_color: app.accent_green_color
-                        pos_hint: {"center_y": 0.5}
-                        on_release: root.open_unit_menu(field_unit)
+        # Medida y cantidad (selector compacto)
+        QuantityPicker:
+            id: picker
+            quantity: 1
 
         # Fila: Umbral mínimo (alerta) y Categoría
         BoxLayout:
@@ -253,13 +208,13 @@
 
             CustomInputField:
                 id: field_threshold
-                label_text: "AVISAR SI BAJA DE"
+                label_text: "Avisar si baja de"
                 hint_text: "Ej: 2"
                 input_filter: numeric_input_filter
 
             DropdownField:
                 id: field_category
-                label_text: "CATEGORÍA"
+                label_text: "Categoría"
                 value: root.selected_category
                 icon: root.selected_category_icon
                 on_release: root.open_category_menu(self)
@@ -267,7 +222,7 @@
         # Campo: Fecha de Vencimiento mediante selector de calendario obligatorio
         DropdownField:
             id: field_expiration_picker
-            label_text: "FECHA DE VENCIMIENTO"
+            label_text: "Fecha de vencimiento"
             value: "No vence (no perecible)" if root.has_no_expiration else (root.expiration_date_str or "Seleccionar en el calendario")
             icon: "infinity" if root.has_no_expiration else "calendar-month-outline"
             disabled: root.has_no_expiration
@@ -281,7 +236,7 @@
 
             Button:
                 text: "No perecible: sin fecha de vencimiento (tocar para quitar)" if root.has_no_expiration else "Marcar como 'Sin fecha de vencimiento'"
-                font_size: "11sp"
+                font_size: "12.5sp"
                 bold: root.has_no_expiration
                 color: app.accent_green_color if root.has_no_expiration else app.text_secondary_color
                 background_color: [0, 0, 0, 0]
@@ -294,9 +249,6 @@
                         size: self.size
                         radius: [10, 10, 10, 10]
 
-        Widget:
-            size_hint_y: 1
-
         # Aviso (ámbar) si el producto ya venció y error de validación (rojo)
         FormMessageLabel:
             text: root.warning_text
@@ -308,12 +260,12 @@
         # Botones de Acción
         BoxLayout:
             size_hint_y: None
-            height: "44dp"
+            height: "52dp"
             spacing: "10dp"
 
             Button:
                 text: "Cancelar"
-                font_size: "13.5sp"
+                font_size: "15sp"
                 color: app.text_secondary_color
                 background_color: [0, 0, 0, 0]
                 on_release: root.dismiss()
@@ -327,14 +279,14 @@
 
             Button:
                 text: "Guardar"
-                font_size: "13.5sp"
+                font_size: "15sp"
                 bold: True
                 color: [1, 1, 1, 1]
                 background_color: [0, 0, 0, 0]
                 on_release: root.submit()
                 canvas.before:
                     Color:
-                        rgba: app.accent_green_color
+                        rgba: app.accent_fill_color
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
@@ -361,7 +313,7 @@
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [24, 24, 24, 24]
+                radius: [24, 24, 0, 0]
 
         # Encabezado: ícono, nombre + estado, editar y cerrar
         BoxLayout:
@@ -395,9 +347,9 @@
                     spacing: "8dp"
                     Label:
                         text: root.status_str
-                        font_size: "11sp"
+                        font_size: "12.5sp"
                         bold: True
-                        color: root.status_text_color
+                        color: app.legible(root.status_text_color, app.modo_oscuro)
                         size_hint: None, None
                         size: self.texture_size[0] + dp(16), dp(20)
                         canvas.before:
@@ -409,7 +361,7 @@
                                 radius: [10, 10, 10, 10]
                     Label:
                         text: root.item_category
-                        font_size: "11sp"
+                        font_size: "12.5sp"
                         color: app.text_secondary_color
                         halign: "left"
                         valign: "middle"
@@ -464,111 +416,12 @@
                             size: self.size
                             radius: [16, 16, 16, 16]
 
-                    Label:
-                        text: "STOCK ACTUAL"
-                        font_size: "11sp"
-                        bold: True
-                        color: app.text_secondary_color
-                        size_hint_y: None
-                        height: "16dp"
-                        halign: "left"
-                        text_size: self.size
-
-                    # Stepper: [- paso] cantidad [+ paso]
-                    BoxLayout:
-                        size_hint_y: None
-                        height: "50dp"
-                        spacing: "10dp"
-
-                        Button:
-                            text: f"-{root.step_display}"
-                            font_size: "16sp"
-                            bold: True
-                            size_hint_x: None
-                            width: "68dp"
-                            color: app.text_primary_color
-                            background_color: [0, 0, 0, 0]
-                            disabled: root.quantity_val <= 0
-                            opacity: 0.4 if self.disabled else 1
-                            on_release: root.change_qty(-1)
-                            canvas.before:
-                                Color:
-                                    rgba: app.card_white_color
-                                RoundedRectangle:
-                                    pos: self.pos
-                                    size: self.size
-                                    radius: [12, 12, 12, 12]
-
-                        Label:
-                            text: root.qty_display
-                            font_size: "24sp"
-                            bold: True
-                            color: app.text_primary_color
-                            halign: "center"
-                            valign: "middle"
-                            text_size: self.size
-                            shorten: True
-
-                        Button:
-                            text: f"+{root.step_display}"
-                            font_size: "16sp"
-                            bold: True
-                            size_hint_x: None
-                            width: "68dp"
-                            color: [1, 1, 1, 1]
-                            background_color: [0, 0, 0, 0]
-                            on_release: root.change_qty(+1)
-                            canvas.before:
-                                Color:
-                                    rgba: app.accent_green_color
-                                RoundedRectangle:
-                                    pos: self.pos
-                                    size: self.size
-                                    radius: [12, 12, 12, 12]
-
-                    # Cantidad exacta (ej: compraste 2,5 kg)
-                    BoxLayout:
-                        size_hint_y: None
-                        height: "40dp"
-                        spacing: "8dp"
-
-                        AnchorLayout:
-                            canvas.before:
-                                Color:
-                                    rgba: app.card_white_color
-                                RoundedRectangle:
-                                    pos: self.pos
-                                    size: self.size
-                                    radius: [10, 10, 10, 10]
-                            TextInput:
-                                id: exact_qty_input
-                                hint_text: f"Escribir cantidad en {root.unit}"
-                                input_filter: numeric_input_filter
-                                multiline: False
-                                font_size: "13.5sp"
-                                padding: ["12dp", "11dp", "10dp", "8dp"]
-                                background_color: [0, 0, 0, 0]
-                                cursor_color: app.accent_green_color
-                                foreground_color: app.input_text_color
-                                hint_text_color: app.input_placeholder_color
-                                on_text_validate: root.set_exact_qty()
-
-                        Button:
-                            text: "Fijar"
-                            font_size: "13sp"
-                            bold: True
-                            size_hint_x: None
-                            width: "68dp"
-                            color: app.accent_green_color
-                            background_color: [0, 0, 0, 0]
-                            on_release: root.set_exact_qty()
-                            canvas.before:
-                                Color:
-                                    rgba: app.card_white_color
-                                RoundedRectangle:
-                                    pos: self.pos
-                                    size: self.size
-                                    radius: [10, 10, 10, 10]
+                    # Stock: cantidad con − y + (se puede escribir); la medida se cambia al editar
+                    QuantityPicker:
+                        id: stock_picker
+                        show_units: False
+                        quantity_label: "Stock actual"
+                        on_change: root.on_picker_change(args[1])
 
                     # Mínimo que dispara la alerta
                     BoxLayout:
@@ -585,7 +438,7 @@
                             pos_hint: {"center_y": 0.5}
                         Label:
                             text: root.threshold_hint
-                            font_size: "11.5sp"
+                            font_size: "13sp"
                             color: app.text_secondary_color
                             halign: "left"
                             valign: "middle"
@@ -625,7 +478,7 @@
                                 icon: "calendar-clock-outline" if root.has_expiration else "infinity"
                                 font_size: "19sp"
                                 theme_text_color: "Custom"
-                                text_color: root.exp_color
+                                text_color: app.legible(root.exp_color, app.modo_oscuro)
                                 pos_hint: {"center_x": 0.5, "center_y": 0.5}
                         BoxLayout:
                             orientation: "vertical"
@@ -641,7 +494,7 @@
                                 text: root.exp_desc
                                 font_size: "11.5sp"
                                 bold: True
-                                color: root.exp_color
+                                color: app.legible(root.exp_color, app.modo_oscuro)
                                 halign: "left"
                                 valign: "top"
                                 text_size: self.size
@@ -718,7 +571,7 @@
                     on_release: root.dismiss()
                     canvas.before:
                         Color:
-                            rgba: app.accent_green_color
+                            rgba: app.accent_fill_color
                         RoundedRectangle:
                             pos: self.pos
                             size: self.size
@@ -744,75 +597,41 @@
 
                 CustomInputField:
                     id: edit_name
-                    label_text: "NOMBRE"
+                    label_text: "Nombre"
                     hint_text: "Ej: Arroz integral"
 
                 DropdownField:
-                    label_text: "CATEGORÍA"
+                    label_text: "Categoría"
                     value: root.edit_category
                     icon: root.edit_category_icon
                     on_release: root.open_edit_category_menu(self)
 
+                # Medida: fila de píldoras (un., kg, g, L...)
+                SmallFieldLabel:
+                    text: "Medida"
+
+                UnitChipRow:
+                    unit: root.edit_unit
+                    on_select: root._set_edit_unit(args[1])
+
                 BoxLayout:
                     size_hint_y: None
                     height: "56dp"
-                    spacing: "10dp"
-
-                    # Unidad (menú desplegable)
-                    BoxLayout:
-                        orientation: "vertical"
-                        spacing: "4dp"
-                        Label:
-                            text: "UNIDAD"
-                            font_size: "11sp"
-                            bold: True
-                            color: app.text_secondary_color
-                            size_hint_y: None
-                            height: "16dp"
-                            halign: "left"
-                            text_size: self.size
-                        BoxLayout:
-                            size_hint_y: None
-                            height: "36dp"
-                            canvas.before:
-                                Color:
-                                    rgba: app.sage_container_color
-                                RoundedRectangle:
-                                    pos: self.pos
-                                    size: self.size
-                                    radius: [10, 10, 10, 10]
-                            Button:
-                                id: edit_unit_btn
-                                text: root.edit_unit
-                                font_size: "13.5sp"
-                                color: app.input_text_color
-                                background_color: [0, 0, 0, 0]
-                                halign: "left"
-                                valign: "middle"
-                                text_size: self.width - dp(20), self.height
-                                on_release: root.open_edit_unit_menu(self.parent)
-                            MDIconButton:
-                                icon: "menu-down"
-                                style: "standard"
-                                theme_icon_color: "Custom"
-                                icon_color: app.accent_green_color
-                                pos_hint: {"center_y": 0.5}
-                                on_release: root.open_edit_unit_menu(self.parent)
 
                     CustomInputField:
                         id: edit_threshold
-                        label_text: "AVISAR SI BAJA DE"
+                        label_text: "Avisar si baja de"
                         hint_text: "Ej: 2"
                         input_filter: numeric_input_filter
 
                 Label:
                     text: "La cantidad y la fecha de vencimiento no cambian al editar."
-                    font_size: "11sp"
+                    font_size: "12.5sp"
                     color: app.text_secondary_color
                     size_hint_y: None
-                    height: "16dp"
+                    height: self.texture_size[1] + dp(2)
+                    text_size: self.width, None
                     halign: "left"
-                    text_size: self.size
 
                 FormMessageLabel:
                     text: root.error_text
@@ -845,7 +664,7 @@
                         on_release: root.save_edit()
                         canvas.before:
                             Color:
-                                rgba: app.accent_green_color
+                                rgba: app.accent_fill_color
                             RoundedRectangle:
                                 pos: self.pos
                                 size: self.size
@@ -868,7 +687,7 @@
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [24, 24, 24, 24]
+                radius: [24, 24, 0, 0]
 
         Label:
             text: root.title_text
@@ -882,7 +701,7 @@
 
         CustomInputField:
             id: field_edit
-            label_text: "NUEVO VALOR"
+            label_text: "Nuevo valor"
             hint_text: "Escribe aquí..."
 
         Widget:
@@ -919,7 +738,7 @@
                 on_release: root.submit()
                 canvas.before:
                     Color:
-                        rgba: app.accent_green_color
+                        rgba: app.accent_fill_color
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
@@ -942,7 +761,7 @@
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [24, 24, 24, 24]
+                radius: [24, 24, 0, 0]
 
         # Encabezado
         BoxLayout:
@@ -960,13 +779,13 @@
         # Campo: Nombre de la lista
         CustomInputField:
             id: field_name
-            label_text: "NOMBRE DE LA LISTA"
+            label_text: "Nombre de la lista"
             hint_text: "Ej: Supermercado Lunes, Asado, Verdulería..."
 
         # Selector de Supermercado
         DropdownField:
             id: field_supermarket
-            label_text: "SUPERMERCADO"
+            label_text: "Supermercado"
             value: root.selected_supermarket
             icon: "storefront-outline"
             on_release: root.open_supermarket_menu(self)
@@ -979,8 +798,8 @@
             spacing: "6dp"
 
             Label:
-                text: "COLOR DEL ICONO"
-                font_size: "11sp"
+                text: "Color del icono"
+                font_size: "12.5sp"
                 bold: True
                 color: app.text_secondary_color
                 size_hint_y: None
@@ -1029,7 +848,7 @@
                 on_release: root.submit()
                 canvas.before:
                     Color:
-                        rgba: app.accent_green_color
+                        rgba: app.accent_fill_color
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
@@ -1041,7 +860,7 @@
 # --------------------------------------------------------
 <ShoppingListItemRow>:
     size_hint_y: None
-    height: "50dp"
+    height: "56dp"
     spacing: "3dp"
     padding: ["10dp", "4dp", "4dp", "4dp"]
     canvas.before:
@@ -1062,7 +881,7 @@
         on_release: root.toggle()
         canvas.before:
             Color:
-                rgba: app.accent_green_color if root.is_checked else ([0.30, 0.40, 0.55, 1.0] if app.modo_oscuro else [0.75, 0.78, 0.76, 1.0])
+                rgba: app.accent_fill_color if root.is_checked else ([0.30, 0.40, 0.55, 1.0] if app.modo_oscuro else [0.75, 0.78, 0.76, 1.0])
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
@@ -1111,56 +930,42 @@
             valign: "middle"
             text_size: self.size
 
+    # Cantidad: − y +; tocar la etiqueta abre la hoja para escribirla
     BoxLayout:
-        size_hint_x: None
-        width: "92dp"
-        spacing: "3dp"
-        Button:
+        size_hint: None, None
+        width: "106dp"
+        height: "36dp"
+        pos_hint: {"center_y": 0.5}
+        canvas.before:
+            Color:
+                rgba: app.sage_container_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [18, 18, 18, 18]
+        StockStepButton:
             text: "-"
-            size_hint_x: None
-            width: "24dp"
-            font_size: "17sp"
-            bold: True
+            width: "32dp"
             color: app.text_primary_color
             disabled_color: app.text_secondary_color
-            opacity: 0.42 if self.disabled else 1
-            background_color: [0, 0, 0, 0]
+            opacity: 0.35 if self.disabled else (0.6 if self.state == "down" else 1)
             disabled: root.quantity <= root.min_quantity
             on_release: root.adjust_quantity(-1)
-            canvas.before:
-                Color:
-                    rgba: [0.22, 0.30, 0.42, 1.0] if app.modo_oscuro else [0.85, 0.89, 0.94, 1.0]
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [8, 8, 8, 8]
-        Label:
+        TapLabel:
             text: root.quantity_label
-            size_hint_x: 1
-            font_size: "11sp"
+            font_size: "12sp"
             bold: True
             color: app.text_primary_color
             halign: "center"
             valign: "middle"
             text_size: self.size
             shorten: True
-        Button:
+            on_release: root.open_quantity()
+        StockStepButton:
             text: "+"
-            size_hint_x: None
-            width: "24dp"
-            font_size: "16sp"
-            bold: True
+            width: "32dp"
             color: app.text_primary_color
-            disabled_color: app.text_secondary_color
-            background_color: [0, 0, 0, 0]
             on_release: root.adjust_quantity(1)
-            canvas.before:
-                Color:
-                    rgba: [0.22, 0.30, 0.42, 1.0] if app.modo_oscuro else [0.85, 0.89, 0.94, 1.0]
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [8, 8, 8, 8]
 
     # Eliminar producto (con "Deshacer")
     MDIconButton:
@@ -1178,8 +983,7 @@
 # 3C. Modal: Lista de Compras = Carrito (anotar, tachar, finalizar)
 # --------------------------------------------------------
 <ShoppingListDetailModal>:
-    width: "360dp"
-    height: "650dp"
+    height: min(Window.height - dp(24), dp(650))
 
     BoxLayout:
         orientation: "vertical"
@@ -1191,7 +995,7 @@
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [24, 24, 24, 24]
+                radius: [24, 24, 0, 0]
 
         # Cabecera de la Lista
         BoxLayout:
@@ -1340,7 +1144,7 @@
                     on_text_validate: root.add_item()
 
             Button:
-                text: f"{root.selected_new_unit} ▾"
+                text: root.selected_new_unit
                 size_hint_x: None
                 width: "66dp"
                 font_size: "12.5sp"
@@ -1366,7 +1170,7 @@
                 on_release: root.add_item()
                 canvas.before:
                     Color:
-                        rgba: app.accent_green_color
+                        rgba: app.accent_fill_color
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
@@ -1411,7 +1215,7 @@
                     text_size: self.size
                 Label:
                     text: root.progress_str
-                    font_size: "10.5sp"
+                    font_size: "12sp"
                     color: app.text_secondary_color
                     halign: "left"
                     valign: "top"
@@ -1458,7 +1262,7 @@
                 on_release: root.finalize()
                 canvas.before:
                     Color:
-                        rgba: app.accent_green_color
+                        rgba: app.accent_fill_color
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
@@ -1481,7 +1285,7 @@
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [24, 24, 24, 24]
+                radius: [24, 24, 0, 0]
 
         Label:
             text: "Editar producto"
@@ -1499,7 +1303,7 @@
             spacing: "10dp"
             CustomInputField:
                 id: field_name
-                label_text: "PRODUCTO"
+                label_text: "Producto"
                 hint_text: "Ej: Huevos"
             CustomInputField:
                 id: field_price
@@ -1533,7 +1337,7 @@
                     halign: "left"
                     text_size: self.size
                 Button:
-                    text: f"{root.selected_unit} ▾"
+                    text: root.selected_unit
                     size_hint_y: None
                     height: "36dp"
                     font_size: "13sp"
@@ -1583,7 +1387,7 @@
                 on_release: root.submit()
                 canvas.before:
                     Color:
-                        rgba: app.accent_green_color
+                        rgba: app.accent_fill_color
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
@@ -1607,7 +1411,7 @@
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [24, 24, 24, 24]
+                radius: [24, 24, 0, 0]
 
         # Encabezado con Título
         BoxLayout:
@@ -1691,8 +1495,8 @@
             disabled: root.is_login_mode and not root.is_edit_profile_mode
 
             Label:
-                text: "NOMBRE COMPLETO"
-                font_size: "11sp"
+                text: "Nombre completo"
+                font_size: "12.5sp"
                 bold: True
                 color: app.text_secondary_color
                 size_hint_y: None
@@ -1730,7 +1534,7 @@
         # Campo: Correo Electrónico
         CustomInputField:
             id: field_auth_email
-            label_text: "CORREO ELECTRÓNICO"
+            label_text: "Correo electrónico"
             hint_text: "usuario@ejemplo.com"
 
         # Campo: Contraseña
@@ -1741,8 +1545,8 @@
             spacing: "4dp"
 
             Label:
-                text: "NUEVA CONTRASEÑA (OPCIONAL)" if root.is_edit_profile_mode else "CONTRASEÑA"
-                font_size: "11sp"
+                text: "Nueva contraseña (opcional)" if root.is_edit_profile_mode else "Contraseña"
+                font_size: "12.5sp"
                 bold: True
                 color: app.text_secondary_color
                 size_hint_y: None
@@ -1789,8 +1593,8 @@
             spacing: "4dp" if root.is_edit_profile_mode else "0dp"
 
             Label:
-                text: "CONFIRMAR NUEVA CONTRASEÑA"
-                font_size: "11sp"
+                text: "Confirmar nueva contraseña"
+                font_size: "12.5sp"
                 bold: True
                 color: app.text_secondary_color
                 size_hint_y: None
@@ -1830,8 +1634,8 @@
         Label:
             id: label_auth_msg
             text: root.message_text
-            font_size: "11sp"
-            color: [0.85, 0.20, 0.25, 1.0] if root.is_error_message else app.accent_green_color
+            font_size: "12.5sp"
+            color: app.legible([0.85, 0.20, 0.25, 1.0], app.modo_oscuro) if root.is_error_message else app.accent_green_color
             size_hint_y: None
             height: "36dp" if root.message_text else "10dp"
             halign: "center"
@@ -1852,7 +1656,7 @@
             on_release: root.submit()
             canvas.before:
                 Color:
-                    rgba: (app.accent_green_color[:3] + [0.38]) if (root.is_edit_profile_mode and not root.can_submit) else app.accent_green_color
+                    rgba: (app.accent_fill_color[:3] + [0.38]) if (root.is_edit_profile_mode and not root.can_submit) else app.accent_fill_color
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
@@ -1876,23 +1680,23 @@
 # --------------------------------------------------------
 <CheckoutRow>:
     size_hint_y: None
-    height: "58dp"
-    spacing: "6dp"
-    padding: ["10dp", "6dp", "8dp", "6dp"]
+    height: "60dp"
+    spacing: "8dp"
+    padding: ["12dp", "8dp", "8dp", "8dp"]
     canvas.before:
         Color:
             rgba: app.sage_container_color
         RoundedRectangle:
             pos: self.pos
             size: self.size
-            radius: [12, 12, 12, 12]
+            radius: [14, 14, 14, 14]
 
     BoxLayout:
         orientation: "vertical"
         size_hint_x: 1
         Label:
             text: root.title
-            font_size: "13.5sp"
+            font_size: "14.5sp"
             bold: True
             color: app.text_primary_color
             halign: "left"
@@ -1902,7 +1706,7 @@
             shorten_from: "right"
         Label:
             text: root.detail_str
-            font_size: "10.5sp"
+            font_size: "11sp"
             color: app.accent_green_color if root.is_new else app.text_secondary_color
             halign: "left"
             valign: "top"
@@ -1910,52 +1714,49 @@
             shorten: True
             shorten_from: "right"
 
-    # Cantidad comprada
-    AnchorLayout:
+    # Cantidad comprada: toca para cambiarla (y la medida si es nuevo)
+    TapArea:
         size_hint_x: None
-        width: "48dp"
+        width: max(dp(82), amount_lbl.texture_size[0] + dp(38))
+        padding: ["12dp", 0, "8dp", 0]
+        spacing: "4dp"
+        opacity: 0.7 if self.state == "down" else 1
+        on_release: root.open_quantity()
         canvas.before:
             Color:
                 rgba: app.card_white_color
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [8, 8, 8, 8]
-        TextInput:
-            id: qty_input
-            text: "1"
-            input_filter: numeric_input_filter
-            multiline: False
+                radius: [22, 22, 22, 22]
+            Color:
+                rgba: app.divider_color
+            Line:
+                rounded_rectangle: (self.x, self.y, self.width, self.height, dp(22))
+                width: 1
+        Label:
+            id: amount_lbl
+            text: root.amount_str
+            font_size: "14sp"
+            bold: True
+            color: app.text_primary_color
             halign: "center"
-            font_size: "13sp"
-            padding: ["4dp", "12dp", "4dp", "6dp"]
-            background_color: [0, 0, 0, 0]
-            cursor_color: app.accent_green_color
-            foreground_color: app.input_text_color
-
-    # Unidad / Medida
-    Button:
-        text: root.unit
-        size_hint_x: None
-        width: "46dp"
-        font_size: "12sp"
-        bold: True
-        color: app.accent_green_color
-        background_color: [0, 0, 0, 0]
-        on_release: root.open_unit_menu(self)
-        canvas.before:
-            Color:
-                rgba: app.card_white_color
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [8, 8, 8, 8]
+            valign: "middle"
+            text_size: self.size
+        MDIcon:
+            icon: "pencil-outline"
+            size_hint_x: None
+            width: "16dp"
+            font_size: "15sp"
+            theme_text_color: "Custom"
+            text_color: app.accent_green_color
+            pos_hint: {"center_y": 0.5}
 
     # Subtotal de la fila
     Label:
         text: root.subtotal_str
         size_hint_x: None
-        width: "66dp"
+        width: "64dp"
         font_size: "13sp"
         bold: True
         color: app.text_primary_color
@@ -1964,7 +1765,7 @@
         text_size: self.size
 
 <CheckoutModal>:
-    height: min(dp(600), dp(224) + dp(64) * root.row_count + (dp(44) if root.error_text else 0))
+    height: min(Window.height - dp(24), dp(236) + dp(66) * root.row_count + (dp(44) if root.error_text else 0))
 
     BoxLayout:
         orientation: "vertical"
@@ -1976,7 +1777,7 @@
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [24, 24, 24, 24]
+                radius: [24, 24, 0, 0]
 
         Label:
             text: "Resumen de la compra"
@@ -2056,7 +1857,7 @@
                 on_release: root.submit()
                 canvas.before:
                     Color:
-                        rgba: app.accent_green_color
+                        rgba: app.accent_fill_color
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
@@ -2105,8 +1906,8 @@
             shorten_from: "right"
         Label:
             text: root.alert_desc
-            font_size: "11sp"
-            color: root.alert_color
+            font_size: "12.5sp"
+            color: app.legible(root.alert_color, app.modo_oscuro)
             halign: "left"
             valign: "top"
             text_size: self.size
@@ -2132,7 +1933,7 @@
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [24, 24, 24, 24]
+                radius: [24, 24, 0, 0]
 
         Label:
             text: f"Alertas ({root.alert_count})" if root.alert_count else "Alertas"
@@ -2174,7 +1975,6 @@
 # Modal: Historial de compras del periodo (Ver todas)
 # --------------------------------------------------------
 <PurchaseHistoryModal>:
-    width: min(dp(440), Window.width - dp(24))
     # Se ajusta al contenido, con tope en el alto de la pantalla (luego hace scroll)
     height: min(Window.height - dp(72), dp(96) + history_box.height)
 
@@ -2188,7 +1988,7 @@
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [24, 24, 24, 24]
+                radius: [24, 24, 0, 0]
 
         BoxLayout:
             size_hint_y: None
@@ -2280,7 +2080,7 @@
             text_size: self.size
         Label:
             text: root.desc_text
-            font_size: "10.5sp"
+            font_size: "12sp"
             color: app.text_secondary_color
             halign: "left"
             valign: "top"
@@ -2299,7 +2099,7 @@
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [24, 24, 24, 24]
+                radius: [24, 24, 0, 0]
 
         # Encabezado con insignia PRO
         BoxLayout:
@@ -2354,12 +2154,12 @@
                                 radius: [6, 6, 6, 6]
                         Label:
                             text: "PRO"
-                            font_size: "9.5sp"
+                            font_size: "12sp"
                             bold: True
-                            color: [1, 1, 1, 1]
+                            color: [0.086, 0.149, 0.251, 1]
                 Label:
                     text: "Listas y estadísticas sin límites"
-                    font_size: "11sp"
+                    font_size: "12.5sp"
                     color: app.text_secondary_color
                     halign: "left"
                     valign: "middle"
@@ -2455,9 +2255,9 @@
             Button:
                 text: "Pagar y activar Pro"
                 size_hint_x: 0.58
-                font_size: "13sp"
+                font_size: "14sp"
                 bold: True
-                color: [1, 1, 1, 1]
+                color: [0.086, 0.149, 0.251, 1]
                 background_color: [0, 0, 0, 0]
                 on_release: root.confirm_upgrade()
                 canvas.before:
@@ -2468,3 +2268,73 @@
                         size: self.size
                         radius: [12, 12, 12, 12]
 
+
+
+# --------------------------------------------------------
+# Hoja compacta: registrar cantidad y medida
+# --------------------------------------------------------
+<QuantitySheet>:
+    height: content.minimum_height
+
+    BoxLayout:
+        id: content
+        orientation: "vertical"
+        size_hint_y: None
+        height: self.minimum_height
+        padding: ["20dp", "22dp", "20dp", "18dp"]
+        spacing: "12dp"
+        canvas.before:
+            Color:
+                rgba: app.card_white_color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [24, 24, 0, 0]
+
+        BoxLayout:
+            size_hint_y: None
+            height: "26dp"
+            Label:
+                text: root.title_text
+                font_size: "17sp"
+                bold: True
+                color: app.text_primary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+                shorten: True
+                shorten_from: "right"
+            Label:
+                text: root.subtitle_text
+                size_hint_x: None
+                width: self.texture_size[0]
+                font_size: "13sp"
+                color: app.text_secondary_color
+                halign: "right"
+                valign: "middle"
+
+        QuantityPicker:
+            id: picker
+            show_units: root.show_units
+            integer_only: root.integer_only
+            minimum: root.minimum
+
+        Button:
+            text: root.save_text
+            size_hint_y: None
+            height: "52dp"
+            font_size: "15.5sp"
+            bold: True
+            color: [1, 1, 1, 1]
+            background_color: [0, 0, 0, 0]
+            background_normal: ""
+            background_down: ""
+            opacity: 0.85 if self.state == "down" else 1
+            on_release: root.submit()
+            canvas.before:
+                Color:
+                    rgba: app.accent_fill_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [14, 14, 14, 14]

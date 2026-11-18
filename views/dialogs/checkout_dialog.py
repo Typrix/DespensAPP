@@ -5,21 +5,22 @@ Muestra una fila por producto tachado de la lista para indicar la cantidad compr
 (y la unidad si es un producto nuevo en la despensa) antes de registrar la compra.
 """
 
-from kivy.metrics import dp
 from kivy.properties import BooleanProperty, NumericProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
-from kivymd.uix.menu import MDDropdownMenu
 
 from controllers.purchase_controller import format_money
-from controllers.validators import PANTRY_UNITS, format_number, validate_quantity
+from controllers.unit_selector import format_amount
 from views.dialogs.base import BaseFormModal
+from views.dialogs.quantity_sheet import QuantitySheet
 
 
 class CheckoutRow(BoxLayout):
-    """Fila de resumen y confirmación: producto, detalle de precio/stock, cantidad, medida y subtotal."""
+    """Fila de resumen y confirmación: producto, detalle de precio/stock, píldora cantidad/medida y subtotal."""
     title = StringProperty("")
     unit = StringProperty("un.")
     is_new = BooleanProperty(False)
+    quantity = NumericProperty(1)
+    amount_str = StringProperty("1 un.")
     detail_str = StringProperty("")
     subtotal_str = StringProperty("$0")
 
@@ -30,56 +31,41 @@ class CheckoutRow(BoxLayout):
         self.title = title
         self.unit = unit or "un."
         self.is_new = is_new
-        self._menu = None
-        self._on_change_cb = on_change
+        self._on_change = on_change
         raw_qty = initial_quantity if initial_quantity else getattr(ref, "quantity", 1.0)
         self.initial_quantity = max(0.01, float(raw_qty or 1.0))
-        self.ids.qty_input.text = format_number(self.initial_quantity)
-        self._refresh_summary()
-        self.ids.qty_input.bind(text=self._handle_change)
+        self.quantity = self.initial_quantity
+        self._refresh_amount()
 
-    def _handle_change(self, *args):
-        self._refresh_summary()
-        if self._on_change_cb:
-            self._on_change_cb()
-
-    def _refresh_summary(self):
+    def _refresh_amount(self):
+        self.amount_str = format_amount(self.quantity, self.unit)
         stock_txt = "Nuevo en despensa" if self.is_new else "Suma al stock"
         unit_price_txt = f"{format_money(self.price)} c/u" if self.price > 0 else "Sin precio"
         self.detail_str = f"{unit_price_txt} · {stock_txt}"
         self.subtotal_str = format_money(self.subtotal)
 
-    def open_unit_menu(self, caller):
-        """Despliega las unidades disponibles."""
-        if self._menu is None:
-            self._menu = MDDropdownMenu(
-                caller=caller,
-                items=[{"text": u, "on_release": lambda u=u: self._set_unit(u)} for u in PANTRY_UNITS],
-                position="bottom",
-                width=dp(120),
-                max_height=dp(240),
-            )
-        self._menu.open()
+    def open_quantity(self):
+        """Hoja para indicar cuánto se compró; la medida solo se elige si el producto es nuevo."""
+        def save(quantity, unit):
+            self.quantity = quantity
+            self.unit = unit
+            self._refresh_amount()
+            if self._on_change:
+                self._on_change()
 
-    def _set_unit(self, unit):
-        self.unit = unit
-        self._refresh_summary()
-        if self._on_change_cb:
-            self._on_change_cb()
-        if self._menu:
-            self._menu.dismiss()
-
-    @property
-    def quantity_text(self):
-        return self.ids.qty_input.text
+        QuantitySheet(
+            title=self.title,
+            subtitle="Nuevo en la despensa" if self.is_new else "Se suma a tu stock",
+            quantity=self.quantity,
+            unit=self.unit,
+            show_units=self.is_new,
+            on_save=save,
+        ).open()
 
     @property
     def subtotal(self) -> float:
-        """Calcula el precio multiplicado por la cantidad ingresada (si es válida)."""
-        value, error = validate_quantity(self.quantity_text, "La cantidad")
-        if error or value is None or value <= 0:
-            return 0.0
-        return float(self.price or 0.0) * float(value)
+        """Precio multiplicado por la cantidad comprada."""
+        return float(self.price or 0.0) * float(self.quantity)
 
 
 class CheckoutModal(BaseFormModal):
@@ -135,12 +121,11 @@ class CheckoutModal(BaseFormModal):
         entries = []
         total = 0.0
         for row in self.rows:
-            value, error = validate_quantity(row.quantity_text, "La cantidad")
-            if error or value <= 0:
-                self.error_text = f"{row.title}: {error or 'la cantidad debe ser mayor a 0.'}"
+            if row.quantity <= 0:
+                self.error_text = f"{row.title}: la cantidad debe ser mayor a 0."
                 return
-            entries.append({"ref": row.ref, "quantity": value, "unit": row.unit})
-            total += row.price * value
+            entries.append({"ref": row.ref, "quantity": row.quantity, "unit": row.unit})
+            total += row.subtotal
         self.total_str = format_money(total)
         self.dismiss()
         if self.callback_confirm:
