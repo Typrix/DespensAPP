@@ -25,6 +25,27 @@ UNIT_STEPS = {"g": 100.0, "ml": 100.0, "kg": 0.5, "L": 0.5}
 _NUMERIC_CHARS = set("0123456789.,$")
 # Número con punto de miles: 1.500 / 12.345.678
 _THOUSANDS_RE = re.compile(r"^\d{1,3}(\.\d{3})+$")
+# Correo: usuario@dominio.ext, sin espacios, con dominio de partes válidas y extensión de 2+ letras
+_EMAIL_RE = re.compile(
+    r"^[a-z0-9._%+\-]+@(?:[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?\.)+[a-z]{2,}$"
+)
+EMAIL_MAX_LENGTH = 120
+
+
+def validate_email(raw):
+    """Normaliza y valida un correo. Retorna (correo_limpio, error)."""
+    email = (raw or "").strip().lower()
+    if not email:
+        return "", "Ingresa tu correo electrónico."
+    if " " in email:
+        return "", "El correo no puede tener espacios."
+    if len(email) > EMAIL_MAX_LENGTH:
+        return "", f"El correo no puede superar {EMAIL_MAX_LENGTH} caracteres."
+    local = email.split("@")[0]
+    if (email.count("@") != 1 or not _EMAIL_RE.match(email)
+            or local.startswith(".") or local.endswith(".") or ".." in email):
+        return "", "Ingresa un correo válido, por ejemplo nombre@correo.cl."
+    return email, ""
 
 
 def numeric_input_filter(substring, from_undo=False):
@@ -62,6 +83,23 @@ def parse_number(raw):
     if value != value or value in (float("inf"), float("-inf")):
         return None
     return value
+
+
+def parse_price(raw):
+    """
+    Convierte un precio en pesos a float. En CLP el punto siempre es separador de miles,
+    sin importar cuántos dígitos haya después: '2.000' -> 2000 y '2.0000' -> 20000
+    (pasa al agregar un 0 a un precio ya formateado). La coma se acepta como decimal.
+    Retorna None si el texto está vacío o no es un número válido.
+    """
+    text = (raw or "").strip().replace("$", "").replace(" ", "")
+    if not text or text.count(",") > 1:
+        return None
+    int_part, _, dec_part = text.partition(",")
+    int_part = int_part.replace(".", "")
+    if not int_part.isdigit() or (dec_part and not dec_part.isdigit()):
+        return None
+    return float(f"{int_part}.{dec_part or 0}")
 
 
 def format_number(value):
@@ -112,7 +150,7 @@ def validate_cart_form(title, price_str, subtitle=""):
     if not (price_str or "").strip():
         return False, "Ingresa el precio del producto.", None
 
-    price = parse_number(price_str)
+    price = parse_price(price_str)
     if price is None:
         return False, "El precio debe ser un número (ej: 1.500 o $2.990).", None
     if price <= 0 or price > PRICE_MAX:

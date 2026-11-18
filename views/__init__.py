@@ -4,7 +4,7 @@ Paquete de Vistas (Views) para DespensAPP.
 Expone los temas de diseño, componentes visuales y modales interactivos.
 """
 
-from views.theme import COLOR_LIGHT, COLOR_DARK, TAGS_MAP
+from views.theme import COLOR_LIGHT, COLOR_DARK, TAGS_MAP, legible_color
 from views.widgets import (
     CustomProgressBar,
     BottomNavButton,
@@ -29,6 +29,7 @@ from views.dialogs import (
     EditItemModal,
     AddPantryItemModal,
     PantryItemDetailModal,
+    QuantitySheet,
     ColorChipButton,
     AddShoppingListModal,
     ShoppingListItemRow,
@@ -44,6 +45,7 @@ __all__ = [
     "COLOR_LIGHT",
     "COLOR_DARK",
     "TAGS_MAP",
+    "legible_color",
     "CustomProgressBar",
     "BottomNavButton",
     "PantryItemRow",
@@ -65,6 +67,7 @@ __all__ = [
     "EditItemModal",
     "AddPantryItemModal",
     "PantryItemDetailModal",
+    "QuantitySheet",
     "ColorChipButton",
     "AddShoppingListModal",
     "ShoppingListItemRow",

@@ -290,3 +290,114 @@
 
 ## Validación
 - Suites anteriores sin fallos y capturas a 400 px en modo claro y oscuro (Estadísticas, modal y apertura desde Inicio).
+
+---
+
+## Entrada / Prompt del Usuario (Diseño nativo y selector de cantidad)
+> "quiero que se cambie el diseño de la aplicacion completa con lo que te dije para que quede mas nativo" · "el selector de cantidad que sea un poco mas natural y no tape toda la pantalla sino que sea algo donde se pueda escoger el tipo de medida y registrarlo" · "cuidado con el contraste de la letra"
+
+## Acciones Realizadas
+1. **Sin panel tipo widget**: las 4 pantallas muestran su contenido directo sobre el fondo (antes iba dentro de un panel redondeado con doble margen). Títulos de sección más grandes y sin etiquetas en mayúsculas.
+2. **Encabezado compacto** (64 dp en vez de 110 dp, logo de 38 dp) y **barra inferior** al estilo Android, con la píldora solo detrás del ícono.
+3. **Botón flotante "+"** abajo a la derecha en Despensa y Listas.
+4. **Diálogos como hoja inferior** (`BaseFormModal`): pegados abajo, a todo el ancho (máximo 560 dp), con barrita para arrastrar y cerrar.
+5. **Selector compacto de cantidad y medida**:
+   - lógica sin Kivy en `controllers/unit_selector.py`: conversión kg/g y L/ml, atajos, redondeo y medida sugerida;
+   - componente `QuantityPicker` (fila de medidas, − y + de 52 dp, número escribible y atajos);
+   - hoja `QuantitySheet`, que se abre al tocar una cantidad en la despensa, en una lista o al finalizar la compra.
+   Reemplaza los menús desplegables de unidad y el campo "Escribir cantidad + Fijar". Al cambiar de medida también se convierte el mínimo de aviso.
+6. **Contraste**:
+   - texto secundario y acento más oscuros en modo claro, y acento más claro en oscuro;
+   - nuevo `accent_fill` para que el texto blanco de los botones se lea en ambos modos;
+   - `legible_color` ajusta rojo, ámbar y verde de los estados hasta 4,5:1;
+   - texto oscuro sobre el ámbar de Pro;
+   - tamaño mínimo de texto de 12 sp y filas, botones y chips más grandes.
+
+## Validación
+- 12 pruebas nuevas en `tests/test_unit_selector.py` (unittest).
+- Prueba funcional con base SQLite y sesión temporales (10 de 10): agregar con medida sugerida, error con texto inválido, cambio de kg a g con mínimo convertido, stock desde el detalle y compra con cantidad editada.
+- Capturas a 400 px en modo claro y oscuro de las 4 pantallas y de los diálogos.
+- Corregido: una etiqueta de la edición del producto crecía sin fin por tener dos `text_size`.
+
+---
+
+## Entrada / Prompt del Usuario (Precio que pierde ceros)
+> "cuando por ejemplo pongo 2000 cuando anoto un producto se guarda como 2.000 que esta bien pero si agrego otro 0 este se pone como 2 y no como 20.000"
+
+## Causa raíz
+El precio se leía con `parse_number`, pensada para cantidades: el punto solo cuenta como separador de miles si después vienen exactamente 3 dígitos. Al editar "2.000" y agregar un 0 queda "2.0000", que se leía como el decimal 2,0000.
+
+## Acciones Realizadas
+1. Nueva `parse_price` en `controllers/validators.py`: en pesos chilenos el punto siempre es de miles y la coma es decimal.
+2. `validate_cart_form` (anotar y editar productos de una lista) usa `parse_price`.
+
+## Validación
+- 5 pruebas nuevas en `tests/test_price_parsing.py` ("2.0000" → 20.000, "20.00" → 2.000, miles, coma decimal y textos inválidos), junto con las del selector (17 de 17).
+
+---
+
+## Entrada / Prompt del Usuario (Listas y finalizar compra)
+> "que en lista se mantenga cantidad y medida para anotar y despues cuando uno va a hacer finalizar compra salga de la suma de todo pero no se pueda editar / que cuando tache un producto como sumado este mantenga su posicion"
+
+## Causa raíz
+- La lista se dibujaba en el orden que entrega la base; la API puede devolver los tachados al final, por eso la fila saltaba de lugar.
+- La hoja de cantidad de la lista forzaba enteros en "un.", así que un producto en kg o g no se podía corregir con su medida.
+- Al finalizar, la cantidad se sumaba al stock en la medida de la despensa sin convertir (500 g anotados sumaban 500 kg).
+
+## Acciones Realizadas
+1. `sort_by_creation` en `controllers/purchase_controller.py`: la lista y el resumen se ordenan por creación, tachados o no.
+2. La hoja de cantidad de la lista usa la medida del producto (píldoras + número) y guarda cantidad y medida.
+3. Finalizar compra es de solo lectura: cantidad y medida anotadas, subtotal y total; sin lápiz ni hoja de edición.
+4. `to_stock_quantity` en `controllers/unit_selector.py`: convierte solo dentro de la misma familia (500 g → 0,5 kg); el historial y el total usan la cantidad de la lista.
+5. `clamp_quantity` no redondea bajo el mínimo en medidas que se cuentan.
+
+## Validación
+- 6 pruebas nuevas en `tests/test_checkout.py`; 24 de 24 en total.
+- Prueba funcional con base temporal: tachar no mueve filas, 1,5 kg guardado en la lista, resumen sin edición con total $12.640 y Arroz 3 → 3,5 kg.
+
+---
+
+## Entrada / Prompt del Usuario (Validación del correo)
+> "arregla la validacion del correo"
+
+## Causa raíz
+El registro no revisaba el formato del correo y la edición de la cuenta solo pedía una "@" y un punto, por lo que aceptaba "ana b@correo.cl" o "ana@correo.".
+
+## Acciones Realizadas
+1. `validate_email` en `controllers/validators.py`: normaliza (minúsculas, sin espacios al borde) y exige usuario@dominio.ext sin espacios, con dominio válido y extensión de 2+ letras.
+2. Registro y edición de la cuenta usan `validate_email`; el inicio de sesión solo normaliza y pide "@", para no bloquear cuentas antiguas.
+
+## Validación
+- 2 pruebas en `tests/test_email.py` (14 casos); 24 de 24 en total. Prueba funcional: correos inválidos rechazados al editar la cuenta y al entrar.
+
+---
+
+## Entrada / Prompt del Usuario (Modo oscuro persistente)
+> "que persista el modo oscuro pese a salir de la aplicacion"
+
+## Causa raíz
+`modo_oscuro` solo vivía en memoria y `build()` aplicaba siempre el tema claro al iniciar; no se guardaba en ningún lado.
+
+## Acciones Realizadas
+1. Nuevo `controllers/preferences.py`: preferencias del dispositivo en `user_prefs.json` (aparte de `session.json`, que se borra al cerrar sesión). Si el archivo falta o está dañado, usa el tema claro.
+2. `build()` aplica el tema guardado desde el inicio (también la pantalla de carga) y `cambiar_tema` lo guarda.
+3. `user_prefs.json` agregado al `.gitignore`.
+
+## Validación
+- 4 pruebas en `tests/test_preferences.py`; 28 de 28 en total.
+- Dos aperturas reales con preferencias temporales: se activa el modo oscuro y se cierra sesión; al volver a abrir parte en oscuro.
+
+---
+
+## Entrada / Prompt del Usuario (Íconos grises al cambiar de tema)
+> "cuando paso al modo oscuro los iconos se ponen gris y al volver al blanco se quedan gris, dejalos con sus colores originales"
+
+## Causa raíz
+En KivyMD 2.0 `MDIcon` se pinta con `icon_color` y, si está vacío, con el gris del tema (`onSurfaceVariantColor`). Los íconos usaban `text_color` (propiedad de etiquetas): al cambiar el tema esa regla se reevaluaba y los dejaba grises, y los de color fijo (alerta roja, gorro de chef) no volvían.
+
+## Acciones Realizadas
+1. Los 34 `MDIcon` de los `.kv` pasan a `theme_icon_color: "Custom"` + `icon_color`.
+
+## Validación
+- Prueba en la app con base temporal: claro → oscuro → claro en Inicio, Despensa, Listas y Estadísticas; 43 íconos con el mismo color antes y después (antes del arreglo cambiaban 3). Capturas en claro y oscuro con sus colores.
+- 28 de 28 pruebas unitarias.

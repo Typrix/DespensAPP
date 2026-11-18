@@ -10,20 +10,14 @@
     BoxLayout:
         orientation: "vertical"
         size_hint: 1, 1
-        padding: ["14dp", "4dp", "14dp", "8dp"]
+        padding: ["16dp", "0dp", "16dp", "0dp"]
 
+        # Contenido directo sobre el fondo, de borde a borde (sin panel contenedor)
         BoxLayout:
             orientation: "vertical"
             size_hint: 1, 1
-            padding: ["16dp", "16dp", "16dp", "16dp"]
+            padding: [0, "4dp", 0, 0]
             spacing: "10dp"
-            canvas.before:
-                Color:
-                    rgba: app.sage_container_color
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [28, 28, 28, 28]
 
             MDScrollView:
                 do_scroll_x: False
@@ -37,31 +31,19 @@
                     # Encabezado de Sección
                     BoxLayout:
                         size_hint_y: None
-                        height: "46dp"
+                        height: "48dp"
 
                         BoxLayout:
                             orientation: "vertical"
                             size_hint_x: 1
                             Label:
-                                text: "INVENTARIO"
-                                font_size: "10sp"
-                                bold: True
-                                color: app.category_tag_color
-                                halign: "left"
-                                valign: "middle"
-                                text_size: self.size
-                            Label:
                                 text: "Mi despensa"
-                                font_size: "22sp"
+                                font_size: "26sp"
                                 bold: True
                                 color: app.text_primary_color
                                 halign: "left"
                                 valign: "middle"
                                 text_size: self.size
-
-                        AddCircleButton:
-                            pos_hint: {"center_y": 0.5}
-                            on_release: app.accion_agregar()
 
                     # Buscador (sin distinguir mayúsculas ni tildes)
                     BoxLayout:
@@ -81,8 +63,8 @@
                             size_hint_x: None
                             width: "22dp"
                             font_size: "20sp"
-                            theme_text_color: "Custom"
-                            text_color: app.text_secondary_color
+                            theme_icon_color: "Custom"
+                            icon_color: app.text_secondary_color
                             pos_hint: {"center_y": 0.5}
                         TextInput:
                             id: pantry_search_input
@@ -139,14 +121,14 @@
                             size_hint_x: None
                             width: "22dp"
                             font_size: "20sp"
-                            theme_text_color: "Custom"
-                            text_color: [0.95, 0.65, 0.30, 1.0] if app.modo_oscuro else [0.72, 0.40, 0.08, 1.0]
+                            theme_icon_color: "Custom"
+                            icon_color: app.legible([0.82, 0.48, 0.12, 1.0], app.modo_oscuro)
                             pos_hint: {"center_y": 0.5}
                         Label:
                             text: app.pantry_restock_text
                             font_size: "12.5sp"
                             bold: True
-                            color: [0.95, 0.65, 0.30, 1.0] if app.modo_oscuro else [0.72, 0.40, 0.08, 1.0]
+                            color: app.legible([0.82, 0.48, 0.12, 1.0], app.modo_oscuro)
                             halign: "left"
                             valign: "middle"
                             text_size: self.size
@@ -158,3 +140,14 @@
                         orientation: "vertical"
                         adaptive_height: True
                         spacing: "4dp"
+
+                    # Espacio final para que el botón flotante no tape la última fila
+                    Widget:
+                        size_hint_y: None
+                        height: "76dp"
+
+    # Agregar: botón flotante sobre el contenido
+    AddCircleButton:
+        # Coordenadas relativas a la pantalla (MDScreen es un RelativeLayout)
+        pos: self.parent.width - self.width - dp(16), dp(16)
+        on_release: app.accion_agregar()

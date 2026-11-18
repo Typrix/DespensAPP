@@ -47,21 +47,21 @@ ScreenManager:
             # -------------------------------------------------
             BoxLayout:
                 size_hint_y: None
-                height: "110dp"
-                padding: ["16dp", "10dp", "16dp", "10dp"]
+                height: "64dp"
+                padding: ["16dp", "10dp", "12dp", "10dp"]
                 spacing: "10dp"
 
-                # Logo Principal DespensAPP
+                # Logo compacto (marca) y nombre de la app
                 AnchorLayout:
                     size_hint: None, None
-                    size: "90dp", "90dp"
+                    size: "38dp", "38dp"
                     pos_hint: {"center_y": 0.5}
                     canvas.before:
                         StencilPush
                         RoundedRectangle:
                             pos: self.pos
                             size: self.size
-                            radius: [22, 22, 22, 22]
+                            radius: [11, 11, 11, 11]
                         StencilUse
                         Color:
                             rgba: 0.063, 0.141, 0.325, 1
@@ -73,34 +73,21 @@ ScreenManager:
                         RoundedRectangle:
                             pos: self.pos
                             size: self.size
-                            radius: [22, 22, 22, 22]
+                            radius: [11, 11, 11, 11]
                         StencilPop
 
                     Image:
                         source: "docs/despensapp_logo.png"
                         fit_mode: "contain"
 
-                # Título y Subtítulo de Pantalla
-                BoxLayout:
-                    orientation: "vertical"
-                    size_hint_x: 1
-                    pos_hint: {"center_y": 0.5}
-                    Label:
-                        text: "DespensAPP"
-                        font_size: "20sp"
-                        bold: True
-                        color: app.text_primary_color
-                        halign: "left"
-                        valign: "bottom"
-                        text_size: self.size
-                    Label:
-                        text: app.screen_header_tag
-                        font_size: "10sp"
-                        bold: True
-                        color: app.category_tag_color
-                        halign: "left"
-                        valign: "top"
-                        text_size: self.size
+                Label:
+                    text: "DespensAPP"
+                    font_size: "18sp"
+                    bold: True
+                    color: app.text_primary_color
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
 
                 # Campana de Alertas Global (al lado del círculo de cuenta)
                 FloatLayout:
@@ -124,8 +111,8 @@ ScreenManager:
                             MDIcon:
                                 icon: "bell-outline"
                                 font_size: "22sp"
-                                theme_text_color: "Custom"
-                                text_color: app.accent_green_color
+                                theme_icon_color: "Custom"
+                                icon_color: app.accent_green_color
                                 pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
                     Label:
@@ -173,9 +160,9 @@ ScreenManager:
             BoxLayout:
                 orientation: "horizontal"
                 size_hint_y: None
-                height: "64dp"
-                padding: ["10dp", "4dp", "10dp", "4dp"]
-                spacing: "6dp"
+                height: "72dp"
+                padding: ["8dp", "0dp", "8dp", "6dp"]
+                spacing: "4dp"
 
                 canvas.before:
                     Color:
@@ -183,6 +170,11 @@ ScreenManager:
                     Rectangle:
                         pos: self.pos
                         size: self.size
+                    Color:
+                        rgba: app.divider_color
+                    Rectangle:
+                        pos: self.x, self.top - dp(1)
+                        size: self.width, dp(1)
 
                 BottomNavButton:
                     icon_name: "home-outline"

@@ -65,6 +65,12 @@ class PantryItemRow(ButtonBehavior, BoxLayout):
         if app:
             app.abrir_detalle_despensa(self.item_id)
 
+    def open_quantity(self):
+        """Abre la hoja compacta para registrar la cantidad y la medida."""
+        app = MDApp.get_running_app()
+        if app:
+            app.abrir_cantidad_despensa(self.item_id)
+
     def quick_adjust(self, direction):
         """Suma o resta un paso según la unidad (1 un., 100 g, 0,5 kg)."""
         app = MDApp.get_running_app()

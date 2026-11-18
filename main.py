@@ -25,9 +25,11 @@ from controllers.purchase_controller import summarize_items, format_money, PRO_P
 from controllers.list_controller import FREE_MAX_LISTS
 from controllers.pantry_organizer import (
     FILTER_ALL, FILTER_EXPIRING, FILTER_LOW, CATEGORY_FILTER_PREFIX,
-    group_pantry, filter_counts, used_categories, restock_candidates,
+    group_pantry, filter_counts, used_categories, restock_candidates, category_of,
 )
 from controllers.validators import step_for_unit
+from controllers.unit_selector import convert_quantity, format_amount
+from controllers import preferences
 from dataclasses import replace as dc_replace
 from controllers import (
     MainController,
@@ -39,6 +41,7 @@ from controllers import (
 )
 from views import (
     COLOR_LIGHT,
+    legible_color,
     COLOR_DARK,
     TAGS_MAP,
     CustomProgressBar,
@@ -59,6 +62,7 @@ from views import (
     PurchaseGroupCard,
     AddPantryItemModal,
     PantryItemDetailModal,
+    QuantitySheet,
     AddShoppingListModal,
     AuthModal,
     CheckoutModal,
@@ -157,6 +161,7 @@ class MainApp(MDApp):
     text_secondary_color = ListProperty(COLOR_LIGHT["text_secondary"])
     category_tag_color = ListProperty(COLOR_LIGHT["category_tag"])
     accent_green_color = ListProperty(COLOR_LIGHT["accent_green"])
+    accent_fill_color = ListProperty(COLOR_LIGHT["accent_fill"])
     active_pill_color = ListProperty(COLOR_LIGHT["active_pill"])
     divider_color = ListProperty(COLOR_LIGHT["divider"])
     leaf_badge_bg_color = ListProperty(COLOR_LIGHT["leaf_badge_bg"])
@@ -172,9 +177,11 @@ class MainApp(MDApp):
     def build(self):
         # Cola de borrados diferidos (ventana de 4 s para "Deshacer")
         self.undo = UndoController(scheduler=Clock.schedule_once)
-        self.theme_cls.theme_style = "Light"
+        # Tema guardado en el dispositivo: se mantiene al cerrar la app o la sesión
+        self.modo_oscuro = preferences.is_dark_mode()
+        self.theme_cls.theme_style = "Dark" if self.modo_oscuro else "Light"
         self.theme_cls.primary_palette = "Blue"
-        self._aplicar_tema(False)
+        self._aplicar_tema(self.modo_oscuro)
         return None
 
     def on_pause(self):
@@ -365,8 +372,14 @@ class MainApp(MDApp):
         if self.profile_modal and self.profile_modal.get_parent_window() is not None:
             self.profile_modal.dismiss()
 
+    def legible(self, color, dark=None):
+        """Color de estado ajustado al tema para que el texto se lea bien (uso desde kv)."""
+        return legible_color(color, self.modo_oscuro if dark is None else dark)
+
     def cambiar_tema(self, valor_activo):
-        """Alterna entre Tema Claro y Tema Oscuro de manera fluida."""
+        """Alterna entre Tema Claro y Tema Oscuro y lo deja guardado para la próxima vez."""
+        if bool(valor_activo) != preferences.is_dark_mode():
+            preferences.set_dark_mode(valor_activo)
         self.modo_oscuro = bool(valor_activo)
         self.theme_cls.theme_style = "Dark" if self.modo_oscuro else "Light"
         self._aplicar_tema(self.modo_oscuro)
@@ -381,6 +394,7 @@ class MainApp(MDApp):
         self.text_secondary_color = paleta["text_secondary"]
         self.category_tag_color = paleta["category_tag"]
         self.accent_green_color = paleta["accent_green"]
+        self.accent_fill_color = paleta["accent_fill"]
         self.active_pill_color = paleta["active_pill"]
         self.divider_color = paleta["divider"]
         self.leaf_badge_bg_color = paleta["leaf_badge_bg"]
@@ -488,7 +502,7 @@ class MainApp(MDApp):
             return
         for section in sections:
             container.add_widget(PantrySectionHeader(
-                title=section["title"].upper(), count=len(section["items"]), dot_color=section["color"]))
+                title=section["title"], count=len(section["items"]), dot_color=section["color"]))
             for idx, it in enumerate(section["items"]):
                 container.add_widget(PantryItemRow(item=it))
                 if idx < len(section["items"]) - 1:
@@ -531,6 +545,29 @@ class MainApp(MDApp):
         else:
             self._pantry_query = ""
             self._render_despensa()
+
+    def abrir_cantidad_despensa(self, item_id):
+        """Hoja compacta para registrar la cantidad (y la medida) de un producto de la despensa."""
+        item = self.db.get_pantry_item_by_id(item_id)
+        if not item:
+            return
+        unit = item.unit or "un."
+
+        def save(quantity, new_unit):
+            if new_unit != unit:
+                # El mínimo de aviso se convierte junto con la medida (2 kg -> 2000 g)
+                threshold = convert_quantity(float(item.min_threshold), unit, new_unit)
+                self.actualizar_detalles_despensa(item.id, item.name, new_unit, threshold, category_of(item))
+            self.fijar_cantidad_despensa(item.id, quantity)
+            self.finalizar_ajuste_despensa(item.id)
+
+        QuantitySheet(
+            title=item.name,
+            subtitle=f"Hay {format_amount(float(item.quantity), unit)}",
+            quantity=float(item.quantity),
+            unit=unit,
+            on_save=save,
+        ).open()
 
     def ajuste_rapido_despensa(self, row, direction):
         """
@@ -732,7 +769,7 @@ class MainApp(MDApp):
         self.stats_spent_title = f"Gasto · {data['label'].lower()}"
         self.stats_spent_str = data["total_str"]
         count = data["count"]
-        self.stats_spent_sub = (f"{count} producto(s) comprados" if count else "Sin compras en este periodo")
+        self.stats_spent_sub = (f"{count} producto(s) comprados" if count else "Aún sin compras")
 
         container = self.get_container("purchase_history_container")
         if not container:
