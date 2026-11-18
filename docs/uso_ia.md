@@ -446,5 +446,20 @@ Los chips miden 36dp pero la fila desplazable que los contiene medía 34dp, así
 3. Dashboard rediseñado con la paleta de la app, modo claro/oscuro, selector de periodo y diseño responsivo; la actividad reciente oculta datos personales.
 
 ## Validación
-- 8 pruebas en `tests/test_dashboard_metrics.py`.
+- 7 pruebas en `tests/test_dashboard_metrics.py`.
 - Navegador: escritorio claro y celular oscuro sin scroll horizontal; cambio de periodo a 90 días; modo real leyendo MySQL sin escribir.
+
+---
+
+## Entrada / Prompt del Usuario (Simulación de 100 usuarios)
+> "simulalo con 100 usuarios" / "solo android y ios"
+
+## Acciones Realizadas
+1. `admin_dashboard/simulate.py`: crea `admin_dashboard/demo_metrics.db` (ignorada por `*.db`) con el mismo esquema SQLite de la app y 100 usuarios en 90 días, solo Android (≈62 %) e iOS (≈38 %).
+   - Cada persona tiene su nivel de uso y una fecha en que deja de volver; más uso los fines de semana.
+   - Usa los eventos reales de la app (`app_opened`, `screen_view`, `add_shopping_list_item`, `finalize_purchase`, `restock_all_to_list`, `upgrade_to_pro`…) y compras con productos y precios chilenos por unidad de medida.
+   - Se niega a escribir en `despensapp_local.db` o fuera de `admin_dashboard`; semilla fija para repetir los mismos datos.
+
+## Validación
+- 2 pruebas en `tests/test_simulate.py` (rechaza la base real; solo Android/iOS); 37 de 37 en total.
+- Resultado (30 días): 100 usuarios, 9 Pro, ~18 activos por día, ticket promedio ≈ $19.800.
