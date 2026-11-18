@@ -67,7 +67,8 @@ def _build_list_item(data: Dict[str, Any]) -> ShoppingListItem:
         is_checked=bool(data.get("is_checked", False)),
         created_at=data.get("created_at", ""),
         price=float(data.get("price", 0.0)),
-        quantity=max(1, int(data.get("quantity", 1) or 1)),
+        quantity=max(0.01, float(data.get("quantity", 1.0) or 1.0)),
+        unit=(data.get("unit") or "un."),
     )
 
 
@@ -134,6 +135,75 @@ class ApiDatabaseClient:
         self._session = requests.Session() if requests is not None else None
         self._cache: Dict[str, Tuple[float, Any]] = {}
         self.cache_ttl: float = 15.0
+        self._item_meta: Dict[int, Tuple[float, str]] = {}
+        self._load_item_meta()
+
+    def _get_meta_db_path(self) -> str:
+        import os
+        try:
+            from models import database as _db_mod
+            if hasattr(_db_mod, "get_storage_dir"):
+                return os.path.join(_db_mod.get_storage_dir(), "despensapp_local.db")
+            return _db_mod.LOCAL_DB_PATH
+        except Exception:
+            return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "despensapp_local.db"))
+
+    def _load_item_meta(self):
+        """Carga las cantidades y unidades locales de los productos de listas."""
+        try:
+            import sqlite3
+            conn = sqlite3.connect(self._get_meta_db_path())
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS local_list_item_meta (
+                    item_id INTEGER PRIMARY KEY,
+                    quantity REAL NOT NULL DEFAULT 1.0,
+                    unit TEXT NOT NULL DEFAULT 'un.'
+                );
+            """)
+            cur.execute("SELECT item_id, quantity, unit FROM local_list_item_meta;")
+            for row in cur.fetchall():
+                self._item_meta[int(row[0])] = (max(0.01, float(row[1] or 1.0)), str(row[2] or "un."))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
+    def _save_item_meta(self, item_id: Optional[int], quantity: Optional[float] = None, unit: Optional[str] = None):
+        """Persiste localmente la cantidad y unidad de un producto de lista para sincronizar con la API."""
+        if not item_id:
+            return
+        prev_qty, prev_unit = self._item_meta.get(int(item_id), (1.0, "un."))
+        new_qty = max(0.01, float(quantity)) if quantity is not None else prev_qty
+        new_unit = (unit.strip() if unit else None) or prev_unit
+        self._item_meta[int(item_id)] = (new_qty, new_unit)
+        try:
+            import sqlite3
+            conn = sqlite3.connect(self._get_meta_db_path())
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS local_list_item_meta (
+                    item_id INTEGER PRIMARY KEY,
+                    quantity REAL NOT NULL DEFAULT 1.0,
+                    unit TEXT NOT NULL DEFAULT 'un.'
+                );
+            """)
+            cur.execute(
+                "INSERT OR REPLACE INTO local_list_item_meta (item_id, quantity, unit) VALUES (?, ?, ?);",
+                (int(item_id), new_qty, new_unit),
+            )
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
+    def _apply_item_meta(self, item: ShoppingListItem) -> ShoppingListItem:
+        """Aplica la cantidad y medida guardadas si el servidor remoto no las devuelve."""
+        meta = self._item_meta.get(int(item.id))
+        if meta is not None:
+            item.quantity = meta[0]
+            item.unit = meta[1]
+        return item
 
     def _cached_get(self, key: str, loader, default_val=None):
         """Retorna resultado cacheado en RAM si no ha expirado; ante corte de red usa último valor o default."""
@@ -417,7 +487,11 @@ class ApiDatabaseClient:
     def get_shopping_lists(self, user_id: int) -> List[ShoppingList]:
         def _load():
             data = self._request("GET", f"/lists/{user_id}")
-            return [_build_shopping_list(raw) for raw in data.get("lists", [])]
+            lists = [_build_shopping_list(raw) for raw in data.get("lists", [])]
+            for lst in lists:
+                if lst.items:
+                    lst.items = [self._apply_item_meta(it) for it in lst.items]
+            return lists
         return self._cached_get(f"lists:{user_id}", _load, default_val=list)
 
     def add_shopping_list(
@@ -456,29 +530,55 @@ class ApiDatabaseClient:
     def get_shopping_list_items(self, list_id: int) -> List[ShoppingListItem]:
         def _load():
             data = self._request("GET", f"/lists/{list_id}/items")
-            return [_build_list_item(raw) for raw in data.get("items", [])]
+            return [self._apply_item_meta(_build_list_item(raw)) for raw in data.get("items", [])]
         return self._cached_get(f"list_items:{list_id}", _load, default_val=list)
 
     def add_shopping_list_item(
-        self, list_id: int, name: str, price: float = 0.0, is_checked: bool = False,
-        quantity: int = 1
+        self,
+        list_id: int,
+        name: str,
+        price: float = 0.0,
+        is_checked: bool = False,
+        quantity: float = 1.0,
+        unit: str = "un.",
     ) -> Optional[int]:
+        clean_qty = max(0.01, float(quantity or 1.0))
+        clean_unit = (unit or "un.").strip() or "un."
         data = self._request(
             "POST",
             f"/lists/{list_id}/items",
-            {"name": name, "price": price, "is_checked": is_checked, "quantity": quantity},
+            {
+                "name": name,
+                "price": price,
+                "is_checked": is_checked,
+                "quantity": clean_qty,
+                "unit": clean_unit,
+            },
         )
-        return data.get("id")
+        new_id = data.get("id")
+        if new_id:
+            self._save_item_meta(int(new_id), clean_qty, clean_unit)
+        return new_id
 
     def toggle_shopping_list_item(self, item_id: int, is_checked: bool) -> bool:
         data = self._request("PATCH", f"/list-items/{item_id}/toggle", {"is_checked": is_checked})
         return bool(data.get("ok"))
 
-    def update_shopping_list_item(self, item_id: int, name: str, price: float,
-                                  quantity: Optional[int] = None) -> bool:
-        payload = {"name": name, "price": price}
+    def update_shopping_list_item(
+        self,
+        item_id: int,
+        name: str,
+        price: float,
+        quantity: Optional[float] = None,
+        unit: Optional[str] = None,
+    ) -> bool:
+        payload: Dict[str, Any] = {"name": name, "price": price}
         if quantity is not None:
-            payload["quantity"] = max(1, int(quantity))
+            payload["quantity"] = max(0.01, float(quantity))
+        if unit is not None:
+            payload["unit"] = (unit or "un.").strip() or "un."
+        if quantity is not None or unit is not None:
+            self._save_item_meta(item_id, quantity, unit)
         data = self._request(
             "PUT", f"/list-items/{item_id}", payload,
         )

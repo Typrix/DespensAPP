@@ -150,7 +150,7 @@ class PurchaseController:
     def build_checkout(self, user_id: int, list_items: List[ShoppingListItem]) -> List[Dict[str, Any]]:
         """
         Una fila por producto tachado con la unidad sugerida:
-        la del producto existente en la despensa o 'un.' si es nuevo.
+        la unidad elegida en la lista, la del producto en la despensa o 'un.' si es nuevo.
         """
         pantry = {_normalize(p.name): p for p in self.db.get_pantry_items(user_id)}
         rows = []
@@ -158,11 +158,13 @@ class PurchaseController:
             if not item.is_checked:
                 continue
             match = pantry.get(_normalize(item.name))
+            item_unit = getattr(item, "unit", None) or "un."
             rows.append({
                 "ref": item,
                 "title": item.name,
                 "price": item.price,
-                "unit": match.unit if match else "un.",
+                "quantity": float(getattr(item, "quantity", 1.0) or 1.0),
+                "unit": match.unit if match else item_unit,
                 "is_new": match is None,
             })
         return rows
@@ -176,25 +178,41 @@ class PurchaseController:
         - Saca de la lista lo comprado (lo no encontrado queda pendiente).
         """
         now = self.clock().strftime(PURCHASE_DATETIME_FORMAT)
-        summary = {"updated": 0, "created": 0, "total": 0.0, "count": 0}
+        summary = {"updated": 0, "created": 0, "total": 0.0, "count": 0, "records": [], "group": None}
+        from models.purchase_record import PurchaseRecord
         for entry in entries:
             item: ShoppingListItem = entry["ref"]
             quantity = float(entry["quantity"])
-            line_total = round(float(item.price or 0.0) * quantity, 2)
             match = self.find_pantry_match(user_id, item.name)
             if match:
                 self.db.set_pantry_quantity(match.id, match.quantity + quantity)
                 unit = match.unit
                 summary["updated"] += 1
             else:
-                unit = entry.get("unit") or "un."
+                unit = entry.get("unit") or getattr(item, "unit", "un.") or "un."
                 self.db.add_pantry_item(user_id, item.name, quantity, unit, DEFAULT_NEW_THRESHOLD, "General", None)
                 summary["created"] += 1
-            self.db.add_purchase_record(user_id, item.name, line_total, quantity, unit, now,
-                                        list_id=list_id, list_name=list_name)
+            rec_id = self.db.add_purchase_record(user_id, item.name, item.price, quantity, unit, now,
+                                                 list_id=list_id, list_name=list_name)
             self.db.delete_shopping_list_item(item.id)
             summary["total"] += item.price * quantity
             summary["count"] += 1
+            summary["records"].append(
+                PurchaseRecord(
+                    id=rec_id or 0,
+                    user_id=user_id,
+                    title=item.name,
+                    price=float(item.price or 0.0),
+                    quantity=quantity,
+                    unit=unit,
+                    list_id=list_id,
+                    purchased_at=now,
+                    list_name=list_name,
+                )
+            )
+        if summary["records"]:
+            groups = self.group_by_purchase(summary["records"])
+            summary["group"] = groups[0] if groups else None
         if self.analytics and summary["count"]:
             self.analytics.track_event("finalize_purchase", metadata={
                 "list_id": list_id, "items": summary["count"], "total": summary["total"]})

@@ -12,20 +12,25 @@ from views.widgets.purchase_row import build_purchase_card
 
 
 class PurchaseHistoryModal(BaseFormModal):
-    """Historial completo del periodo, abierto con "Ver todas" o desde Inicio."""
+    """Historial completo del periodo o resumen de una compra recién confirmada."""
+    title_text = StringProperty("Historial de compras")
     period_label = StringProperty("")
     summary = StringProperty("")
     group_count = NumericProperty(0)
 
-    def __init__(self, spending, **kwargs):
+    def __init__(self, spending, title_text="Historial de compras", custom_summary="", **kwargs):
         """spending: resultado de PurchaseController.get_spending (label, total_str, groups)."""
         super().__init__(**kwargs)
+        self.title_text = title_text
         groups = spending.get("groups", [])
         self.group_count = len(groups)
         self.period_label = spending.get("label", "")
         n = len(groups)
-        self.summary = (f"{self.period_label} · {n} {'compra' if n == 1 else 'compras'} · "
-                        f"{spending.get('total_str', '$0')}")
+        if custom_summary:
+            self.summary = custom_summary
+        else:
+            self.summary = (f"{self.period_label} · {n} {'compra' if n == 1 else 'compras'} · "
+                            f"{spending.get('total_str', '$0')}")
         box = self.ids.history_box
         if not groups:
             box.add_widget(EmptyState(

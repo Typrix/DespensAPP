@@ -836,7 +836,19 @@ class MainApp(MDApp):
                 detalle.append(f"{summary['updated']} actualizado(s)")
             if summary["created"]:
                 detalle.append(f"{summary['created']} nuevo(s)")
-            show_info_toast(f"Compra registrada · despensa: {', '.join(detalle)}")
+            resumen_txt = f"Total: {format_money(summary['total'])} · Despensa: {', '.join(detalle)}"
+            if summary.get("group"):
+                PurchaseHistoryModal(
+                    spending={
+                        "label": "Compra confirmada",
+                        "total_str": format_money(summary["total"]),
+                        "groups": [summary["group"]],
+                    },
+                    title_text="Resumen de tu compra",
+                    custom_summary=resumen_txt,
+                ).open()
+            else:
+                show_info_toast(f"Compra registrada · despensa: {', '.join(detalle)}")
 
         CheckoutModal(checkout_rows=rows, callback_confirm=confirm).open()
 

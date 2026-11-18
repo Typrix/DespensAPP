@@ -268,7 +268,8 @@ class DatabaseManager:
                         `list_id` INT NOT NULL,
                         `name` VARCHAR(150) NOT NULL,
                         `price` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
-                        `quantity` INT NOT NULL DEFAULT 1,
+                        `quantity` DECIMAL(10, 2) NOT NULL DEFAULT 1.00,
+                        `unit` VARCHAR(30) NOT NULL DEFAULT 'un.',
                         `is_checked` TINYINT(1) NOT NULL DEFAULT 0,
                         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         CONSTRAINT `fk_shopping_list_items_list`
@@ -282,13 +283,17 @@ class DatabaseManager:
                     cur.execute("ALTER TABLE `pantry_items` ADD COLUMN `expiration_date` VARCHAR(20) NULL;")
                 except Exception:
                     pass
-                # Las listas funcionan como carrito: cada producto puede llevar precio
+                # Las listas funcionan como carrito: cada producto puede llevar precio, cantidad y unidad
                 try:
                     cur.execute("ALTER TABLE `shopping_list_items` ADD COLUMN `price` DECIMAL(12, 2) NOT NULL DEFAULT 0.00;")
                 except Exception:
                     pass
                 try:
-                    cur.execute("ALTER TABLE `shopping_list_items` ADD COLUMN `quantity` INT NOT NULL DEFAULT 1;")
+                    cur.execute("ALTER TABLE `shopping_list_items` ADD COLUMN `quantity` DECIMAL(10, 2) NOT NULL DEFAULT 1.00;")
+                except Exception:
+                    pass
+                try:
+                    cur.execute("ALTER TABLE `shopping_list_items` ADD COLUMN `unit` VARCHAR(30) NOT NULL DEFAULT 'un.';")
                 except Exception:
                     pass
                 # Historial de compras finalizadas (base del gasto por periodo)
@@ -430,7 +435,11 @@ class DatabaseManager:
         except Exception:
             pass
         try:
-            cur.execute("ALTER TABLE shopping_list_items ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1;")
+            cur.execute("ALTER TABLE shopping_list_items ADD COLUMN quantity REAL NOT NULL DEFAULT 1.0;")
+        except Exception:
+            pass
+        try:
+            cur.execute("ALTER TABLE shopping_list_items ADD COLUMN unit TEXT NOT NULL DEFAULT 'un.';")
         except Exception:
             pass
         # Historial de compras finalizadas (fecha en texto 'AAAA-MM-DD HH:MM:SS', hora local)
@@ -1432,51 +1441,87 @@ class DatabaseManager:
     # ----------------------------------------------------
     def get_shopping_list_items(self, list_id: int) -> List[ShoppingListItem]:
         """
-        Obtiene los productos anotados en una lista (con su precio opcional).
+        Obtiene los productos anotados en una lista (con su precio, cantidad y unidad).
         Orden fijo por creación: tachar un producto no lo mueve de lugar.
         """
         rows = self._run(
-            """SELECT id, list_id, name, price, quantity, is_checked, created_at
+            """SELECT id, list_id, name, price, quantity, unit, is_checked, created_at
                FROM shopping_list_items WHERE list_id = ? ORDER BY id ASC;""",
             (list_id,), fetch="all",
         ) or []
-        return [
-            ShoppingListItem(
-                id=r["id"],
-                list_id=r["list_id"],
-                name=r["name"],
-                is_checked=bool(r["is_checked"]),
-                created_at=str(r["created_at"] or ""),
-                price=float(r["price"] or 0.0),
-                quantity=max(1, int(r["quantity"] or 1)),
+        items = []
+        for r in rows:
+            keys = r.keys() if hasattr(r, "keys") else ()
+            raw_qty = float(r["quantity"] or 1.0) if "quantity" in keys else 1.0
+            raw_unit = (r["unit"] if "unit" in keys else None) or "un."
+            items.append(
+                ShoppingListItem(
+                    id=r["id"],
+                    list_id=r["list_id"],
+                    name=r["name"],
+                    is_checked=bool(r["is_checked"]),
+                    created_at=str(r["created_at"] or ""),
+                    price=float(r["price"] or 0.0),
+                    quantity=max(0.01, raw_qty),
+                    unit=raw_unit,
+                )
             )
-            for r in rows
-        ]
+        return items
 
-    def add_shopping_list_item(self, list_id: int, name: str, price: float = 0.0,
-                               is_checked: bool = False, quantity: int = 1) -> Optional[int]:
-        """Añade un producto a la lista, con precio opcional."""
+    def add_shopping_list_item(
+        self,
+        list_id: int,
+        name: str,
+        price: float = 0.0,
+        is_checked: bool = False,
+        quantity: float = 1.0,
+        unit: str = "un.",
+    ) -> Optional[int]:
+        """Añade un producto a la lista, con precio, cantidad y unidad."""
         name = (name or "").strip()
         if not name:
             return None
+        clean_unit = (unit or "un.").strip() or "un."
         return self._run(
-            "INSERT INTO shopping_list_items (list_id, name, price, quantity, is_checked) VALUES (?, ?, ?, ?, ?);",
-            (list_id, name, max(0.0, float(price or 0.0)), max(1, int(quantity)), 1 if is_checked else 0),
+            "INSERT INTO shopping_list_items (list_id, name, price, quantity, unit, is_checked) VALUES (?, ?, ?, ?, ?, ?);",
+            (
+                list_id,
+                name,
+                max(0.0, float(price or 0.0)),
+                max(0.01, float(quantity or 1.0)),
+                clean_unit,
+                1 if is_checked else 0,
+            ),
             fetch="lastrowid",
         )
 
-    def update_shopping_list_item(self, item_id: int, name: str, price: float,
-                                  quantity: Optional[int] = None) -> bool:
-        """Corrige el nombre y el precio de un producto de la lista, renovando su fecha de vigencia."""
+    def update_shopping_list_item(
+        self,
+        item_id: int,
+        name: str,
+        price: float,
+        quantity: Optional[float] = None,
+        unit: Optional[str] = None,
+    ) -> bool:
+        """Corrige el nombre, precio, cantidad y unidad de un producto de la lista."""
         name = (name or "").strip()
         if not name:
             return False
         return bool(self._run(
             """UPDATE shopping_list_items
-               SET name = ?, price = ?, quantity = COALESCE(?, quantity), created_at = CURRENT_TIMESTAMP
+               SET name = ?,
+                   price = ?,
+                   quantity = COALESCE(?, quantity),
+                   unit = COALESCE(?, unit),
+                   created_at = CURRENT_TIMESTAMP
                WHERE id = ?;""",
-            (name, max(0.0, float(price or 0.0)),
-             max(1, int(quantity)) if quantity is not None else None, item_id),
+            (
+                name,
+                max(0.0, float(price or 0.0)),
+                max(0.01, float(quantity)) if quantity is not None else None,
+                (unit.strip() if unit else None),
+                item_id,
+            ),
         ))
 
     def toggle_shopping_list_item(self, item_id: int, is_checked: bool) -> bool:

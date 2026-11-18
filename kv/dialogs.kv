@@ -1103,8 +1103,8 @@
         Label:
             text: root.price_str or "Editar $"
             size_hint_x: None
-            width: "58dp"
-            font_size: "13sp" if root.price_str else "11sp"
+            width: "56dp"
+            font_size: "12.5sp" if root.price_str else "11sp"
             bold: bool(root.price_str)
             color: (app.text_secondary_color if root.is_checked else app.text_primary_color) if root.price_str else app.accent_green_color
             halign: "right"
@@ -1113,34 +1113,37 @@
 
     BoxLayout:
         size_hint_x: None
-        width: "68dp"
-        spacing: "2dp"
+        width: "92dp"
+        spacing: "3dp"
         Button:
-            text: "−"
+            text: "-"
             size_hint_x: None
             width: "24dp"
             font_size: "17sp"
+            bold: True
             color: app.text_primary_color
+            disabled_color: app.text_secondary_color
+            opacity: 0.42 if self.disabled else 1
             background_color: [0, 0, 0, 0]
-            disabled: root.quantity <= 1
+            disabled: root.quantity <= root.min_quantity
             on_release: root.adjust_quantity(-1)
             canvas.before:
                 Color:
-                    rgba: app.sage_container_color
+                    rgba: [0.22, 0.30, 0.42, 1.0] if app.modo_oscuro else [0.85, 0.89, 0.94, 1.0]
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
                     radius: [8, 8, 8, 8]
         Label:
-            text: str(root.quantity)
-            size_hint_x: None
-            width: "16dp"
-            font_size: "12sp"
+            text: root.quantity_label
+            size_hint_x: 1
+            font_size: "11sp"
             bold: True
             color: app.text_primary_color
             halign: "center"
             valign: "middle"
             text_size: self.size
+            shorten: True
         Button:
             text: "+"
             size_hint_x: None
@@ -1148,11 +1151,12 @@
             font_size: "16sp"
             bold: True
             color: app.text_primary_color
+            disabled_color: app.text_secondary_color
             background_color: [0, 0, 0, 0]
             on_release: root.adjust_quantity(1)
             canvas.before:
                 Color:
-                    rgba: app.sage_container_color
+                    rgba: [0.22, 0.30, 0.42, 1.0] if app.modo_oscuro else [0.85, 0.89, 0.94, 1.0]
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
@@ -1175,12 +1179,12 @@
 # --------------------------------------------------------
 <ShoppingListDetailModal>:
     width: "360dp"
-    height: "620dp"
+    height: "650dp"
 
     BoxLayout:
         orientation: "vertical"
         padding: ["18dp", "16dp", "18dp", "16dp"]
-        spacing: "10dp"
+        spacing: "8dp"
         canvas.before:
             Color:
                 rgba: app.card_white_color
@@ -1242,10 +1246,10 @@
             halign: "left"
             text_size: self.size
 
-        # Anotar producto con precio opcional
+        # Fila 1: Anotar producto con precio unitario
         BoxLayout:
             size_hint_y: None
-            height: "42dp"
+            height: "40dp"
             spacing: "6dp"
 
             AnchorLayout:
@@ -1262,7 +1266,7 @@
                     multiline: False
                     write_tab: False
                     font_size: "13sp"
-                    padding: ["10dp", "11dp", "8dp", "8dp"]
+                    padding: ["10dp", "10dp", "8dp", "8dp"]
                     background_color: [0, 0, 0, 0]
                     cursor_color: app.accent_green_color
                     foreground_color: app.input_text_color
@@ -1271,7 +1275,7 @@
 
             AnchorLayout:
                 size_hint_x: None
-                width: "84dp"
+                width: "92dp"
                 canvas.before:
                     Color:
                         rgba: app.sage_container_color
@@ -1286,7 +1290,49 @@
                     multiline: False
                     write_tab: False
                     font_size: "13sp"
-                    padding: ["8dp", "11dp", "6dp", "8dp"]
+                    padding: ["8dp", "10dp", "6dp", "8dp"]
+                    background_color: [0, 0, 0, 0]
+                    cursor_color: app.accent_green_color
+                    foreground_color: app.input_text_color
+                    hint_text_color: app.input_placeholder_color
+                    on_text_validate: root.add_item()
+
+        # Fila 2: Cantidad, Medida y botón Añadir
+        BoxLayout:
+            size_hint_y: None
+            height: "38dp"
+            spacing: "6dp"
+
+            Label:
+                text: "Cantidad y medida:"
+                size_hint_x: None
+                width: "108dp"
+                font_size: "11.5sp"
+                color: app.text_secondary_color
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+            AnchorLayout:
+                size_hint_x: None
+                width: "62dp"
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [10, 10, 10, 10]
+                TextInput:
+                    id: new_item_qty
+                    text: "1"
+                    hint_text: "Cant."
+                    input_filter: numeric_input_filter
+                    multiline: False
+                    write_tab: False
+                    halign: "center"
+                    font_size: "13sp"
+                    padding: ["6dp", "9dp", "6dp", "6dp"]
                     background_color: [0, 0, 0, 0]
                     cursor_color: app.accent_green_color
                     foreground_color: app.input_text_color
@@ -1294,11 +1340,27 @@
                     on_text_validate: root.add_item()
 
             Button:
-                text: "+"
-                font_size: "20sp"
-                bold: True
+                text: f"{root.selected_new_unit} ▾"
                 size_hint_x: None
-                width: "42dp"
+                width: "66dp"
+                font_size: "12.5sp"
+                bold: True
+                color: app.accent_green_color
+                background_color: [0, 0, 0, 0]
+                on_release: root.open_new_unit_menu(self)
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [10, 10, 10, 10]
+
+            Button:
+                text: "+ Añadir"
+                font_size: "12.5sp"
+                bold: True
+                size_hint_x: 1
                 color: [1, 1, 1, 1]
                 background_color: [0, 0, 0, 0]
                 on_release: root.add_item()
@@ -1308,7 +1370,7 @@
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
-                        radius: [12, 12, 12, 12]
+                        radius: [10, 10, 10, 10]
 
         FormMessageLabel:
             text: root.error_text
@@ -1404,15 +1466,15 @@
 
 
 # --------------------------------------------------------
-# 3D. Modal: Editar Producto de Lista (nombre y precio)
+# 3D. Modal: Editar Producto de Lista (nombre, precio, cantidad y medida)
 # --------------------------------------------------------
 <EditListItemModal>:
-    height: "290dp" if root.error_text else "250dp"
+    height: "355dp" if root.error_text else "315dp"
 
     BoxLayout:
         orientation: "vertical"
         padding: ["20dp", "18dp", "20dp", "18dp"]
-        spacing: "12dp"
+        spacing: "10dp"
         canvas.before:
             Color:
                 rgba: app.card_white_color
@@ -1446,6 +1508,46 @@
                 label_text: "PRECIO ($)"
                 hint_text: "Ej: 1.990"
                 input_filter: numeric_input_filter
+
+        BoxLayout:
+            size_hint_y: None
+            height: "56dp"
+            spacing: "10dp"
+            CustomInputField:
+                id: field_qty
+                label_text: "CANTIDAD"
+                hint_text: "Ej: 2"
+                input_filter: numeric_input_filter
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: None
+                width: "110dp"
+                spacing: "4dp"
+                Label:
+                    text: "MEDIDA"
+                    font_size: "11sp"
+                    bold: True
+                    color: app.text_secondary_color
+                    size_hint_y: None
+                    height: "16dp"
+                    halign: "left"
+                    text_size: self.size
+                Button:
+                    text: f"{root.selected_unit} ▾"
+                    size_hint_y: None
+                    height: "36dp"
+                    font_size: "13sp"
+                    bold: True
+                    color: app.accent_green_color
+                    background_color: [0, 0, 0, 0]
+                    on_release: root.open_unit_menu(self)
+                    canvas.before:
+                        Color:
+                            rgba: app.sage_container_color
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [10, 10, 10, 10]
 
         Widget:
             size_hint_y: 1
@@ -1770,13 +1872,13 @@
 
 
 # --------------------------------------------------------
-# 5. Modal: Finalizar Compra (Carrito -> Despensa + Historial)
+# 5. Modal: Finalizar Compra (Resumen y Confirmación)
 # --------------------------------------------------------
 <CheckoutRow>:
     size_hint_y: None
-    height: "52dp"
-    spacing: "8dp"
-    padding: ["10dp", "6dp", "6dp", "6dp"]
+    height: "58dp"
+    spacing: "6dp"
+    padding: ["10dp", "6dp", "8dp", "6dp"]
     canvas.before:
         Color:
             rgba: app.sage_container_color
@@ -1787,6 +1889,7 @@
 
     BoxLayout:
         orientation: "vertical"
+        size_hint_x: 1
         Label:
             text: root.title
             font_size: "13.5sp"
@@ -1798,17 +1901,19 @@
             shorten: True
             shorten_from: "right"
         Label:
-            text: "Nuevo en la despensa" if root.is_new else "Se suma a tu stock"
+            text: root.detail_str
             font_size: "10.5sp"
             color: app.accent_green_color if root.is_new else app.text_secondary_color
             halign: "left"
             valign: "top"
             text_size: self.size
+            shorten: True
+            shorten_from: "right"
 
     # Cantidad comprada
     AnchorLayout:
         size_hint_x: None
-        width: "58dp"
+        width: "48dp"
         canvas.before:
             Color:
                 rgba: app.card_white_color
@@ -1822,34 +1927,44 @@
             input_filter: numeric_input_filter
             multiline: False
             halign: "center"
-            font_size: "13.5sp"
-            padding: ["4dp", "10dp", "4dp", "6dp"]
+            font_size: "13sp"
+            padding: ["4dp", "12dp", "4dp", "6dp"]
             background_color: [0, 0, 0, 0]
             cursor_color: app.accent_green_color
             foreground_color: app.input_text_color
 
-    # Unidad: elegible si es nuevo, fija si ya existe en la despensa
+    # Unidad / Medida
     Button:
         text: root.unit
         size_hint_x: None
-        width: "64dp"
-        font_size: "12.5sp"
-        bold: root.is_new
-        color: app.accent_green_color if root.is_new else app.text_secondary_color
+        width: "46dp"
+        font_size: "12sp"
+        bold: True
+        color: app.accent_green_color
         background_color: [0, 0, 0, 0]
-        disabled: not root.is_new
-        disabled_color: app.text_secondary_color
         on_release: root.open_unit_menu(self)
         canvas.before:
             Color:
-                rgba: app.card_white_color if root.is_new else (0, 0, 0, 0)
+                rgba: app.card_white_color
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
                 radius: [8, 8, 8, 8]
 
+    # Subtotal de la fila
+    Label:
+        text: root.subtotal_str
+        size_hint_x: None
+        width: "66dp"
+        font_size: "13sp"
+        bold: True
+        color: app.text_primary_color
+        halign: "right"
+        valign: "middle"
+        text_size: self.size
+
 <CheckoutModal>:
-    height: min(dp(600), dp(214) + dp(58) * root.row_count + (dp(44) if root.error_text else 0))
+    height: min(dp(600), dp(224) + dp(64) * root.row_count + (dp(44) if root.error_text else 0))
 
     BoxLayout:
         orientation: "vertical"
@@ -1864,18 +1979,18 @@
                 radius: [24, 24, 24, 24]
 
         Label:
-            text: "Finalizar compra"
+            text: "Resumen de la compra"
             font_size: "17sp"
             bold: True
             color: app.text_primary_color
             size_hint_y: None
-            height: "26dp"
+            height: "24dp"
             halign: "left"
             text_size: self.size
 
         Label:
-            text: "Indica cuánto compraste de cada producto. Se sumará a tu despensa y quedará en tu historial."
-            font_size: "12sp"
+            text: f"{root.summary_subtitle} · Verifica cantidades y medidas antes de confirmar."
+            font_size: "11.5sp"
             color: app.text_secondary_color
             size_hint_y: None
             height: self.texture_size[1]
@@ -2081,7 +2196,7 @@
             BoxLayout:
                 orientation: "vertical"
                 Label:
-                    text: "Historial de compras"
+                    text: root.title_text
                     font_size: "17sp"
                     bold: True
                     color: app.text_primary_color
