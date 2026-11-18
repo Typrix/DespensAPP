@@ -7,6 +7,8 @@ cuando no es posible conectarse directamente al puerto de MySQL.
 
 import json
 import ssl
+import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -16,6 +18,11 @@ try:
     import certifi
 except ImportError:
     certifi = None
+
+try:
+    import requests
+except ImportError:
+    requests = None
 
 from models.cart_item import CartItem
 from models.pantry_item import PantryItem
@@ -122,6 +129,25 @@ class ApiDatabaseClient:
         self._transport = transport  # inyectable para pruebas unitarias
         self._use_method_override = False  # usa POST + X-HTTP-Method-Override si el hosting bloquea PUT/PATCH/DELETE
         self._ssl_context = self._build_ssl_context()
+        self._verify_ssl = certifi.where() if certifi is not None else True
+        self._session = requests.Session() if requests is not None else None
+        self._cache: Dict[str, Tuple[float, Any]] = {}
+        self.cache_ttl: float = 15.0
+
+    def _cached_get(self, key: str, loader):
+        """Retorna resultado cacheado en RAM si no ha expirado, evitando peticiones duplicadas."""
+        entry = self._cache.get(key)
+        if entry is not None:
+            ts, value = entry
+            if (time.time() - ts) < self.cache_ttl:
+                return list(value) if isinstance(value, list) else dict(value) if isinstance(value, dict) else value
+        result = loader()
+        self._cache[key] = (time.time(), result)
+        return list(result) if isinstance(result, list) else dict(result) if isinstance(result, dict) else result
+
+    def _invalidate_cache(self):
+        """Limpia la caché en memoria tras cualquier operación de escritura."""
+        self._cache.clear()
 
     @staticmethod
     def _build_ssl_context():
@@ -140,6 +166,19 @@ class ApiDatabaseClient:
         body: Optional[bytes],
         headers: Dict[str, str],
     ) -> Dict[str, Any]:
+        if self._session is not None:
+            resp = self._session.request(
+                method=method,
+                url=url,
+                data=body,
+                headers=headers,
+                timeout=self.timeout_seconds,
+                verify=self._verify_ssl,
+            )
+            if resp.status_code >= 400:
+                raise urllib.error.HTTPError(url, resp.status_code, resp.reason, resp.headers, None)
+            return resp.json() if resp.content else {}
+
         req = urllib.request.Request(url, data=body, headers=headers, method=method)
         with urllib.request.urlopen(req, timeout=self.timeout_seconds, context=self._ssl_context) as resp:
             raw = resp.read().decode("utf-8")
@@ -152,6 +191,8 @@ class ApiDatabaseClient:
         payload: Optional[Dict[str, Any]] = None,
         params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        if method in ("POST", "PUT", "PATCH", "DELETE") and not path.startswith("/telemetry"):
+            self._invalidate_cache()
         url = f"{self.base_url}{path}"
         if params:
             clean = {k: v for k, v in params.items() if v is not None}
@@ -233,8 +274,10 @@ class ApiDatabaseClient:
     # Despensa
     # ------------------------------------------------------------------
     def get_pantry_items(self, user_id: int) -> List[PantryItem]:
-        data = self._request("GET", f"/pantry/{user_id}")
-        return [it for it in (_build_pantry_item(raw) for raw in data.get("items", [])) if it is not None]
+        def _load():
+            data = self._request("GET", f"/pantry/{user_id}")
+            return [it for it in (_build_pantry_item(raw) for raw in data.get("items", [])) if it is not None]
+        return self._cached_get(f"pantry:{user_id}", _load)
 
     def get_pantry_item_by_id(self, item_id: int) -> Optional[PantryItem]:
         data = self._request("GET", f"/pantry/item/{item_id}")
@@ -311,8 +354,10 @@ class ApiDatabaseClient:
     # Listas de Compras
     # ------------------------------------------------------------------
     def get_shopping_lists(self, user_id: int) -> List[ShoppingList]:
-        data = self._request("GET", f"/lists/{user_id}")
-        return [_build_shopping_list(raw) for raw in data.get("lists", [])]
+        def _load():
+            data = self._request("GET", f"/lists/{user_id}")
+            return [_build_shopping_list(raw) for raw in data.get("lists", [])]
+        return self._cached_get(f"lists:{user_id}", _load)
 
     def add_shopping_list(
         self,
@@ -348,8 +393,10 @@ class ApiDatabaseClient:
         return bool(data.get("ok"))
 
     def get_shopping_list_items(self, list_id: int) -> List[ShoppingListItem]:
-        data = self._request("GET", f"/lists/{list_id}/items")
-        return [_build_list_item(raw) for raw in data.get("items", [])]
+        def _load():
+            data = self._request("GET", f"/lists/{list_id}/items")
+            return [_build_list_item(raw) for raw in data.get("items", [])]
+        return self._cached_get(f"list_items:{list_id}", _load)
 
     def add_shopping_list_item(
         self, list_id: int, name: str, price: float = 0.0, is_checked: bool = False
@@ -425,8 +472,10 @@ class ApiDatabaseClient:
     # Compras, Precios y Ofertas
     # ------------------------------------------------------------------
     def get_purchase_history(self, user_id: int, since: Optional[str] = None) -> List[PurchaseRecord]:
-        data = self._request("GET", f"/purchases/{user_id}", params={"since": since})
-        return [_build_purchase_record(raw) for raw in data.get("records", [])]
+        def _load():
+            data = self._request("GET", f"/purchases/{user_id}", params={"since": since})
+            return [_build_purchase_record(raw) for raw in data.get("records", [])]
+        return self._cached_get(f"purchases:{user_id}:{since or ''}", _load)
 
     def add_purchase_record(
         self,
@@ -483,19 +532,23 @@ class ApiDatabaseClient:
         return data.get("offer")
 
     def get_cheaper_offers_for_user(self, user_id: int) -> List[dict]:
-        data = self._request("GET", f"/prices/cheaper-offers/{user_id}")
-        return data.get("offers", [])
+        def _load():
+            data = self._request("GET", f"/prices/cheaper-offers/{user_id}")
+            return data.get("offers", [])
+        return self._cached_get(f"offers:{user_id}", _load)
 
     # ------------------------------------------------------------------
     # Estadísticas y Telemetría
     # ------------------------------------------------------------------
     def get_user_statistics(self, user_id: int) -> dict:
-        data = self._request("GET", f"/users/{user_id}/statistics")
-        stats = data.get("statistics", {})
-        for key in ("first_reponer", "first_por_agotar", "first_vencido", "first_por_vencer"):
-            if stats.get(key):
-                stats[key] = _build_pantry_item(stats[key])
-        return stats
+        def _load():
+            data = self._request("GET", f"/users/{user_id}/statistics")
+            stats = data.get("statistics", {})
+            for key in ("first_reponer", "first_por_agotar", "first_vencido", "first_por_vencer"):
+                if stats.get(key):
+                    stats[key] = _build_pantry_item(stats[key])
+            return stats
+        return self._cached_get(f"stats:{user_id}", _load)
 
     def create_session(
         self, user_id: Optional[int] = None, platform: str = "Windows", app_version: str = "1.0.0"
@@ -530,19 +583,118 @@ class ApiDatabaseClient:
         duration_seconds: int = 0,
         metadata: Optional[dict] = None,
     ) -> int:
-        try:
-            data = self._request(
-                "POST",
-                "/telemetry/events",
-                {
-                    "session_id": session_id,
-                    "user_id": user_id,
-                    "event_name": event_name,
-                    "screen_name": screen_name,
-                    "duration_seconds": duration_seconds,
-                    "metadata": metadata,
-                },
-            )
-            return int(data.get("event_id", 0))
-        except Exception:
+        payload = {
+            "session_id": session_id,
+            "user_id": user_id,
+            "event_name": event_name,
+            "screen_name": screen_name,
+            "duration_seconds": duration_seconds,
+            "metadata": metadata,
+        }
+        if self._transport is not None:
+            try:
+                data = self._request("POST", "/telemetry/events", payload)
+                return int(data.get("event_id", 0))
+            except Exception:
+                return 0
+
+        # Enviar telemetría en segundo plano para no bloquear nunca la interfaz
+        def _send_async():
+            try:
+                url = f"{self.base_url}/telemetry/events"
+                headers = {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "User-Agent": "DespensAPP/1.0",
+                }
+                if self.api_key:
+                    headers["X-API-Key"] = self.api_key
+                body = json.dumps(payload).encode("utf-8")
+                if requests is not None:
+                    requests.post(
+                        url,
+                        data=body,
+                        headers=headers,
+                        timeout=self.timeout_seconds,
+                        verify=self._verify_ssl,
+                    )
+                else:
+                    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+                    urllib.request.urlopen(req, timeout=self.timeout_seconds, context=self._ssl_context).close()
+            except Exception:
+                pass
+
+        threading.Thread(target=_send_async, daemon=True).start()
+        return 0
+
+    def log_events_batch(self, events: List[Dict[str, Any]], async_send: bool = True) -> int:
+        """Envía un lote de eventos de telemetría (1 sola petición si /batch existe, o respaldo espaciado)."""
+        if not events:
             return 0
+
+        if self._transport is not None:
+            sent = 0
+            for ev in events:
+                try:
+                    self._request("POST", "/telemetry/events", ev)
+                    sent += 1
+                except Exception:
+                    pass
+            return sent
+
+        def _dispatch():
+            try:
+                self._request("POST", "/telemetry/events/batch", {"events": events})
+                return len(events)
+            except urllib.error.HTTPError as e:
+                if e.code != 404:
+                    return 0
+            except Exception:
+                return 0
+
+            # Respaldo si el servidor PHP aún no tiene /telemetry/events/batch
+            sent = 0
+            for idx, ev in enumerate(events):
+                try:
+                    self._request("POST", "/telemetry/events", ev)
+                    sent += 1
+                    if idx + 1 < len(events):
+                        time.sleep(0.15)
+                except Exception:
+                    pass
+            return sent
+
+        if async_send:
+            threading.Thread(target=_dispatch, daemon=True).start()
+            return len(events)
+        return _dispatch()
+
+    # ------------------------------------------------------------------
+    # Analítica para Panel Admin (KPIs, pantallas y eventos recientes)
+    # ------------------------------------------------------------------
+    def get_telemetry_kpis(self) -> dict:
+        try:
+            return self._request("GET", "/analytics/kpis")
+        except Exception:
+            return {
+                "total_users": 0,
+                "total_sessions": 0,
+                "avg_session_seconds": 0,
+                "avg_session_str": "0m 0s",
+                "total_events": 0,
+                "most_active_screen": "Inicio",
+            }
+
+    def get_telemetry_screen_times(self) -> List[dict]:
+        try:
+            data = self._request("GET", "/analytics/screen-times")
+            return data.get("screens", [])
+        except Exception:
+            return []
+
+    def get_telemetry_recent_events(self, limit: int = 25) -> List[dict]:
+        try:
+            data = self._request("GET", "/analytics/recent-events", params={"limit": int(limit)})
+            return data.get("events", [])
+        except Exception:
+            return []

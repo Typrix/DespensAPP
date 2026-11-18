@@ -241,12 +241,19 @@ class MainApp(MDApp):
 
         # Programar chequeo periódico de alertas de despensa cada 10 minutos
         Clock.schedule_interval(self._verificar_notificaciones_periodicas, 600)
+        # Enviar lote de eventos de telemetría cada 60 segundos para evitar ráfagas
+        Clock.schedule_interval(self._enviar_telemetria_lote, 60)
 
         if self.auth.is_authenticated():
             self.cambiar_pantalla(self.current_screen_name)
         else:
             self._sincronizar_datos_usuario()
             self.abrir_modal_auth(can_cancel=False)
+
+    def _enviar_telemetria_lote(self, dt=None):
+        """Envía en lote los eventos de telemetría acumulados cada 60 segundos."""
+        if hasattr(self, "analytics") and self.analytics:
+            self.analytics.flush_events(async_send=True)
 
     def _sincronizar_datos_usuario(self):
         """Actualiza las variables de perfil con el usuario activo y notifica a telemetría."""
@@ -297,19 +304,10 @@ class MainApp(MDApp):
     SCREEN_ORDER = ("home", "cupboard", "lists", "stats")
 
     def cambiar_pantalla(self, name_option):
-        """Cambia suavemente a la pantalla seleccionada con deslizamiento direccional y registra tiempo en telemetría."""
+        """Cambia suavemente a la pantalla seleccionada con deslizamiento direccional sin bloquear la UI."""
         prev_screen = self.current_screen_name
         self.current_screen_name = name_option
         self.screen_header_tag = self.TAGS_MAP.get(name_option, "DESPENSAPP")
-
-        if hasattr(self, 'analytics') and self.analytics:
-            self.analytics.track_screen(name_option)
-
-        # Actualizar vistas dinámicas antes de deslizar para que la pantalla entrante ya esté lista
-        if name_option == "home":
-            self.actualizar_inicio()
-        elif name_option == "stats":
-            self.actualizar_estadisticas()
 
         sm = self.root.ids.get("screen_manager") if self.root else None
         if sm:
@@ -323,6 +321,24 @@ class MainApp(MDApp):
                 next_idx = self.SCREEN_ORDER.index(name_option)
                 sm.transition.direction = "left" if next_idx > prev_idx else "right"
             sm.current = name_option
+
+        if hasattr(self, 'analytics') and self.analytics:
+            self.analytics.track_screen(name_option)
+
+        # Refrescar vistas dinámicas tras terminar la animación de deslizamiento (0.24s)
+        # solo si han pasado >10 s desde la última carga para no frenar cambios rápidos de pestaña
+        import time
+        last_map = getattr(self, "_last_tab_refresh", None)
+        if last_map is None:
+            last_map = {}
+            self._last_tab_refresh = last_map
+        now = time.time()
+        if name_option in ("home", "stats") and (now - last_map.get(name_option, 0.0)) > 10.0:
+            last_map[name_option] = now
+            if name_option == "home":
+                Clock.schedule_once(lambda _dt: self.actualizar_inicio(), 0.24)
+            elif name_option == "stats":
+                Clock.schedule_once(lambda _dt: self.actualizar_estadisticas(), 0.24)
 
     def toggle_menu_perfil(self):
         """Abre o cierra el modal flotante de perfil de usuario."""

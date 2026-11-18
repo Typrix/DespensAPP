@@ -65,6 +65,9 @@ _API_DELEGATED_METHODS = frozenset({
     "create_session",
     "close_session",
     "log_event",
+    "get_telemetry_kpis",
+    "get_telemetry_screen_times",
+    "get_telemetry_recent_events",
 })
 
 
