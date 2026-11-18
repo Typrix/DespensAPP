@@ -177,6 +177,7 @@ class PurchaseController:
         for entry in entries:
             item: ShoppingListItem = entry["ref"]
             quantity = float(entry["quantity"])
+            line_total = round(float(item.price or 0.0) * quantity, 2)
             match = self.find_pantry_match(user_id, item.name)
             if match:
                 self.db.set_pantry_quantity(match.id, match.quantity + quantity)
@@ -186,10 +187,10 @@ class PurchaseController:
                 unit = entry.get("unit") or "un."
                 self.db.add_pantry_item(user_id, item.name, quantity, unit, DEFAULT_NEW_THRESHOLD, "General", None)
                 summary["created"] += 1
-            self.db.add_purchase_record(user_id, item.name, item.price, quantity, unit, now,
+            self.db.add_purchase_record(user_id, item.name, line_total, quantity, unit, now,
                                         list_id=list_id, list_name=list_name)
             self.db.delete_shopping_list_item(item.id)
-            summary["total"] += item.price
+            summary["total"] += line_total
             summary["count"] += 1
         if self.analytics and summary["count"]:
             self.analytics.track_event("finalize_purchase", metadata={

@@ -85,7 +85,7 @@ class MainApp(MDApp):
     user_name_str = StringProperty("Invitado")
     user_email_str = StringProperty("Sin sesión activa")
     user_initials_str = StringProperty("US")
-    user_greeting_str = StringProperty("Bienvenido/a")
+    user_greeting_str = StringProperty("Hola")
     user_is_pro = BooleanProperty(False)
 
 
@@ -272,7 +272,7 @@ class MainApp(MDApp):
             self.user_initials_str = user.avatar_initials
             self.user_is_pro = bool(user.is_pro)
             first_name = user.name.split()[0] if user.name else "Usuario"
-            self.user_greeting_str = f"Bienvenida, {first_name}"
+            self.user_greeting_str = f"Hola, {first_name}"
             if hasattr(self, 'analytics') and self.analytics:
                 self.analytics.update_user(user.id)
         else:
@@ -280,7 +280,7 @@ class MainApp(MDApp):
             self.user_email_str = "cuenta@despensapp.com"
             self.user_initials_str = "??"
             self.user_is_pro = False
-            self.user_greeting_str = "Bienvenido a DespensAPP"
+            self.user_greeting_str = "Hola"
         if not self.user_is_pro and self.stats_period in PRO_PERIODS:
             self.stats_period = "month"
 

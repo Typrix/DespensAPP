@@ -55,6 +55,14 @@ class CheckoutRow(BoxLayout):
     def quantity_text(self):
         return self.ids.qty_input.text
 
+    @property
+    def subtotal(self) -> float:
+        """Calcula el precio multiplicado por la cantidad ingresada (si es válida)."""
+        value, error = validate_quantity(self.quantity_text, "La cantidad")
+        if error or value is None or value <= 0:
+            return 0.0
+        return float(self.price or 0.0) * float(value)
+
 
 class CheckoutModal(BaseFormModal):
     """Confirma la compra de los productos tachados de una lista."""
@@ -71,11 +79,20 @@ class CheckoutModal(BaseFormModal):
         self.rows = []
         for data in checkout_rows:
             row = CheckoutRow(data["ref"], data["title"], data["price"], data["unit"], data["is_new"],
-                              on_change=self._clear_error)
+                              on_change=self._on_row_change)
             self.rows.append(row)
             self.ids.rows_box.add_widget(row)
         self.row_count = len(self.rows)
-        self.total_str = format_money(sum(r.price for r in self.rows))
+        self._update_total()
+
+    def _on_row_change(self, *args):
+        """Limpia el error y recalcula el total al editar cualquier cantidad."""
+        self._clear_error()
+        self._update_total()
+
+    def _update_total(self):
+        """Actualiza el total multiplicando el precio unitario por la cantidad de cada fila."""
+        self.total_str = format_money(sum(r.subtotal for r in self.rows))
 
     def submit(self):
         """Valida que cada cantidad sea mayor a 0 y confirma la compra."""

@@ -1513,12 +1513,13 @@ class DatabaseManager:
 
         # 1. Historial de compras del usuario (más reciente primero)
         rows = self._run(
-            "SELECT title, price FROM purchase_history WHERE user_id = ? AND price > 0 ORDER BY purchased_at DESC, id DESC;",
+            "SELECT title, price, quantity FROM purchase_history WHERE user_id = ? AND price > 0 ORDER BY purchased_at DESC, id DESC;",
             (user_id,), fetch="all"
         ) or []
         for r in rows:
             if self._norm_key(r["title"]) == norm:
-                return float(r["price"])
+                qty = float(r["quantity"] or 1.0) if "quantity" in (r.keys() if hasattr(r, "keys") else ()) else 1.0
+                return round(float(r["price"]) / (qty if qty > 0 else 1.0), 2)
 
         # 2. Listas de compras del usuario (más reciente primero)
         rows = self._run(
@@ -1543,12 +1544,13 @@ class DatabaseManager:
                 return float(r["price"])
 
         rows = self._run(
-            "SELECT title, price FROM purchase_history WHERE price > 0 ORDER BY id DESC;",
+            "SELECT title, price, quantity FROM purchase_history WHERE price > 0 ORDER BY id DESC;",
             (), fetch="all"
         ) or []
         for r in rows:
             if self._norm_key(r["title"]) == norm:
-                return float(r["price"])
+                qty = float(r["quantity"] or 1.0) if "quantity" in (r.keys() if hasattr(r, "keys") else ()) else 1.0
+                return round(float(r["price"]) / (qty if qty > 0 else 1.0), 2)
 
         return 0.0
 
@@ -1587,7 +1589,7 @@ class DatabaseManager:
 
         # B. Historial de compras asociado a listas con supermercado dentro de la ventana de vigencia
         hist_rows = self._run(
-            """SELECT ph.title, ph.price, l.supermarket
+            """SELECT ph.title, (ph.price / CASE WHEN ph.quantity > 0 THEN ph.quantity ELSE 1 END) AS price, l.supermarket
                FROM purchase_history ph
                JOIN shopping_lists l ON l.id = ph.list_id
                WHERE ph.price > 0
