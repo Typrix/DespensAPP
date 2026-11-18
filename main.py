@@ -110,6 +110,8 @@ class MainApp(MDApp):
     home_spent_str = StringProperty("$0")
     home_alert_title_str = StringProperty("Despensa")
     home_alert_desc_str = StringProperty("Sin productos")
+    home_alert_icon = StringProperty("plus-circle-outline")
+    home_alert_icon_color = ListProperty([0.16, 0.43, 0.83, 1.0])
     home_recipe_str = StringProperty("Añade alimentos para sugerir recetas")
 
     # Datos Dinámicos de Estadísticas
@@ -644,6 +646,8 @@ class MainApp(MDApp):
         self.home_spent_str = summary.get("spent_str", "$0")
         self.home_alert_title_str = summary.get("alert_title", "Despensa")
         self.home_alert_desc_str = summary.get("alert_desc", "Sin productos")
+        self.home_alert_icon = summary.get("alert_icon", "plus-circle-outline")
+        self.home_alert_icon_color = summary.get("alert_icon_color", [0.16, 0.43, 0.83, 1.0])
         self.home_recipe_str = summary.get("recipe_str", "Añade alimentos para sugerir recetas")
         self.home_alert_item_id = summary.get("alert_item_id", 0) or 0
         self.alerts_count = len(self.controller.get_alerts(uid)) if hasattr(self, 'controller') else 0

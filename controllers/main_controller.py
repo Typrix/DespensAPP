@@ -49,6 +49,8 @@ class MainController:
                 "spent_str": "$0",
                 "alert_title": "Despensa",
                 "alert_desc": "Inicia sesión para ver tu inventario",
+                "alert_icon": "plus-circle-outline",
+                "alert_icon_color": [0.16, 0.43, 0.83, 1.0],
                 "recipe_str": "Añade alimentos para sugerir recetas",
             }
 
@@ -66,26 +68,40 @@ class MainController:
         if first_venc:
             alert_title = "Alimento vencido"
             alert_desc = f"{first_venc.name} ({first_venc.expiration_status})"
+            alert_icon = "alert-circle-outline"
+            alert_icon_color = [0.72, 0.35, 0.30, 1.0]
         elif first_por_venc:
             alert_title = "Por caducar pronto"
             alert_desc = f"{first_por_venc.name} ({first_por_venc.expiration_status})"
+            alert_icon = "alert-circle-outline"
+            alert_icon_color = [0.72, 0.35, 0.30, 1.0]
         elif first_rep:
             alert_title = "Por reponer urgente"
             alert_desc = f"{first_rep.name} (Stock en 0 {first_rep.unit})"
+            alert_icon = "alert-circle-outline"
+            alert_icon_color = [0.72, 0.35, 0.30, 1.0]
         elif first_agot:
             alert_title = "Por agotarse pronto"
             alert_desc = f"{first_agot.name} ({first_agot.formatted_quantity})"
+            alert_icon = "alert-circle-outline"
+            alert_icon_color = [0.72, 0.35, 0.30, 1.0]
         elif stats.get("pantry_items_count", 0) > 0:
             alert_title = "Despensa al día"
             alert_desc = f"{stats.get('suficiente_count', 0)} productos con buen stock"
+            alert_icon = "check-circle-outline"
+            alert_icon_color = [0.10, 0.62, 0.42, 1.0]
         else:
             alert_title = "Despensa vacía"
             alert_desc = "Agrega productos a tu inventario"
+            alert_icon = "plus-circle-outline"
+            alert_icon_color = [0.16, 0.43, 0.83, 1.0]
 
         return {
             "spent_str": spent_str,
             "alert_title": alert_title,
             "alert_desc": alert_desc,
+            "alert_icon": alert_icon,
+            "alert_icon_color": alert_icon_color,
             "recipe_str": stats.get("suggested_recipe", "Añade alimentos para sugerir recetas"),
             "alert_item_id": alert_item_id,
         }
