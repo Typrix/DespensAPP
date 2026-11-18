@@ -33,6 +33,7 @@ _API_DELEGATED_METHODS = frozenset({
     "get_user_by_email",
     "get_user_by_id",
     "update_user_pro_status",
+    "update_user_profile",
     "get_pantry_items",
     "get_pantry_item_by_id",
     "add_pantry_item",
@@ -667,6 +668,75 @@ class DatabaseManager:
         """Actualiza el estado de la versión Pro (1 = activa, 0 = gratuita) del usuario en la base de datos."""
         pro_val = 1 if is_pro else 0
         return bool(self._run("UPDATE users SET is_pro = ? WHERE id = ?;", (pro_val, user_id)))
+
+    def update_user_profile(
+        self,
+        user_id: int,
+        name: str,
+        email: str,
+        password_hash: Optional[str] = None,
+    ) -> Tuple[bool, str, Optional[User]]:
+        """Actualiza nombre, correo electrónico, iniciales y opcionalmente contraseña del usuario."""
+        name = (name or "").strip()
+        email = (email or "").strip().lower()
+        if not name or not email:
+            return False, "Nombre y correo son obligatorios.", None
+
+        initials = User.generate_initials(name)
+
+        if self.is_mysql:
+            try:
+                conn = self.get_mysql_connection()
+                with conn.cursor() as cur:
+                    cur.execute("SELECT id FROM users WHERE LOWER(email) = %s AND id != %s;", (email, user_id))
+                    if cur.fetchone():
+                        conn.close()
+                        return False, "Este correo ya está en uso por otra cuenta.", None
+                    if password_hash:
+                        cur.execute(
+                            "UPDATE users SET name = %s, email = %s, avatar_initials = %s, password_hash = %s WHERE id = %s;",
+                            (name, email, initials, password_hash, user_id),
+                        )
+                    else:
+                        cur.execute(
+                            "UPDATE users SET name = %s, email = %s, avatar_initials = %s WHERE id = %s;",
+                            (name, email, initials, user_id),
+                        )
+                    cur.execute("SELECT * FROM users WHERE id = %s;", (user_id,))
+                    row = cur.fetchone()
+                conn.close()
+                if row:
+                    return True, "Datos de la cuenta actualizados con éxito.", self._row_to_user(row)
+                return False, "Usuario no encontrado.", None
+            except Exception as e:
+                return False, f"Error en MySQL: {e}", None
+        else:
+            try:
+                conn = self.get_sqlite_connection()
+                cur = conn.cursor()
+                cur.execute("SELECT id FROM users WHERE LOWER(email) = ? AND id != ?;", (email, user_id))
+                if cur.fetchone():
+                    conn.close()
+                    return False, "Este correo ya está en uso por otra cuenta.", None
+                if password_hash:
+                    cur.execute(
+                        "UPDATE users SET name = ?, email = ?, avatar_initials = ?, password_hash = ? WHERE id = ?;",
+                        (name, email, initials, password_hash, user_id),
+                    )
+                else:
+                    cur.execute(
+                        "UPDATE users SET name = ?, email = ?, avatar_initials = ? WHERE id = ?;",
+                        (name, email, initials, user_id),
+                    )
+                conn.commit()
+                cur.execute("SELECT * FROM users WHERE id = ?;", (user_id,))
+                row = cur.fetchone()
+                conn.close()
+                if row:
+                    return True, "Datos de la cuenta actualizados con éxito.", self._row_to_user(row)
+                return False, "Usuario no encontrado.", None
+            except Exception as e:
+                return False, f"Error en BD local: {e}", None
 
     # ----------------------------------------------------
     # Carrito de Compras

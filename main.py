@@ -1041,13 +1041,22 @@ class MainApp(MDApp):
     # Controladores de Modales de Usuario y Sesión
     # ----------------------------------------------------
     def abrir_modal_auth(self, can_cancel=True):
-        """Abre el diálogo de inicio de sesión o registro."""
+        """Abre el diálogo de edición de cuenta (si hay sesión activa) o de inicio de sesión / registro."""
+        is_editing = bool(can_cancel and self.auth and self.auth.is_authenticated())
         modal = AuthModal(
             auth_manager=self.auth,
-            callback_success=self.al_autenticar_usuario,
+            callback_success=self.al_actualizar_perfil_usuario if is_editing else self.al_autenticar_usuario,
             can_cancel=can_cancel,
+            edit_profile=is_editing,
         )
         modal.open()
+
+    def al_actualizar_perfil_usuario(self, user):
+        """Callback al actualizar nombre, correo o contraseña desde Cuenta de usuario."""
+        self._sincronizar_datos_usuario()
+        if hasattr(self, "analytics") and self.analytics and user:
+            self.analytics.track_event("user_profile_updated", metadata={"user_id": user.id, "email": user.email})
+        show_info_toast("Datos de la cuenta actualizados")
 
     def al_autenticar_usuario(self, user):
         """Callback al iniciar sesión o crear cuenta."""

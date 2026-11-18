@@ -1489,10 +1489,10 @@
 
 
 # --------------------------------------------------------
-# 4. Modal: Cuenta de Usuario (Inicio de Sesión y Registro)
+# 4. Modal: Cuenta de Usuario (Inicio de Sesión, Registro y Edición)
 # --------------------------------------------------------
 <AuthModal>:
-    height: "505dp"
+    height: "510dp" if root.is_edit_profile_mode else "505dp"
     auto_dismiss: root.can_cancel
 
     BoxLayout:
@@ -1509,25 +1509,39 @@
 
         # Encabezado con Título
         BoxLayout:
+            orientation: "vertical"
             size_hint_y: None
-            height: "28dp"
+            height: "46dp" if root.is_edit_profile_mode else "28dp"
+            spacing: "2dp"
             Label:
-                text: "Bienvenido/a a DespensAPP"
-                font_size: "16.5sp"
+                text: "Cuenta de usuario" if root.is_edit_profile_mode else "Bienvenido/a a DespensAPP"
+                font_size: "17sp" if root.is_edit_profile_mode else "16.5sp"
                 bold: True
                 color: app.text_primary_color
-                halign: "center"
+                halign: "left" if root.is_edit_profile_mode else "center"
+                valign: "middle"
+                text_size: self.size
+            Label:
+                text: "Actualiza tu nombre, correo o contraseña." if root.is_edit_profile_mode else ""
+                font_size: "11.5sp"
+                color: app.text_secondary_color
+                size_hint_y: None
+                height: "18dp" if root.is_edit_profile_mode else "0dp"
+                opacity: 1 if root.is_edit_profile_mode else 0
+                halign: "left"
                 valign: "middle"
                 text_size: self.size
 
-        # Selector de Pestaña: Iniciar Sesión / Crear Cuenta
+        # Selector de Pestaña: Iniciar Sesión / Crear Cuenta (oculto en modo edición de cuenta)
         BoxLayout:
             size_hint_y: None
-            height: "38dp"
+            height: "0dp" if root.is_edit_profile_mode else "38dp"
+            opacity: 0 if root.is_edit_profile_mode else 1
+            disabled: root.is_edit_profile_mode
             spacing: "6dp"
             canvas.before:
                 Color:
-                    rgba: app.sage_container_color
+                    rgba: [0, 0, 0, 0] if root.is_edit_profile_mode else app.sage_container_color
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
@@ -1543,7 +1557,7 @@
                 on_release: root.set_mode(True)
                 canvas.before:
                     Color:
-                        rgba: app.card_white_color if root.is_login_mode else [0, 0, 0, 0]
+                        rgba: (app.card_white_color if root.is_login_mode else [0, 0, 0, 0]) if not root.is_edit_profile_mode else [0, 0, 0, 0]
                     RoundedRectangle:
                         pos: [self.x + 3, self.y + 3]
                         size: [self.width - 6, self.height - 6]
@@ -1559,20 +1573,20 @@
                 on_release: root.set_mode(False)
                 canvas.before:
                     Color:
-                        rgba: app.card_white_color if not root.is_login_mode else [0, 0, 0, 0]
+                        rgba: (app.card_white_color if not root.is_login_mode else [0, 0, 0, 0]) if not root.is_edit_profile_mode else [0, 0, 0, 0]
                     RoundedRectangle:
                         pos: [self.x + 3, self.y + 3]
                         size: [self.width - 6, self.height - 6]
                         radius: [12, 12, 12, 12]
 
-        # Campo: Nombre (Solo en modo registro)
+        # Campo: Nombre (En modo registro o en modo edición de cuenta)
         BoxLayout:
             id: box_name
             orientation: "vertical"
             size_hint_y: None
-            height: "56dp" if not root.is_login_mode else "0dp"
-            opacity: 1 if not root.is_login_mode else 0
-            disabled: root.is_login_mode
+            height: "56dp" if (not root.is_login_mode or root.is_edit_profile_mode) else "0dp"
+            opacity: 1 if (not root.is_login_mode or root.is_edit_profile_mode) else 0
+            disabled: root.is_login_mode and not root.is_edit_profile_mode
 
             Label:
                 text: "NOMBRE COMPLETO"
@@ -1580,13 +1594,13 @@
                 bold: True
                 color: app.text_secondary_color
                 size_hint_y: None
-                height: "16dp" if not root.is_login_mode else "0dp"
+                height: "16dp" if (not root.is_login_mode or root.is_edit_profile_mode) else "0dp"
                 halign: "left"
                 text_size: self.size
 
             AnchorLayout:
                 size_hint_y: None
-                height: "36dp" if not root.is_login_mode else "0dp"
+                height: "36dp" if (not root.is_login_mode or root.is_edit_profile_mode) else "0dp"
                 canvas.before:
                     Color:
                         rgba: app.sage_container_color
@@ -1625,7 +1639,7 @@
             spacing: "4dp"
 
             Label:
-                text: "CONTRASEÑA"
+                text: "NUEVA CONTRASEÑA (OPCIONAL)" if root.is_edit_profile_mode else "CONTRASEÑA"
                 font_size: "11sp"
                 bold: True
                 color: app.text_secondary_color
@@ -1652,7 +1666,55 @@
 
                 TextInput:
                     id: field_auth_password
-                    hint_text: "Mínimo 4 caracteres"
+                    hint_text: "Sin cambios (mínimo 4 caracteres)" if root.is_edit_profile_mode else "Mínimo 4 caracteres"
+                    password: True
+                    multiline: False
+                    font_size: "13.5sp"
+                    padding: ["10dp", "8dp", "10dp", "8dp"]
+                    background_color: [0, 0, 0, 0]
+                    cursor_color: app.accent_green_color
+                    foreground_color: app.input_text_color
+                    hint_text_color: app.input_placeholder_color
+
+        # Campo: Confirmar Contraseña (en modo edición de cuenta)
+        BoxLayout:
+            id: box_password_confirm
+            orientation: "vertical"
+            size_hint_y: None
+            height: "56dp" if root.is_edit_profile_mode else "0dp"
+            opacity: 1 if root.is_edit_profile_mode else 0
+            disabled: not root.is_edit_profile_mode
+            spacing: "4dp" if root.is_edit_profile_mode else "0dp"
+
+            Label:
+                text: "CONFIRMAR NUEVA CONTRASEÑA"
+                font_size: "11sp"
+                bold: True
+                color: app.text_secondary_color
+                size_hint_y: None
+                height: "16dp" if root.is_edit_profile_mode else "0dp"
+                halign: "left"
+                text_size: self.size
+
+            AnchorLayout:
+                size_hint_y: None
+                height: "36dp" if root.is_edit_profile_mode else "0dp"
+                canvas.before:
+                    Color:
+                        rgba: app.sage_container_color if root.is_edit_profile_mode else [0, 0, 0, 0]
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [10, 10, 10, 10]
+                    Color:
+                        rgba: app.divider_color if root.is_edit_profile_mode else [0, 0, 0, 0]
+                    Line:
+                        rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
+                        width: 1.0
+
+                TextInput:
+                    id: field_auth_password_confirm
+                    hint_text: "Repite la nueva contraseña"
                     password: True
                     multiline: False
                     font_size: "13.5sp"
@@ -1678,15 +1740,17 @@
         Button:
             size_hint_y: None
             height: "44dp"
-            text: "Entrar a mi Cuenta" if root.is_login_mode else "Crear mi Cuenta"
+            text: "Guardar cambios" if root.is_edit_profile_mode else ("Entrar a mi Cuenta" if root.is_login_mode else "Crear mi Cuenta")
             font_size: "14sp"
             bold: True
+            disabled: not root.can_submit if root.is_edit_profile_mode else False
+            disabled_color: [1, 1, 1, 0.65]
             color: [1, 1, 1, 1]
             background_color: [0, 0, 0, 0]
             on_release: root.submit()
             canvas.before:
                 Color:
-                    rgba: app.accent_green_color
+                    rgba: (app.accent_green_color[:3] + [0.38]) if (root.is_edit_profile_mode and not root.can_submit) else app.accent_green_color
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
@@ -1698,7 +1762,7 @@
             height: "28dp" if root.can_cancel else "0dp"
             opacity: 1 if root.can_cancel else 0
             disabled: not root.can_cancel
-            text: "Cerrar"
+            text: "Cancelar" if root.is_edit_profile_mode else "Cerrar"
             font_size: "12sp"
             color: app.text_secondary_color
             background_color: [0, 0, 0, 0]

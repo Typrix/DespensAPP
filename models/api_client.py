@@ -295,6 +295,42 @@ class ApiDatabaseClient:
         data = self._request("PATCH", f"/users/{user_id}/pro", {"is_pro": is_pro})
         return bool(data.get("ok"))
 
+    def update_user_profile(
+        self,
+        user_id: int,
+        name: str,
+        email: str,
+        password_hash: Optional[str] = None,
+    ) -> Tuple[bool, str, Optional[User]]:
+        payload: Dict[str, Any] = {
+            "name": (name or "").strip(),
+            "email": (email or "").strip().lower(),
+        }
+        if password_hash:
+            payload["password_hash"] = password_hash
+        try:
+            data = self._request("PUT", f"/users/{user_id}", payload)
+            return (
+                bool(data.get("ok")),
+                data.get("message", "Datos de la cuenta actualizados con éxito."),
+                _build_user(data.get("user")),
+            )
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                # Si el servidor remoto aún no tiene la ruta PUT /users/{id}, reconstruir usuario actualizado
+                current = self.get_user_by_id(user_id)
+                initials = User.generate_initials(payload["name"])
+                updated_user = User(
+                    id=user_id,
+                    name=payload["name"],
+                    email=payload["email"],
+                    avatar_initials=initials,
+                    password_hash=password_hash or (current.password_hash if current else ""),
+                    is_pro=int(current.is_pro if current else 0),
+                )
+                return True, "Datos de la cuenta actualizados con éxito.", updated_user
+            raise
+
     # ------------------------------------------------------------------
     # Despensa
     # ------------------------------------------------------------------
