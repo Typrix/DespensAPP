@@ -35,6 +35,12 @@ class BaseFormModal(ModalView):
         # Mientras se anima, la hoja sube desde un poco más abajo
         self.y = -self.height * 0.12 * (1.0 - self._anim_alpha) + getattr(self, "_drag_offset", 0)
 
+    def open(self, *args, **kwargs):
+        # ModalView.open centra la vista y la anima desde alpha 0 (sin cambio = sin reubicar):
+        # sin esto el primer cuadro se dibuja en medio de la pantalla y luego salta abajo.
+        super().open(*args, **kwargs)
+        self._align_center()
+
     def on__anim_alpha(self, instance, value):
         super().on__anim_alpha(instance, value)
         if self.as_sheet:

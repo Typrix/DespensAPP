@@ -401,3 +401,17 @@ En KivyMD 2.0 `MDIcon` se pinta con `icon_color` y, si está vacío, con el gris
 ## Validación
 - Prueba en la app con base temporal: claro → oscuro → claro en Inicio, Despensa, Listas y Estadísticas; 43 íconos con el mismo color antes y después (antes del arreglo cambiaban 3). Capturas en claro y oscuro con sus colores.
 - 28 de 28 pruebas unitarias.
+
+---
+
+## Entrada / Prompt del Usuario (Parpadeo al abrir notificaciones)
+> "cuando abro notificaciones como que hace un parpadeo raro, no quiero que lo haga"
+
+## Causa raíz
+`ModalView.open()` de Kivy centra la vista en la pantalla y anima desde alpha 0; como el alpha no cambia en el primer cuadro, la hoja no se reubicaba y se dibujaba un cuadro en medio de la pantalla antes de saltar abajo.
+
+## Acciones Realizadas
+1. `BaseFormModal.open` reubica la hoja abajo justo después de abrir (aplica a todas las hojas).
+
+## Validación
+- Captura cuadro a cuadro de Alertas y de Agregar: el primer cuadro ya está abajo (antes: y=151 centrado, luego y=-56).
