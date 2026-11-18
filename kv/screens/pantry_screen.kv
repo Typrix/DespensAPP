@@ -88,16 +88,17 @@
                             disabled: not pantry_search_input.text
                             on_release: pantry_search_input.text = ""
 
-                    # Filtros rápidos (desplazables en horizontal)
+                    # Filtros rápidos (desplazables en horizontal); 40dp para que los chips de 36dp no se recorten
                     ScrollView:
                         size_hint_y: None
-                        height: "34dp"
+                        height: "40dp"
                         do_scroll_y: False
                         bar_width: 0
                         BoxLayout:
                             id: pantry_filters_container
                             size_hint_x: None
                             width: self.minimum_width
+                            padding: [0, "2dp", 0, "2dp"]
                             spacing: "8dp"
 
                     # Reponer en bloque lo que está por agotarse o sin stock

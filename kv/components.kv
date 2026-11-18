@@ -239,7 +239,7 @@
     is_active: app.pantry_filter == self.filter_key
     size_hint: None, None
     height: "36dp"
-    width: self.texture_size[0] + dp(28)
+    width: self.texture_size[0] + dp(32)
     font_size: "13sp"
     bold: self.is_active
     color: [1, 1, 1, 1] if self.is_active else app.text_secondary_color
@@ -250,7 +250,13 @@
         RoundedRectangle:
             pos: self.pos
             size: self.size
-            radius: [16, 16, 16, 16]
+            radius: [self.height / 2.0] * 4
+        # Borde sutil para que el chip blanco no se pierda sobre el fondo claro
+        Color:
+            rgba: (0, 0, 0, 0) if self.is_active else app.divider_color
+        Line:
+            rounded_rectangle: (self.x, self.y, self.width, self.height, self.height / 2.0)
+            width: 1
 
 
 # Encabezado de sección (Necesita atención / Por agotarse / Todo bien)

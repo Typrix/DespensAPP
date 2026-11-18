@@ -415,3 +415,18 @@ En KivyMD 2.0 `MDIcon` se pinta con `icon_color` y, si está vacío, con el gris
 
 ## Validación
 - Captura cuadro a cuadro de Alertas y de Agregar: el primer cuadro ya está abajo (antes: y=151 centrado, luego y=-56).
+
+---
+
+## Entrada / Prompt del Usuario (Chips de la despensa cortados)
+> "que se vean bien los tags de despensa pq todos se ve como cortado"
+
+## Causa raíz
+Los chips miden 36dp pero la fila desplazable que los contiene medía 34dp, así que se recortaban arriba y abajo y perdían la forma de píldora.
+
+## Acciones Realizadas
+1. La fila de filtros pasa a 40dp con 2dp de margen vertical.
+2. Chips con radio igual a la mitad del alto (píldora completa), un poco más de relleno y borde sutil cuando no están activos.
+
+## Validación
+- Capturas en modo claro y oscuro: chips completos; el último se corta solo en el borde, como pista de que la fila se desliza.
