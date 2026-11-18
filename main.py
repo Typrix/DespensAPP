@@ -82,10 +82,10 @@ class MainApp(MDApp):
     splash_status_text = StringProperty("Iniciando DespensAPP...")
 
     # Datos Dinámicos del Usuario
-    user_name_str = StringProperty("Sofía Martínez")
-    user_email_str = StringProperty("sofia@despensapp.com")
-    user_initials_str = StringProperty("SO")
-    user_greeting_str = StringProperty("Bienvenida, Sofía")
+    user_name_str = StringProperty("Invitado")
+    user_email_str = StringProperty("Sin sesión activa")
+    user_initials_str = StringProperty("US")
+    user_greeting_str = StringProperty("Hola")
     user_is_pro = BooleanProperty(False)
 
 
@@ -110,6 +110,8 @@ class MainApp(MDApp):
     home_spent_str = StringProperty("$0")
     home_alert_title_str = StringProperty("Despensa")
     home_alert_desc_str = StringProperty("Sin productos")
+    home_alert_icon = StringProperty("plus-circle-outline")
+    home_alert_icon_color = ListProperty([0.16, 0.43, 0.83, 1.0])
     home_recipe_str = StringProperty("Añade alimentos para sugerir recetas")
 
     # Datos Dinámicos de Estadísticas
@@ -175,10 +177,24 @@ class MainApp(MDApp):
         self._aplicar_tema(False)
         return None
 
+    def on_pause(self):
+        """Permite suspender la app en Android cuando se apaga la pantalla sin cerrarla."""
+        return True
+
+    def on_resume(self):
+        """Reanuda la aplicación tras despertar la pantalla en Android."""
+        pass
+
     def on_stop(self):
-        """Confirma borrados pendientes y cierra la sesión de telemetría."""
+        """Confirma borrados pendientes, respalda caché offline y cierra la sesión de telemetría."""
         if getattr(self, "undo", None):
             self.undo.flush()
+        if (
+            hasattr(self, "sync") and self.sync
+            and hasattr(self, "db") and self.db and self.db.is_mysql
+            and hasattr(self, "auth") and self.auth and self.auth.current_user
+        ):
+            self.sync.refresh_cache_for_user(self.auth.current_user)
         if hasattr(self, 'analytics') and self.analytics:
             self.analytics.end_session()
 
@@ -235,12 +251,19 @@ class MainApp(MDApp):
 
         # Programar chequeo periódico de alertas de despensa cada 10 minutos
         Clock.schedule_interval(self._verificar_notificaciones_periodicas, 600)
+        # Enviar lote de eventos de telemetría cada 60 segundos para evitar ráfagas
+        Clock.schedule_interval(self._enviar_telemetria_lote, 60)
 
         if self.auth.is_authenticated():
             self.cambiar_pantalla(self.current_screen_name)
         else:
             self._sincronizar_datos_usuario()
             self.abrir_modal_auth(can_cancel=False)
+
+    def _enviar_telemetria_lote(self, dt=None):
+        """Envía en lote los eventos de telemetría acumulados cada 60 segundos."""
+        if hasattr(self, "analytics") and self.analytics:
+            self.analytics.flush_events(async_send=True)
 
     def _sincronizar_datos_usuario(self):
         """Actualiza las variables de perfil con el usuario activo y notifica a telemetría."""
@@ -251,7 +274,7 @@ class MainApp(MDApp):
             self.user_initials_str = user.avatar_initials
             self.user_is_pro = bool(user.is_pro)
             first_name = user.name.split()[0] if user.name else "Usuario"
-            self.user_greeting_str = f"Bienvenida, {first_name}"
+            self.user_greeting_str = f"Hola, {first_name}"
             if hasattr(self, 'analytics') and self.analytics:
                 self.analytics.update_user(user.id)
         else:
@@ -259,7 +282,7 @@ class MainApp(MDApp):
             self.user_email_str = "cuenta@despensapp.com"
             self.user_initials_str = "??"
             self.user_is_pro = False
-            self.user_greeting_str = "Bienvenido a DespensAPP"
+            self.user_greeting_str = "Hola"
         if not self.user_is_pro and self.stats_period in PRO_PERIODS:
             self.stats_period = "month"
 
@@ -291,19 +314,10 @@ class MainApp(MDApp):
     SCREEN_ORDER = ("home", "cupboard", "lists", "stats")
 
     def cambiar_pantalla(self, name_option):
-        """Cambia suavemente a la pantalla seleccionada con deslizamiento direccional y registra tiempo en telemetría."""
+        """Cambia suavemente a la pantalla seleccionada con deslizamiento direccional sin bloquear la UI."""
         prev_screen = self.current_screen_name
         self.current_screen_name = name_option
         self.screen_header_tag = self.TAGS_MAP.get(name_option, "DESPENSAPP")
-
-        if hasattr(self, 'analytics') and self.analytics:
-            self.analytics.track_screen(name_option)
-
-        # Actualizar vistas dinámicas antes de deslizar para que la pantalla entrante ya esté lista
-        if name_option == "home":
-            self.actualizar_inicio()
-        elif name_option == "stats":
-            self.actualizar_estadisticas()
 
         sm = self.root.ids.get("screen_manager") if self.root else None
         if sm:
@@ -317,6 +331,24 @@ class MainApp(MDApp):
                 next_idx = self.SCREEN_ORDER.index(name_option)
                 sm.transition.direction = "left" if next_idx > prev_idx else "right"
             sm.current = name_option
+
+        if hasattr(self, 'analytics') and self.analytics:
+            self.analytics.track_screen(name_option)
+
+        # Refrescar vistas dinámicas tras terminar la animación de deslizamiento (0.24s)
+        # solo si han pasado >10 s desde la última carga para no frenar cambios rápidos de pestaña
+        import time
+        last_map = getattr(self, "_last_tab_refresh", None)
+        if last_map is None:
+            last_map = {}
+            self._last_tab_refresh = last_map
+        now = time.time()
+        if name_option in ("home", "stats") and (now - last_map.get(name_option, 0.0)) > 10.0:
+            last_map[name_option] = now
+            if name_option == "home":
+                Clock.schedule_once(lambda _dt: self.actualizar_inicio(), 0.24)
+            elif name_option == "stats":
+                Clock.schedule_once(lambda _dt: self.actualizar_estadisticas(), 0.24)
 
     def toggle_menu_perfil(self):
         """Abre o cierra el modal flotante de perfil de usuario."""
@@ -614,6 +646,8 @@ class MainApp(MDApp):
         self.home_spent_str = summary.get("spent_str", "$0")
         self.home_alert_title_str = summary.get("alert_title", "Despensa")
         self.home_alert_desc_str = summary.get("alert_desc", "Sin productos")
+        self.home_alert_icon = summary.get("alert_icon", "plus-circle-outline")
+        self.home_alert_icon_color = summary.get("alert_icon_color", [0.16, 0.43, 0.83, 1.0])
         self.home_recipe_str = summary.get("recipe_str", "Añade alimentos para sugerir recetas")
         self.home_alert_item_id = summary.get("alert_item_id", 0) or 0
         self.alerts_count = len(self.controller.get_alerts(uid)) if hasattr(self, 'controller') else 0
@@ -802,7 +836,19 @@ class MainApp(MDApp):
                 detalle.append(f"{summary['updated']} actualizado(s)")
             if summary["created"]:
                 detalle.append(f"{summary['created']} nuevo(s)")
-            show_info_toast(f"Compra registrada · despensa: {', '.join(detalle)}")
+            resumen_txt = f"Total: {format_money(summary['total'])} · Despensa: {', '.join(detalle)}"
+            if summary.get("group"):
+                PurchaseHistoryModal(
+                    spending={
+                        "label": "Compra confirmada",
+                        "total_str": format_money(summary["total"]),
+                        "groups": [summary["group"]],
+                    },
+                    title_text="Resumen de tu compra",
+                    custom_summary=resumen_txt,
+                ).open()
+            else:
+                show_info_toast(f"Compra registrada · despensa: {', '.join(detalle)}")
 
         CheckoutModal(checkout_rows=rows, callback_confirm=confirm).open()
 
@@ -1011,13 +1057,22 @@ class MainApp(MDApp):
     # Controladores de Modales de Usuario y Sesión
     # ----------------------------------------------------
     def abrir_modal_auth(self, can_cancel=True):
-        """Abre el diálogo de inicio de sesión o registro."""
+        """Abre el diálogo de edición de cuenta (si hay sesión activa) o de inicio de sesión / registro."""
+        is_editing = bool(can_cancel and self.auth and self.auth.is_authenticated())
         modal = AuthModal(
             auth_manager=self.auth,
-            callback_success=self.al_autenticar_usuario,
+            callback_success=self.al_actualizar_perfil_usuario if is_editing else self.al_autenticar_usuario,
             can_cancel=can_cancel,
+            edit_profile=is_editing,
         )
         modal.open()
+
+    def al_actualizar_perfil_usuario(self, user):
+        """Callback al actualizar nombre, correo o contraseña desde Cuenta de usuario."""
+        self._sincronizar_datos_usuario()
+        if hasattr(self, "analytics") and self.analytics and user:
+            self.analytics.track_event("user_profile_updated", metadata={"user_id": user.id, "email": user.email})
+        show_info_toast("Datos de la cuenta actualizados")
 
     def al_autenticar_usuario(self, user):
         """Callback al iniciar sesión o crear cuenta."""
@@ -1040,13 +1095,16 @@ class MainApp(MDApp):
 
     def _verificar_notificaciones_periodicas(self, dt=None):
         """Revisa periódicamente el estado de la despensa y ofertas más baratas de otros supermercados."""
-        if hasattr(self, 'auth') and self.auth and self.auth.current_user:
-            if hasattr(self, 'notifications') and self.notifications:
-                uid = self.auth.current_user.id
-                items = self.db.get_pantry_items(uid)
-                self.notifications.check_pantry_items(items)
-                offers = self.db.get_cheaper_offers_for_user(uid)
-                self.notifications.check_price_alerts(offers)
+        try:
+            if hasattr(self, 'auth') and self.auth and self.auth.current_user:
+                if hasattr(self, 'notifications') and self.notifications:
+                    uid = self.auth.current_user.id
+                    items = self.db.get_pantry_items(uid)
+                    self.notifications.check_pantry_items(items)
+                    offers = self.db.get_cheaper_offers_for_user(uid)
+                    self.notifications.check_price_alerts(offers)
+        except Exception as e:
+            print(f"[DespensAPP] Aviso en chequeo periódico: {e}")
 
     def cerrar_sesion_usuario(self):
         """Cierra la sesión, limpia las pantallas y exige inicio de sesión."""

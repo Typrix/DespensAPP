@@ -13,7 +13,14 @@ from kivy.properties import BooleanProperty, StringProperty, NumericProperty, Li
 from kivy.graphics import Color, Ellipse, Line
 
 from views.dialogs.base import BaseFormModal, EditItemModal
-from controllers.validators import validate_list_form, validate_cart_form, format_number
+from controllers.validators import (
+    PANTRY_UNITS,
+    validate_list_form,
+    validate_cart_form,
+    validate_quantity,
+    format_number,
+    step_for_unit,
+)
 from controllers.purchase_controller import summarize_items, format_money
 from controllers.list_controller import DEFAULT_SUPERMARKET, SUPERMARKET_OPTIONS
 from views.widgets.empty_state import EmptyState
@@ -136,11 +143,15 @@ class AddShoppingListModal(BaseFormModal):
 
 
 class ShoppingListItemRow(BoxLayout):
-    """Producto de una lista: tachar = ya está en el carro; tocar el nombre o el lápiz = editar."""
+    """Producto de una lista: tachar = ya está en el carro; tocar el nombre = editar."""
     item_id = NumericProperty(0)
     name = StringProperty("")
     price = NumericProperty(0)
     price_str = StringProperty("")
+    quantity = NumericProperty(1.0)
+    min_quantity = NumericProperty(1.0)
+    unit = StringProperty("un.")
+    quantity_label = StringProperty("1 un.")
     is_checked = BooleanProperty(False)
     icon = StringProperty("leaf")
     tint_light = ListProperty(category_tint("General"))
@@ -154,12 +165,18 @@ class ShoppingListItemRow(BoxLayout):
         self.icon, category = name_visual(item.name)
         self.tint_light = category_tint(category)
         self.tint_dark = category_tint(category, dark=True)
-        self.price = item.price
-        self.price_str = item.formatted_price if item.price > 0 else ""
+        self.price = float(item.price or 0.0)
+        self.unit = getattr(item, "unit", None) or "un."
+        step = step_for_unit(self.unit)
+        self.min_quantity = step if step < 1 else 1.0
+        self.quantity = float(item.quantity or 1.0)
+        self.quantity_label = f"{format_number(self.quantity)} {self.unit}"
+        self.price_str = item.formatted_price if self.price > 0 else ""
         self.is_checked = item.is_checked
         self.callback_toggle = callback_toggle
         self.callback_edit = callback_edit
         self.callback_delete = callback_delete
+        self.callback_quantity = None
 
     def toggle(self):
         if self.callback_toggle:
@@ -173,17 +190,54 @@ class ShoppingListItemRow(BoxLayout):
         if self.callback_delete:
             self.callback_delete(self.item_id)
 
+    def adjust_quantity(self, direction):
+        step = step_for_unit(self.unit)
+        min_qty = step if step < 1 else 1.0
+        new_qty = max(min_qty, round(float(self.quantity) + direction * step, 2))
+        if new_qty == self.quantity:
+            return
+        self.quantity = new_qty
+        self.item.quantity = new_qty
+        self.quantity_label = f"{format_number(new_qty)} {self.unit}"
+        self.price_str = self.item.formatted_price if self.price > 0 else ""
+        if self.callback_quantity:
+            self.callback_quantity(self.item, new_qty)
+
 
 class EditListItemModal(BaseFormModal):
-    """Corrige el nombre y el precio de un producto de la lista."""
+    """Corrige el nombre, precio, cantidad y medida de un producto de la lista."""
+    selected_unit = StringProperty("un.")
 
     def __init__(self, item, callback_save, **kwargs):
         super().__init__(**kwargs)
         self.item = item
         self.callback_save = callback_save
+        self.selected_unit = getattr(item, "unit", None) or "un."
+        self._unit_menu = None
         self.ids.field_name.ids.text_input.text = item.name
         self.ids.field_price.ids.text_input.text = format_price_input(item.price)
+        if "field_qty" in self.ids:
+            self.ids.field_qty.ids.text_input.text = format_number(item.quantity or 1)
         self.clear_error_on_input(self.ids.field_name.ids.text_input, self.ids.field_price.ids.text_input)
+
+    def open_unit_menu(self, caller):
+        if self._unit_menu is None:
+            self._unit_menu = MDDropdownMenu(
+                caller=caller,
+                items=[
+                    {"text": u, "on_release": lambda u=u: self._set_unit(u)}
+                    for u in PANTRY_UNITS
+                ],
+                position="bottom",
+                width=dp(120),
+                max_height=dp(240),
+            )
+        self._unit_menu.open()
+
+    def _set_unit(self, unit: str):
+        self.selected_unit = unit
+        if self._unit_menu:
+            self._unit_menu.dismiss()
 
     def submit(self):
         ok, error, data = validate_cart_form(
@@ -194,8 +248,15 @@ class EditListItemModal(BaseFormModal):
         if not ok:
             self.error_text = error
             return
+        qty_val = float(self.item.quantity or 1.0)
+        if "field_qty" in self.ids:
+            q_val, q_err = validate_quantity(self.ids.field_qty.ids.text_input.text, "La cantidad")
+            if q_err or q_val is None or q_val <= 0:
+                self.error_text = q_err or "La cantidad debe ser mayor a 0."
+                return
+            qty_val = q_val
         if self.callback_save:
-            self.callback_save(self.item.id, data["title"], data["price"])
+            self.callback_save(self.item.id, data["title"], data["price"], qty_val, self.selected_unit)
         self.dismiss()
 
 
@@ -221,6 +282,7 @@ class ShoppingListDetailModal(BaseFormModal):
     checked_count = NumericProperty(0)
     in_cart_str = StringProperty("$0")
     progress_str = StringProperty("")
+    selected_new_unit = StringProperty("un.")
 
     def __init__(self, list_id, list_name, icon_color_rgba, supermarket="", **kwargs):
         super().__init__(**kwargs)
@@ -228,8 +290,33 @@ class ShoppingListDetailModal(BaseFormModal):
         self.list_name = list_name
         self.supermarket = (supermarket or "").strip()
         self.icon_color_rgba = icon_color_rgba
-        self.clear_error_on_input(self.ids.new_item_input, self.ids.new_item_price)
+        self.selected_new_unit = "un."
+        self._new_unit_menu = None
+        inputs = [self.ids.new_item_input, self.ids.new_item_price]
+        if "new_item_qty" in self.ids:
+            inputs.append(self.ids.new_item_qty)
+        self.clear_error_on_input(*inputs)
         self.load_items()
+
+    def open_new_unit_menu(self, caller):
+        """Despliega el selector de medida (un., kg, g, L, ml, paq.) al anotar un producto."""
+        if self._new_unit_menu is None:
+            self._new_unit_menu = MDDropdownMenu(
+                caller=caller,
+                items=[
+                    {"text": u, "on_release": lambda u=u: self._set_new_unit(u)}
+                    for u in PANTRY_UNITS
+                ],
+                position="bottom",
+                width=dp(115),
+                max_height=dp(240),
+            )
+        self._new_unit_menu.open()
+
+    def _set_new_unit(self, unit: str):
+        self.selected_new_unit = unit
+        if self._new_unit_menu:
+            self._new_unit_menu.dismiss()
 
     def load_items(self):
         """Carga los productos (orden fijo) y recalcula el total que va en el carro."""
@@ -262,15 +349,17 @@ class ShoppingListDetailModal(BaseFormModal):
             ))
             return
         for it in items:
-            container.add_widget(ShoppingListItemRow(
+            row = ShoppingListItemRow(
                 item=it,
                 callback_toggle=self.toggle_item,
                 callback_edit=self.open_edit_item,
                 callback_delete=self.delete_item,
-            ))
+            )
+            row.callback_quantity = self.update_item_quantity
+            container.add_widget(row)
 
     def add_item(self):
-        """Anota un producto con su precio obligatorio y verifica si existe más barato en otro supermercado."""
+        """Anota un producto con su precio, cantidad y medida, y verifica ofertas en otro supermercado."""
         ok, error, data = validate_cart_form(
             title=self.ids.new_item_input.text,
             price_str=self.ids.new_item_price.text,
@@ -279,10 +368,21 @@ class ShoppingListDetailModal(BaseFormModal):
         if not ok:
             self.error_text = error
             return
+        qty_raw = self.ids.new_item_qty.text if "new_item_qty" in self.ids else "1"
+        qty_val, qty_err = validate_quantity(qty_raw or "1", "La cantidad")
+        if qty_err or qty_val is None or qty_val <= 0:
+            self.error_text = qty_err or "La cantidad debe ser mayor a 0."
+            return
         self.error_text = ""
         app = MDApp.get_running_app()
         if app and getattr(app, "db", None):
-            new_id = app.db.add_shopping_list_item(self.list_id, data["title"], price=data["price"])
+            new_id = app.db.add_shopping_list_item(
+                self.list_id,
+                data["title"],
+                price=data["price"],
+                quantity=qty_val,
+                unit=self.selected_new_unit,
+            )
             if hasattr(app, "analytics") and app.analytics:
                 app.analytics.track_event("add_shopping_list_item", metadata={"list_id": self.list_id})
             offer = app.db.find_cheaper_supermarket_offer(data["title"], data["price"], self.supermarket)
@@ -291,6 +391,9 @@ class ShoppingListDetailModal(BaseFormModal):
                 app.notificar_oferta_supermercado(offer, force=True)
             self.ids.new_item_input.text = ""
             self.ids.new_item_price.text = ""
+            if "new_item_qty" in self.ids:
+                self.ids.new_item_qty.text = "1"
+            self.selected_new_unit = "un."
             self.ids.new_item_input.focus = True
             self.load_items()
             app.cargar_listas()
@@ -305,12 +408,34 @@ class ShoppingListDetailModal(BaseFormModal):
             self.load_items()
             app.cargar_listas()
 
+    def update_item_quantity(self, item, quantity):
+        """Ajusta la cantidad del producto respetando su unidad y actualiza el total en el carro."""
+        app = MDApp.get_running_app()
+        if app and getattr(app, "db", None):
+            app.db.update_shopping_list_item(
+                item.id,
+                item.name,
+                item.price,
+                quantity,
+                getattr(item, "unit", "un."),
+            )
+            self.load_items()
+            app.cargar_listas()
+            if hasattr(app, "actualizar_inicio"):
+                app.actualizar_inicio()
+
     def open_edit_item(self, item):
-        """Abre el modal para corregir nombre y precio."""
-        def save_edit(item_id, name, price):
+        """Abre el modal para corregir nombre, precio, cantidad y medida."""
+        def save_edit(item_id, name, price, qty=None, unit=None):
             app = MDApp.get_running_app()
             if app and getattr(app, "db", None):
-                app.db.update_shopping_list_item(item_id, name, price)
+                app.db.update_shopping_list_item(
+                    item_id,
+                    name,
+                    price,
+                    qty if qty is not None else item.quantity,
+                    unit if unit is not None else getattr(item, "unit", "un."),
+                )
                 offer = app.db.find_cheaper_supermarket_offer(name, price, self.supermarket)
                 if offer and hasattr(app, "notificar_oferta_supermercado"):
                     offer["item_id"] = item_id

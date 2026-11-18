@@ -59,26 +59,31 @@ class SyncController:
             sqlite_conn = sqlite3.connect(LOCAL_DB_PATH)
             sqlite_conn.row_factory = sqlite3.Row
             sqlite_cur = sqlite_conn.cursor()
+            self._ensure_sqlite_sync_schema(sqlite_cur)
 
             sqlite_cur.execute("SELECT id, is_pro FROM users WHERE LOWER(email) = ?;", (user_email.strip().lower(),))
             user_row = sqlite_cur.fetchone()
             # Si el usuario no existe en SQLite no hay datos offline suyos que migrar.
             # Con None, los filtros "WHERE user_id = ?" no devuelven filas (evita copiar
-            # los datos de otro usuario, como la cuenta demo con id 1).
+            # los datos de otro usuario).
             sqlite_user_id = user_row["id"] if user_row else None
             if user_row and "is_pro" in user_row.keys() and int(user_row["is_pro"] or 0) == 1 and not mysql_user.is_pro:
                 self.db.update_user_pro_status(mysql_user_id, 1)
 
-            # A. Sincronizar Listas de Compras
+            # 0. Aplicar primero los borrados realizados sin conexión (pending_deletes)
+            if sqlite_user_id is not None:
+                self._apply_pending_deletes(sqlite_cur, sqlite_user_id, mysql_user_id)
+
+            # A. Sincronizar Listas de Compras creadas offline (is_synced = 0)
             try:
                 sqlite_cur.execute("""
-                    SELECT id, name, icon_name, icon_color, supermarket
+                    SELECT id, name, icon_name, icon_color, supermarket, COALESCE(is_synced, 0) AS is_synced
                     FROM shopping_lists
                     WHERE user_id = ?;
                 """, (sqlite_user_id,))
             except sqlite3.OperationalError:
                 sqlite_cur.execute("""
-                    SELECT id, name, icon_name, icon_color, '' AS supermarket
+                    SELECT id, name, icon_name, icon_color, '' AS supermarket, 0 AS is_synced
                     FROM shopping_lists
                     WHERE user_id = ?;
                 """, (sqlite_user_id,))
@@ -91,7 +96,9 @@ class SyncController:
             for l_row in local_lists:
                 l_name = l_row["name"].strip()
                 l_key = l_name.lower()
-                if l_key not in existing_list_names:
+                if l_key in existing_list_names:
+                    list_id_mapping[l_row["id"]] = existing_list_names[l_key]
+                elif int(l_row["is_synced"] or 0) == 0:
                     l_keys = l_row.keys() if hasattr(l_row, "keys") else ()
                     market_val = (l_row["supermarket"] if "supermarket" in l_keys else "") or ""
                     new_id = self.db.add_shopping_list(
@@ -105,21 +112,18 @@ class SyncController:
                         list_id_mapping[l_row["id"]] = new_id
                         existing_list_names[l_key] = new_id
                         summary["synced_lists"] += 1
-                else:
-                    list_id_mapping[l_row["id"]] = existing_list_names[l_key]
 
             for local_list_id, mysql_list_id in list_id_mapping.items():
                 try:
                     try:
                         sqlite_cur.execute("""
-                            SELECT name, is_checked, price
+                            SELECT name, is_checked, price, quantity
                             FROM shopping_list_items
-                            WHERE list_id = ?;
+                            WHERE list_id = ? AND COALESCE(is_synced, 0) = 0;
                         """, (local_list_id,))
                     except sqlite3.OperationalError:
-                        # BD local creada antes de que las listas tuvieran precio
                         sqlite_cur.execute("""
-                            SELECT name, is_checked, 0 AS price
+                            SELECT name, is_checked, 0 AS price, 1 AS quantity
                             FROM shopping_list_items
                             WHERE list_id = ?;
                         """, (local_list_id,))
@@ -134,15 +138,16 @@ class SyncController:
                                     mysql_list_id, it_name,
                                     price=float(it_row["price"] or 0.0),
                                     is_checked=bool(it_row["is_checked"]),
+                                    quantity=max(1, int(it_row["quantity"] or 1)),
                                 )
                 except Exception as e:
                     print(f"[SyncController] Error al sincronizar shopping_list_items: {e}")
 
-            # B. Sincronizar Despensa
+            # B. Sincronizar Despensa creada offline (is_synced = 0)
             sqlite_cur.execute("""
-                SELECT id, name, quantity, unit, min_threshold, category, expiration_date 
-                FROM pantry_items 
-                WHERE user_id = ?;
+                SELECT id, name, quantity, unit, min_threshold, category, expiration_date
+                FROM pantry_items
+                WHERE user_id = ? AND COALESCE(is_synced, 0) = 0;
             """, (sqlite_user_id,))
             local_pantry = sqlite_cur.fetchall()
 
@@ -168,18 +173,17 @@ class SyncController:
                     remote = existing_pantry_names[p_key]
                     if exp_date and not remote.expiration_date:
                         self.db.update_pantry_expiration(remote.id, exp_date)
-                    # Completa la categoría remota si allá quedó en 'General'
                     local_cat = (p_row["category"] or "General").strip()
                     if local_cat != "General" and (remote.category or "General") == "General":
                         self.db.update_pantry_item_details(remote.id, remote.name, remote.quantity, remote.unit,
                                                            remote.min_threshold, remote.expiration_date,
                                                            category=local_cat)
 
-            # C. Sincronizar Carrito de Compras
+            # C. Sincronizar Carrito de Compras creado offline (is_synced = 0)
             sqlite_cur.execute("""
-                SELECT id, title, subtitle, price, quantity, is_checked, list_id 
-                FROM cart_items 
-                WHERE user_id = ?;
+                SELECT id, title, subtitle, price, quantity, is_checked, list_id
+                FROM cart_items
+                WHERE user_id = ? AND COALESCE(is_synced, 0) = 0;
             """, (sqlite_user_id,))
             local_cart = sqlite_cur.fetchall()
 
@@ -200,16 +204,16 @@ class SyncController:
                     )
                     summary["synced_cart"] += 1
 
-            # C2. Sincronizar Historial de Compras (clave: producto + fecha de compra)
+            # C2. Sincronizar Historial de Compras creado offline (is_synced = 0)
             try:
                 sqlite_cur.execute("""
                     SELECT title, price, quantity, unit, list_id, list_name, purchased_at
                     FROM purchase_history
-                    WHERE user_id = ?;
+                    WHERE user_id = ? AND COALESCE(is_synced, 0) = 0;
                 """, (sqlite_user_id,))
                 local_purchases = sqlite_cur.fetchall()
             except sqlite3.OperationalError:
-                local_purchases = []  # BD local antigua sin la tabla
+                local_purchases = []
 
             existing_purchases = {
                 (p.title.strip().lower(), str(p.purchased_at)[:19])
@@ -233,8 +237,8 @@ class SyncController:
 
             # D. Sincronizar Métricas y Sesiones de Telemetría
             sqlite_cur.execute("""
-                SELECT id, platform, app_version, start_time, end_time, duration_seconds 
-                FROM app_sessions 
+                SELECT id, platform, app_version, start_time, end_time, duration_seconds
+                FROM app_sessions
                 WHERE duration_seconds > 0;
             """)
             local_sessions = sqlite_cur.fetchall()
@@ -252,7 +256,7 @@ class SyncController:
                     summary["synced_sessions"] += 1
 
             sqlite_cur.execute("""
-                SELECT id, session_id, event_name, screen_name, duration_seconds, metadata_json 
+                SELECT id, session_id, event_name, screen_name, duration_seconds, metadata_json
                 FROM app_events;
             """)
             local_events = sqlite_cur.fetchall()
@@ -268,9 +272,10 @@ class SyncController:
                 )
                 summary["synced_events"] += 1
 
-            # E. Limpieza de cola local
+            # E. Limpieza de cola de telemetría y actualización de caché espejo local
             sqlite_cur.execute("DELETE FROM app_events;")
             sqlite_cur.execute("DELETE FROM app_sessions;")
+            self._refresh_local_cache(sqlite_cur, mysql_user)
             sqlite_conn.commit()
             sqlite_conn.close()
 
@@ -300,6 +305,165 @@ class SyncController:
             summary["message"] = f"Error durante la sincronización: {e}"
             print(f"[SyncController] {summary['message']}")
             return summary
+
+    @staticmethod
+    def _ensure_sqlite_sync_schema(sqlite_cur):
+        """Asegura las columnas is_synced/remote_id y la tabla pending_deletes en SQLite."""
+        sqlite_cur.execute("""
+            CREATE TABLE IF NOT EXISTS pending_deletes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                entity_type TEXT NOT NULL,
+                remote_id INTEGER,
+                item_key TEXT DEFAULT '',
+                parent_key TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        for tbl in ("shopping_lists", "shopping_list_items", "pantry_items", "cart_items", "purchase_history"):
+            for col_def in ("is_synced INTEGER NOT NULL DEFAULT 0", "remote_id INTEGER"):
+                try:
+                    sqlite_cur.execute(f"ALTER TABLE {tbl} ADD COLUMN {col_def};")
+                except Exception:
+                    pass
+
+    def _apply_pending_deletes(self, sqlite_cur, sqlite_user_id: int, mysql_user_id: int):
+        """Aplica en el servidor los borrados realizados mientras la app estaba sin internet."""
+        sqlite_cur.execute(
+            "SELECT id, entity_type, remote_id, item_key, parent_key FROM pending_deletes WHERE user_id = ?;",
+            (sqlite_user_id,),
+        )
+        rows = sqlite_cur.fetchall()
+        if not rows:
+            return
+
+        remote_pantry = None
+        remote_lists = None
+
+        for row in rows:
+            etype = row["entity_type"]
+            rid = row["remote_id"]
+            ikey = (row["item_key"] or "").strip().lower()
+            pkey = (row["parent_key"] or "").strip().lower()
+
+            if etype == "pantry_item":
+                if rid:
+                    self.db.delete_pantry_item(int(rid))
+                elif ikey:
+                    if remote_pantry is None:
+                        remote_pantry = self.db.get_pantry_items(mysql_user_id)
+                    for item in remote_pantry:
+                        if item.name.strip().lower() == ikey:
+                            self.db.delete_pantry_item(item.id)
+            elif etype == "shopping_list":
+                if rid:
+                    self.db.delete_shopping_list(int(rid))
+                elif ikey:
+                    if remote_lists is None:
+                        remote_lists = self.db.get_shopping_lists(mysql_user_id)
+                    for lst in remote_lists:
+                        if lst.name.strip().lower() == ikey:
+                            self.db.delete_shopping_list(lst.id)
+            elif etype == "shopping_list_item":
+                if rid:
+                    self.db.delete_shopping_list_item(int(rid))
+                elif ikey and pkey:
+                    if remote_lists is None:
+                        remote_lists = self.db.get_shopping_lists(mysql_user_id)
+                    for lst in remote_lists:
+                        if lst.name.strip().lower() == pkey:
+                            for it in self.db.get_shopping_list_items(lst.id):
+                                if it.name.strip().lower() == ikey:
+                                    self.db.delete_shopping_list_item(it.id)
+
+        sqlite_cur.execute("DELETE FROM pending_deletes WHERE user_id = ?;", (sqlite_user_id,))
+
+    def _refresh_local_cache(self, sqlite_cur, mysql_user):
+        """Actualiza la caché espejo local en SQLite con los datos actuales del servidor."""
+        email_norm = mysql_user.email.strip().lower()
+        sqlite_cur.execute("SELECT id FROM users WHERE LOWER(email) = ?;", (email_norm,))
+        u_row = sqlite_cur.fetchone()
+        if u_row:
+            local_uid = u_row["id"]
+            sqlite_cur.execute(
+                "UPDATE users SET name = ?, password_hash = ?, avatar_initials = ?, is_pro = ? WHERE id = ?;",
+                (
+                    mysql_user.name,
+                    mysql_user.password_hash,
+                    mysql_user.avatar_initials,
+                    int(mysql_user.is_pro or 0),
+                    local_uid,
+                ),
+            )
+        else:
+            sqlite_cur.execute(
+                "INSERT INTO users (name, email, password_hash, avatar_initials, is_pro) VALUES (?, ?, ?, ?, ?);",
+                (
+                    mysql_user.name,
+                    email_norm,
+                    mysql_user.password_hash,
+                    mysql_user.avatar_initials,
+                    int(mysql_user.is_pro or 0),
+                ),
+            )
+            local_uid = sqlite_cur.lastrowid
+
+        # Limpiar datos previos del usuario en caché local
+        sqlite_cur.execute(
+            "DELETE FROM shopping_list_items WHERE list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?);",
+            (local_uid,),
+        )
+        sqlite_cur.execute("DELETE FROM shopping_lists WHERE user_id = ?;", (local_uid,))
+        sqlite_cur.execute("DELETE FROM pantry_items WHERE user_id = ?;", (local_uid,))
+        sqlite_cur.execute("DELETE FROM cart_items WHERE user_id = ?;", (local_uid,))
+        sqlite_cur.execute("DELETE FROM purchase_history WHERE user_id = ?;", (local_uid,))
+
+        # Re-poblar desde el servidor con is_synced = 1 y remote_id
+        for lst in self.db.get_shopping_lists(mysql_user.id):
+            sqlite_cur.execute(
+                """INSERT INTO shopping_lists (user_id, name, icon_name, icon_color, supermarket, is_synced, remote_id)
+                   VALUES (?, ?, ?, ?, ?, 1, ?);""",
+                (local_uid, lst.name, lst.icon_name, lst.icon_color, lst.supermarket, lst.id),
+            )
+            local_list_id = sqlite_cur.lastrowid
+            for it in self.db.get_shopping_list_items(lst.id):
+                sqlite_cur.execute(
+                    """INSERT INTO shopping_list_items (list_id, name, price, quantity, is_checked, is_synced, remote_id)
+                       VALUES (?, ?, ?, ?, ?, 1, ?);""",
+                    (local_list_id, it.name, float(it.price or 0.0), max(1, int(it.quantity or 1)),
+                     1 if it.is_checked else 0, it.id),
+                )
+
+        for p in self.db.get_pantry_items(mysql_user.id):
+            sqlite_cur.execute(
+                """INSERT INTO pantry_items (user_id, name, quantity, unit, min_threshold, category, expiration_date, is_synced, remote_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?);""",
+                (local_uid, p.name, float(p.quantity), p.unit, float(p.min_threshold), p.category, p.expiration_date, p.id),
+            )
+
+        for ph in self.db.get_purchase_history(mysql_user.id):
+            sqlite_cur.execute(
+                """INSERT INTO purchase_history (user_id, list_id, list_name, title, price, quantity, unit, purchased_at, is_synced, remote_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?);""",
+                (local_uid, ph.list_id, ph.list_name, ph.title, float(ph.price or 0.0), float(ph.quantity or 1.0), ph.unit, str(ph.purchased_at)[:19], ph.id),
+            )
+
+    def refresh_cache_for_user(self, mysql_user) -> bool:
+        """Permite refrescar la caché local en segundo plano o al cerrar la app estando online."""
+        if not self.db.is_mysql or not mysql_user:
+            return False
+        try:
+            sqlite_conn = sqlite3.connect(LOCAL_DB_PATH)
+            sqlite_conn.row_factory = sqlite3.Row
+            sqlite_cur = sqlite_conn.cursor()
+            self._ensure_sqlite_sync_schema(sqlite_cur)
+            self._refresh_local_cache(sqlite_cur, mysql_user)
+            sqlite_conn.commit()
+            sqlite_conn.close()
+            return True
+        except Exception as e:
+            print(f"[SyncController] Error refrescando caché local: {e}")
+            return False
 
 
 # Alias de compatibilidad

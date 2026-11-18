@@ -79,3 +79,8 @@ AGENTS.md
 SKILL.md
 .gemini/
 .agents/
+
+# --- 9. Compilación Android (Buildozer) ---
+*.apk
+/bin/
+.buildozer/

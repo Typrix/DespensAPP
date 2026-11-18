@@ -16,12 +16,19 @@ class ShoppingListItem:
     name: str
     is_checked: bool = False
     created_at: str = ""
-    price: float = 0.0  # precio opcional anotado al comprar
+    price: float = 0.0  # precio unitario opcional anotado al comprar
+    quantity: float = 1.0
+    unit: str = "un."
 
     @property
     def formatted_price(self) -> str:
-        """Precio en moneda local (ej: $2.500)."""
-        return f"${int(self.price):,}".replace(",", ".")
+        """Precio total de la línea en moneda local (ej: $2.500)."""
+        return f"${int(round(float(self.price or 0.0) * float(self.quantity or 1.0))):,}".replace(",", ".")
+
+    @property
+    def formatted_unit_price(self) -> str:
+        """Precio unitario en moneda local (ej: $1.250)."""
+        return f"${int(round(float(self.price or 0.0))):,}".replace(",", ".")
 
 
 @dataclass
