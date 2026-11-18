@@ -369,3 +369,20 @@ El registro no revisaba el formato del correo y la edición de la cuenta solo pe
 
 ## Validación
 - 2 pruebas en `tests/test_email.py` (14 casos); 24 de 24 en total. Prueba funcional: correos inválidos rechazados al editar la cuenta y al entrar.
+
+---
+
+## Entrada / Prompt del Usuario (Modo oscuro persistente)
+> "que persista el modo oscuro pese a salir de la aplicacion"
+
+## Causa raíz
+`modo_oscuro` solo vivía en memoria y `build()` aplicaba siempre el tema claro al iniciar; no se guardaba en ningún lado.
+
+## Acciones Realizadas
+1. Nuevo `controllers/preferences.py`: preferencias del dispositivo en `user_prefs.json` (aparte de `session.json`, que se borra al cerrar sesión). Si el archivo falta o está dañado, usa el tema claro.
+2. `build()` aplica el tema guardado desde el inicio (también la pantalla de carga) y `cambiar_tema` lo guarda.
+3. `user_prefs.json` agregado al `.gitignore`.
+
+## Validación
+- 4 pruebas en `tests/test_preferences.py`; 28 de 28 en total.
+- Dos aperturas reales con preferencias temporales: se activa el modo oscuro y se cierra sesión; al volver a abrir parte en oscuro.

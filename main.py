@@ -29,6 +29,7 @@ from controllers.pantry_organizer import (
 )
 from controllers.validators import step_for_unit
 from controllers.unit_selector import convert_quantity, format_amount
+from controllers import preferences
 from dataclasses import replace as dc_replace
 from controllers import (
     MainController,
@@ -176,9 +177,11 @@ class MainApp(MDApp):
     def build(self):
         # Cola de borrados diferidos (ventana de 4 s para "Deshacer")
         self.undo = UndoController(scheduler=Clock.schedule_once)
-        self.theme_cls.theme_style = "Light"
+        # Tema guardado en el dispositivo: se mantiene al cerrar la app o la sesión
+        self.modo_oscuro = preferences.is_dark_mode()
+        self.theme_cls.theme_style = "Dark" if self.modo_oscuro else "Light"
         self.theme_cls.primary_palette = "Blue"
-        self._aplicar_tema(False)
+        self._aplicar_tema(self.modo_oscuro)
         return None
 
     def on_pause(self):
@@ -374,7 +377,9 @@ class MainApp(MDApp):
         return legible_color(color, self.modo_oscuro if dark is None else dark)
 
     def cambiar_tema(self, valor_activo):
-        """Alterna entre Tema Claro y Tema Oscuro de manera fluida."""
+        """Alterna entre Tema Claro y Tema Oscuro y lo deja guardado para la próxima vez."""
+        if bool(valor_activo) != preferences.is_dark_mode():
+            preferences.set_dark_mode(valor_activo)
         self.modo_oscuro = bool(valor_activo)
         self.theme_cls.theme_style = "Dark" if self.modo_oscuro else "Light"
         self._aplicar_tema(self.modo_oscuro)
