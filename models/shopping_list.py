@@ -17,11 +17,12 @@ class ShoppingListItem:
     is_checked: bool = False
     created_at: str = ""
     price: float = 0.0  # precio opcional anotado al comprar
+    quantity: int = 1
 
     @property
     def formatted_price(self) -> str:
         """Precio en moneda local (ej: $2.500)."""
-        return f"${int(self.price):,}".replace(",", ".")
+        return f"${int(self.price * self.quantity):,}".replace(",", ".")
 
 
 @dataclass

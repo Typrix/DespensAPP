@@ -117,13 +117,13 @@ class SyncController:
                 try:
                     try:
                         sqlite_cur.execute("""
-                            SELECT name, is_checked, price
+                            SELECT name, is_checked, price, quantity
                             FROM shopping_list_items
                             WHERE list_id = ? AND COALESCE(is_synced, 0) = 0;
                         """, (local_list_id,))
                     except sqlite3.OperationalError:
                         sqlite_cur.execute("""
-                            SELECT name, is_checked, 0 AS price
+                            SELECT name, is_checked, 0 AS price, 1 AS quantity
                             FROM shopping_list_items
                             WHERE list_id = ?;
                         """, (local_list_id,))
@@ -138,6 +138,7 @@ class SyncController:
                                     mysql_list_id, it_name,
                                     price=float(it_row["price"] or 0.0),
                                     is_checked=bool(it_row["is_checked"]),
+                                    quantity=max(1, int(it_row["quantity"] or 1)),
                                 )
                 except Exception as e:
                     print(f"[SyncController] Error al sincronizar shopping_list_items: {e}")
@@ -427,9 +428,10 @@ class SyncController:
             local_list_id = sqlite_cur.lastrowid
             for it in self.db.get_shopping_list_items(lst.id):
                 sqlite_cur.execute(
-                    """INSERT INTO shopping_list_items (list_id, name, price, is_checked, is_synced, remote_id)
-                       VALUES (?, ?, ?, ?, 1, ?);""",
-                    (local_list_id, it.name, float(it.price or 0.0), 1 if it.is_checked else 0, it.id),
+                    """INSERT INTO shopping_list_items (list_id, name, price, quantity, is_checked, is_synced, remote_id)
+                       VALUES (?, ?, ?, ?, ?, 1, ?);""",
+                    (local_list_id, it.name, float(it.price or 0.0), max(1, int(it.quantity or 1)),
+                     1 if it.is_checked else 0, it.id),
                 )
 
         for p in self.db.get_pantry_items(mysql_user.id):

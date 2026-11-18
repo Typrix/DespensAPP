@@ -29,6 +29,7 @@ class CheckoutRow(BoxLayout):
         self.unit = unit
         self.is_new = is_new
         self._menu = None
+        self.initial_quantity = max(1, int(getattr(ref, "quantity", 1)))
         if on_change:
             self.ids.qty_input.bind(text=lambda *a: on_change())
 
@@ -79,30 +80,34 @@ class CheckoutModal(BaseFormModal):
         self.rows = []
         for data in checkout_rows:
             row = CheckoutRow(data["ref"], data["title"], data["price"], data["unit"], data["is_new"],
-                              on_change=self._on_row_change)
+                              on_change=self._update_total)
+            row.ids.qty_input.text = str(row.initial_quantity)
             self.rows.append(row)
             self.ids.rows_box.add_widget(row)
         self.row_count = len(self.rows)
-        self._update_total()
-
-    def _on_row_change(self, *args):
-        """Limpia el error y recalcula el total al editar cualquier cantidad."""
-        self._clear_error()
-        self._update_total()
+        self.total_str = format_money(sum(r.price * r.initial_quantity for r in self.rows))
 
     def _update_total(self):
-        """Actualiza el total multiplicando el precio unitario por la cantidad de cada fila."""
-        self.total_str = format_money(sum(r.subtotal for r in self.rows))
+        self.error_text = ""
+        total = 0.0
+        for row in self.rows:
+            value, error = validate_quantity(row.quantity_text, "La cantidad")
+            if not error:
+                total += row.price * value
+        self.total_str = format_money(total)
 
     def submit(self):
         """Valida que cada cantidad sea mayor a 0 y confirma la compra."""
         entries = []
+        total = 0.0
         for row in self.rows:
             value, error = validate_quantity(row.quantity_text, "La cantidad")
             if error or value <= 0:
                 self.error_text = f"{row.title}: {error or 'la cantidad debe ser mayor a 0.'}"
                 return
             entries.append({"ref": row.ref, "quantity": value, "unit": row.unit})
+            total += row.price * value
+        self.total_str = format_money(total)
         self.dismiss()
         if self.callback_confirm:
             self.callback_confirm(entries)

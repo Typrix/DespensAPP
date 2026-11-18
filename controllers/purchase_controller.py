@@ -45,8 +45,8 @@ def summarize_items(items: List[ShoppingListItem]) -> Dict[str, Any]:
     y sube al tachar; el estimado suma todos los precios anotados.
     """
     return {
-        "in_cart": sum(it.price for it in items if it.is_checked),
-        "estimated": sum(it.price for it in items),
+        "in_cart": sum(it.price * it.quantity for it in items if it.is_checked),
+        "estimated": sum(it.price * it.quantity for it in items),
         "checked": sum(1 for it in items if it.is_checked),
         "pending": sum(1 for it in items if not it.is_checked),
         "total_items": len(items),
@@ -92,7 +92,10 @@ class PurchaseController:
                 if item.is_checked and not match.is_checked:
                     self.db.toggle_shopping_list_item(match.id, True)
             else:
-                self.db.add_shopping_list_item(target_id, item.title, price=item.price, is_checked=item.is_checked)
+                self.db.add_shopping_list_item(
+                    target_id, item.title, price=item.price,
+                    is_checked=item.is_checked, quantity=item.quantity,
+                )
             self.db.delete_cart_item(item.id)
             moved += 1
         if self.analytics and moved:
@@ -190,7 +193,7 @@ class PurchaseController:
             self.db.add_purchase_record(user_id, item.name, line_total, quantity, unit, now,
                                         list_id=list_id, list_name=list_name)
             self.db.delete_shopping_list_item(item.id)
-            summary["total"] += line_total
+            summary["total"] += item.price * quantity
             summary["count"] += 1
         if self.analytics and summary["count"]:
             self.analytics.track_event("finalize_purchase", metadata={
@@ -214,7 +217,7 @@ class PurchaseController:
             return {"period": period, "label": label, "total": 0.0, "total_str": "$0",
                     "count": 0, "records": [], "groups": []}
         records = self.db.get_purchase_history(user_id, since=self.period_start(period))
-        total = sum(r.price for r in records)
+        total = sum(r.price * r.quantity for r in records)
         return {
             "period": period,
             "label": label,
@@ -243,7 +246,7 @@ class PurchaseController:
                 "subtotal": 0.0,
             })
             group["records"].append(rec)
-            group["subtotal"] += rec.price
+            group["subtotal"] += rec.price * rec.quantity
         result = list(groups.values())
         for g in result:
             g["count"] = len(g["records"])

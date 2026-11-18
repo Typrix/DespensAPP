@@ -26,8 +26,8 @@ class PurchaseRecord:
 
     @property
     def formatted_price(self) -> str:
-        """Formatea el precio a moneda local (ej: $2.500)."""
-        return f"${int(self.price):,}".replace(",", ".")
+        """Formatea el total pagado por la cantidad registrada."""
+        return f"${int(self.price * self.quantity):,}".replace(",", ".")
 
     @property
     def purchased_datetime(self) -> Optional[datetime]:

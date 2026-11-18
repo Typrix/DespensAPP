@@ -267,6 +267,7 @@ class DatabaseManager:
                         `list_id` INT NOT NULL,
                         `name` VARCHAR(150) NOT NULL,
                         `price` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                        `quantity` INT NOT NULL DEFAULT 1,
                         `is_checked` TINYINT(1) NOT NULL DEFAULT 0,
                         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         CONSTRAINT `fk_shopping_list_items_list`
@@ -283,6 +284,10 @@ class DatabaseManager:
                 # Las listas funcionan como carrito: cada producto puede llevar precio
                 try:
                     cur.execute("ALTER TABLE `shopping_list_items` ADD COLUMN `price` DECIMAL(12, 2) NOT NULL DEFAULT 0.00;")
+                except Exception:
+                    pass
+                try:
+                    cur.execute("ALTER TABLE `shopping_list_items` ADD COLUMN `quantity` INT NOT NULL DEFAULT 1;")
                 except Exception:
                     pass
                 # Historial de compras finalizadas (base del gasto por periodo)
@@ -407,6 +412,7 @@ class DatabaseManager:
                 list_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 price REAL NOT NULL DEFAULT 0.0,
+                quantity INTEGER NOT NULL DEFAULT 1,
                 is_checked INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (list_id) REFERENCES shopping_lists (id) ON DELETE CASCADE
@@ -420,6 +426,10 @@ class DatabaseManager:
         # Las listas funcionan como carrito: cada producto puede llevar precio
         try:
             cur.execute("ALTER TABLE shopping_list_items ADD COLUMN price REAL NOT NULL DEFAULT 0.0;")
+        except Exception:
+            pass
+        try:
+            cur.execute("ALTER TABLE shopping_list_items ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1;")
         except Exception:
             pass
         # Historial de compras finalizadas (fecha en texto 'AAAA-MM-DD HH:MM:SS', hora local)
@@ -1356,7 +1366,7 @@ class DatabaseManager:
         Orden fijo por creación: tachar un producto no lo mueve de lugar.
         """
         rows = self._run(
-            """SELECT id, list_id, name, price, is_checked, created_at
+            """SELECT id, list_id, name, price, quantity, is_checked, created_at
                FROM shopping_list_items WHERE list_id = ? ORDER BY id ASC;""",
             (list_id,), fetch="all",
         ) or []
@@ -1368,30 +1378,35 @@ class DatabaseManager:
                 is_checked=bool(r["is_checked"]),
                 created_at=str(r["created_at"] or ""),
                 price=float(r["price"] or 0.0),
+                quantity=max(1, int(r["quantity"] or 1)),
             )
             for r in rows
         ]
 
     def add_shopping_list_item(self, list_id: int, name: str, price: float = 0.0,
-                               is_checked: bool = False) -> Optional[int]:
+                               is_checked: bool = False, quantity: int = 1) -> Optional[int]:
         """Añade un producto a la lista, con precio opcional."""
         name = (name or "").strip()
         if not name:
             return None
         return self._run(
-            "INSERT INTO shopping_list_items (list_id, name, price, is_checked) VALUES (?, ?, ?, ?);",
-            (list_id, name, max(0.0, float(price or 0.0)), 1 if is_checked else 0),
+            "INSERT INTO shopping_list_items (list_id, name, price, quantity, is_checked) VALUES (?, ?, ?, ?, ?);",
+            (list_id, name, max(0.0, float(price or 0.0)), max(1, int(quantity)), 1 if is_checked else 0),
             fetch="lastrowid",
         )
 
-    def update_shopping_list_item(self, item_id: int, name: str, price: float) -> bool:
+    def update_shopping_list_item(self, item_id: int, name: str, price: float,
+                                  quantity: Optional[int] = None) -> bool:
         """Corrige el nombre y el precio de un producto de la lista, renovando su fecha de vigencia."""
         name = (name or "").strip()
         if not name:
             return False
         return bool(self._run(
-            "UPDATE shopping_list_items SET name = ?, price = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?;",
-            (name, max(0.0, float(price or 0.0)), item_id),
+            """UPDATE shopping_list_items
+               SET name = ?, price = ?, quantity = COALESCE(?, quantity), created_at = CURRENT_TIMESTAMP
+               WHERE id = ?;""",
+            (name, max(0.0, float(price or 0.0)),
+             max(1, int(quantity)) if quantity is not None else None, item_id),
         ))
 
     def toggle_shopping_list_item(self, item_id: int, is_checked: bool) -> bool:

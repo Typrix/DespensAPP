@@ -141,6 +141,7 @@ class ShoppingListItemRow(BoxLayout):
     name = StringProperty("")
     price = NumericProperty(0)
     price_str = StringProperty("")
+    quantity = NumericProperty(1)
     is_checked = BooleanProperty(False)
     icon = StringProperty("leaf")
     tint_light = ListProperty(category_tint("General"))
@@ -155,11 +156,13 @@ class ShoppingListItemRow(BoxLayout):
         self.tint_light = category_tint(category)
         self.tint_dark = category_tint(category, dark=True)
         self.price = item.price
+        self.quantity = item.quantity
         self.price_str = item.formatted_price if item.price > 0 else ""
         self.is_checked = item.is_checked
         self.callback_toggle = callback_toggle
         self.callback_edit = callback_edit
         self.callback_delete = callback_delete
+        self.callback_quantity = None
 
     def toggle(self):
         if self.callback_toggle:
@@ -172,6 +175,10 @@ class ShoppingListItemRow(BoxLayout):
     def delete(self):
         if self.callback_delete:
             self.callback_delete(self.item_id)
+
+    def adjust_quantity(self, delta):
+        if self.callback_quantity:
+            self.callback_quantity(self.item, max(1, self.quantity + delta))
 
 
 class EditListItemModal(BaseFormModal):
@@ -262,12 +269,14 @@ class ShoppingListDetailModal(BaseFormModal):
             ))
             return
         for it in items:
-            container.add_widget(ShoppingListItemRow(
+            row = ShoppingListItemRow(
                 item=it,
                 callback_toggle=self.toggle_item,
                 callback_edit=self.open_edit_item,
                 callback_delete=self.delete_item,
-            ))
+            )
+            row.callback_quantity = self.update_item_quantity
+            container.add_widget(row)
 
     def add_item(self):
         """Anota un producto con su precio obligatorio y verifica si existe más barato en otro supermercado."""
@@ -305,12 +314,22 @@ class ShoppingListDetailModal(BaseFormModal):
             self.load_items()
             app.cargar_listas()
 
+    def update_item_quantity(self, item, quantity):
+        """Ajusta la cantidad del producto sin permitir que baje de una unidad."""
+        app = MDApp.get_running_app()
+        if app and getattr(app, "db", None):
+            app.db.update_shopping_list_item(item.id, item.name, item.price, quantity)
+            self.load_items()
+            app.cargar_listas()
+            if hasattr(app, "actualizar_inicio"):
+                app.actualizar_inicio()
+
     def open_edit_item(self, item):
         """Abre el modal para corregir nombre y precio."""
         def save_edit(item_id, name, price):
             app = MDApp.get_running_app()
             if app and getattr(app, "db", None):
-                app.db.update_shopping_list_item(item_id, name, price)
+                app.db.update_shopping_list_item(item_id, name, price, item.quantity)
                 offer = app.db.find_cheaper_supermarket_offer(name, price, self.supermarket)
                 if offer and hasattr(app, "notificar_oferta_supermercado"):
                     offer["item_id"] = item_id

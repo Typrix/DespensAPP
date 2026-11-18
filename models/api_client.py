@@ -67,6 +67,7 @@ def _build_list_item(data: Dict[str, Any]) -> ShoppingListItem:
         is_checked=bool(data.get("is_checked", False)),
         created_at=data.get("created_at", ""),
         price=float(data.get("price", 0.0)),
+        quantity=max(1, int(data.get("quantity", 1) or 1)),
     )
 
 
@@ -423,12 +424,13 @@ class ApiDatabaseClient:
         return self._cached_get(f"list_items:{list_id}", _load, default_val=list)
 
     def add_shopping_list_item(
-        self, list_id: int, name: str, price: float = 0.0, is_checked: bool = False
+        self, list_id: int, name: str, price: float = 0.0, is_checked: bool = False,
+        quantity: int = 1
     ) -> Optional[int]:
         data = self._request(
             "POST",
             f"/lists/{list_id}/items",
-            {"name": name, "price": price, "is_checked": is_checked},
+            {"name": name, "price": price, "is_checked": is_checked, "quantity": quantity},
         )
         return data.get("id")
 
@@ -436,8 +438,14 @@ class ApiDatabaseClient:
         data = self._request("PATCH", f"/list-items/{item_id}/toggle", {"is_checked": is_checked})
         return bool(data.get("ok"))
 
-    def update_shopping_list_item(self, item_id: int, name: str, price: float) -> bool:
-        data = self._request("PUT", f"/list-items/{item_id}", {"name": name, "price": price})
+    def update_shopping_list_item(self, item_id: int, name: str, price: float,
+                                  quantity: Optional[int] = None) -> bool:
+        payload = {"name": name, "price": price}
+        if quantity is not None:
+            payload["quantity"] = max(1, int(quantity))
+        data = self._request(
+            "PUT", f"/list-items/{item_id}", payload,
+        )
         return bool(data.get("ok"))
 
     def update_shopping_list_item_name(self, item_id: int, new_name: str) -> bool:

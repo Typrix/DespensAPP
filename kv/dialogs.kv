@@ -1041,8 +1041,8 @@
 # --------------------------------------------------------
 <ShoppingListItemRow>:
     size_hint_y: None
-    height: "48dp"
-    spacing: "8dp"
+    height: "50dp"
+    spacing: "3dp"
     padding: ["10dp", "4dp", "4dp", "4dp"]
     canvas.before:
         Color:
@@ -1078,7 +1078,8 @@
 
     # Nombre y precio (tocar para editar)
     TapArea:
-        spacing: "6dp"
+        size_hint_x: 1
+        spacing: "4dp"
         on_release: root.edit()
         MDIcon:
             icon: root.icon
@@ -1102,7 +1103,7 @@
         Label:
             text: root.price_str or "Editar $"
             size_hint_x: None
-            width: "72dp"
+            width: "58dp"
             font_size: "13sp" if root.price_str else "11sp"
             bold: bool(root.price_str)
             color: (app.text_secondary_color if root.is_checked else app.text_primary_color) if root.price_str else app.accent_green_color
@@ -1110,10 +1111,59 @@
             valign: "middle"
             text_size: self.size
 
+    BoxLayout:
+        size_hint_x: None
+        width: "68dp"
+        spacing: "2dp"
+        Button:
+            text: "−"
+            size_hint_x: None
+            width: "24dp"
+            font_size: "17sp"
+            color: app.text_primary_color
+            background_color: [0, 0, 0, 0]
+            disabled: root.quantity <= 1
+            on_release: root.adjust_quantity(-1)
+            canvas.before:
+                Color:
+                    rgba: app.sage_container_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [8, 8, 8, 8]
+        Label:
+            text: str(root.quantity)
+            size_hint_x: None
+            width: "16dp"
+            font_size: "12sp"
+            bold: True
+            color: app.text_primary_color
+            halign: "center"
+            valign: "middle"
+            text_size: self.size
+        Button:
+            text: "+"
+            size_hint_x: None
+            width: "24dp"
+            font_size: "16sp"
+            bold: True
+            color: app.text_primary_color
+            background_color: [0, 0, 0, 0]
+            on_release: root.adjust_quantity(1)
+            canvas.before:
+                Color:
+                    rgba: app.sage_container_color
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [8, 8, 8, 8]
+
     # Eliminar producto (con "Deshacer")
     MDIconButton:
         icon: "close"
         style: "standard"
+        size_hint_x: None
+        width: "30dp"
         theme_icon_color: "Custom"
         icon_color: [0.85, 0.25, 0.25, 0.85]
         pos_hint: {"center_y": 0.5}
