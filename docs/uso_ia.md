@@ -386,3 +386,18 @@ El registro no revisaba el formato del correo y la edición de la cuenta solo pe
 ## Validación
 - 4 pruebas en `tests/test_preferences.py`; 28 de 28 en total.
 - Dos aperturas reales con preferencias temporales: se activa el modo oscuro y se cierra sesión; al volver a abrir parte en oscuro.
+
+---
+
+## Entrada / Prompt del Usuario (Íconos grises al cambiar de tema)
+> "cuando paso al modo oscuro los iconos se ponen gris y al volver al blanco se quedan gris, dejalos con sus colores originales"
+
+## Causa raíz
+En KivyMD 2.0 `MDIcon` se pinta con `icon_color` y, si está vacío, con el gris del tema (`onSurfaceVariantColor`). Los íconos usaban `text_color` (propiedad de etiquetas): al cambiar el tema esa regla se reevaluaba y los dejaba grises, y los de color fijo (alerta roja, gorro de chef) no volvían.
+
+## Acciones Realizadas
+1. Los 34 `MDIcon` de los `.kv` pasan a `theme_icon_color: "Custom"` + `icon_color`.
+
+## Validación
+- Prueba en la app con base temporal: claro → oscuro → claro en Inicio, Despensa, Listas y Estadísticas; 43 íconos con el mismo color antes y después (antes del arreglo cambiaban 3). Capturas en claro y oscuro con sus colores.
+- 28 de 28 pruebas unitarias.

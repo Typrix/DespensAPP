@@ -28,8 +28,8 @@
         MDIcon:
             icon: root.icon_name
             font_size: "23sp"
-            theme_text_color: "Custom"
-            text_color: app.accent_green_color if root.is_active else app.text_secondary_color
+            theme_icon_color: "Custom"
+            icon_color: app.accent_green_color if root.is_active else app.text_secondary_color
             pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
     Label:
@@ -74,8 +74,8 @@
     MDIcon:
         icon: "plus"
         font_size: "26sp"
-        theme_text_color: "Custom"
-        text_color: [1, 1, 1, 1]
+        theme_icon_color: "Custom"
+        icon_color: [1, 1, 1, 1]
         pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
 
@@ -218,8 +218,8 @@
     MDIcon:
         icon: root.icon
         font_size: root.badge_size * 0.53
-        theme_text_color: "Custom"
-        text_color: root.tint
+        theme_icon_color: "Custom"
+        icon_color: root.tint
         pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
 
@@ -311,8 +311,8 @@
                 radius: [12, 12, 12, 12]
         MDIcon:
             icon: root.icon_name
-            theme_text_color: "Custom"
-            text_color: root.icon_color_rgba
+            theme_icon_color: "Custom"
+            icon_color: root.icon_color_rgba
             pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
     # Información de la Lista
@@ -336,8 +336,8 @@
 
     MDIcon:
         icon: "chevron-right"
-        theme_text_color: "Custom"
-        text_color: app.text_secondary_color
+        theme_icon_color: "Custom"
+        icon_color: app.text_secondary_color
         pos_hint: {"center_y": 0.5}
 
 
@@ -442,8 +442,8 @@
                 spacing: "12dp"
                 MDIcon:
                     icon: "account-circle-outline"
-                    theme_text_color: "Custom"
-                    text_color: app.text_primary_color
+                    theme_icon_color: "Custom"
+                    icon_color: app.text_primary_color
                     pos_hint: {"center_y": 0.5}
                 Label:
                     text: "Cuenta de usuario"
@@ -454,8 +454,8 @@
                     text_size: self.size
                 MDIcon:
                     icon: "chevron-right"
-                    theme_text_color: "Custom"
-                    text_color: app.text_secondary_color
+                    theme_icon_color: "Custom"
+                    icon_color: app.text_secondary_color
                     pos_hint: {"center_y": 0.5}
 
         # Opción 2: Estado / Activación de Versión PRO
@@ -472,8 +472,8 @@
                 spacing: "12dp"
                 MDIcon:
                     icon: "crown"
-                    theme_text_color: "Custom"
-                    text_color: [0.92, 0.58, 0.05, 1.0]
+                    theme_icon_color: "Custom"
+                    icon_color: [0.92, 0.58, 0.05, 1.0]
                     pos_hint: {"center_y": 0.5}
                 Label:
                     text: "Versión PRO activa" if app.user_is_pro else "Obtener versión PRO"
@@ -485,8 +485,8 @@
                     text_size: self.size
                 MDIcon:
                     icon: "check-decagram" if app.user_is_pro else "chevron-right"
-                    theme_text_color: "Custom"
-                    text_color: [0.92, 0.58, 0.05, 1.0] if app.user_is_pro else app.text_secondary_color
+                    theme_icon_color: "Custom"
+                    icon_color: [0.92, 0.58, 0.05, 1.0] if app.user_is_pro else app.text_secondary_color
                     pos_hint: {"center_y": 0.5}
 
         # Opción 3: Modo oscuro (con Switch)
@@ -496,8 +496,8 @@
             spacing: "12dp"
             MDIcon:
                 icon: "weather-night"
-                theme_text_color: "Custom"
-                text_color: app.text_primary_color
+                theme_icon_color: "Custom"
+                icon_color: app.text_primary_color
                 pos_hint: {"center_y": 0.5}
             Label:
                 text: "Modo oscuro"
@@ -525,8 +525,8 @@
                 spacing: "12dp"
                 MDIcon:
                     icon: "logout"
-                    theme_text_color: "Custom"
-                    text_color: [0.85, 0.35, 0.35, 1.0]
+                    theme_icon_color: "Custom"
+                    icon_color: [0.85, 0.35, 0.35, 1.0]
                     pos_hint: {"center_y": 0.5}
                 Label:
                     text: "Cerrar sesión"
@@ -573,8 +573,8 @@
                 radius: [12, 12, 12, 12]
         MDIcon:
             icon: "cloud-check-outline"
-            theme_text_color: "Custom"
-            text_color: [1, 1, 1, 1]
+            theme_icon_color: "Custom"
+            icon_color: [1, 1, 1, 1]
             pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
     # Bloque de textos
@@ -640,8 +640,8 @@
             on_release: app.actualizar_config_remota()
             MDIcon:
                 icon: "refresh"
-                theme_text_color: "Custom"
-                text_color: app.accent_green_color
+                theme_icon_color: "Custom"
+                icon_color: app.accent_green_color
                 pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
 
@@ -775,8 +775,8 @@
                     size: self.size
             MDIcon:
                 icon: root.icon
-                theme_text_color: "Custom"
-                text_color: app.accent_green_color
+                theme_icon_color: "Custom"
+                icon_color: app.accent_green_color
                 pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
     Label:
@@ -859,8 +859,8 @@
                     radius: [10, 10, 10, 10]
             MDIcon:
                 icon: "basket-outline" if root.name == "Compras sueltas" else "clipboard-text-outline"
-                theme_text_color: "Custom"
-                text_color: app.accent_green_color
+                theme_icon_color: "Custom"
+                icon_color: app.accent_green_color
                 font_size: "18sp"
                 pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
@@ -954,8 +954,8 @@
     MDIcon:
         icon: root.icon
         font_size: "24sp"
-        theme_text_color: "Custom"
-        text_color: app.accent_green_color
+        theme_icon_color: "Custom"
+        icon_color: app.accent_green_color
         pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
 <SmallFieldLabel@Label>:
