@@ -13,6 +13,7 @@ from kivy.properties import BooleanProperty, StringProperty, NumericProperty, Li
 from kivy.graphics import Color, Ellipse, Line
 
 from views.dialogs.base import BaseFormModal, EditItemModal
+from views.dialogs.quantity_sheet import QuantitySheet
 from controllers.validators import validate_list_form, validate_cart_form, format_number
 from controllers.purchase_controller import summarize_items, format_money
 from controllers.list_controller import DEFAULT_SUPERMARKET, SUPERMARKET_OPTIONS
@@ -179,6 +180,20 @@ class ShoppingListItemRow(BoxLayout):
     def adjust_quantity(self, delta):
         if self.callback_quantity:
             self.callback_quantity(self.item, max(1, self.quantity + delta))
+
+    def open_quantity(self):
+        """Hoja compacta para escribir cuántas unidades anotar (en listas, solo enteros)."""
+        if not self.callback_quantity:
+            return
+        QuantitySheet(
+            title=self.name,
+            quantity=self.quantity,
+            unit="un.",
+            show_units=False,
+            integer_only=True,
+            minimum=1,
+            on_save=lambda quantity, _unit: self.callback_quantity(self.item, int(quantity)),
+        ).open()
 
 
 class EditListItemModal(BaseFormModal):

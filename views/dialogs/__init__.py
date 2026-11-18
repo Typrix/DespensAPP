@@ -21,6 +21,7 @@ from views.dialogs.checkout_dialog import CheckoutModal, CheckoutRow
 from views.dialogs.alerts_dialog import AlertsModal
 from views.dialogs.history_dialog import PurchaseHistoryModal
 from views.dialogs.pro_dialog import ProUpgradeModal
+from views.dialogs.quantity_sheet import QuantitySheet
 
 # Cargar la definición declarativa dialogs.kv desde la carpeta kv/
 DIALOGS_KV_PATH = os.path.abspath(
@@ -31,6 +32,7 @@ if os.path.exists(DIALOGS_KV_PATH):
 
 __all__ = [
     "BaseFormModal",
+    "QuantitySheet",
     "EditItemModal",
     "AddPantryItemModal",
     "PantryItemDetailModal",

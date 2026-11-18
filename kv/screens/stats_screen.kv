@@ -9,20 +9,14 @@
     BoxLayout:
         orientation: "vertical"
         size_hint: 1, 1
-        padding: ["14dp", "4dp", "14dp", "8dp"]
+        padding: ["16dp", "0dp", "16dp", "0dp"]
 
+        # Contenido directo sobre el fondo, de borde a borde (sin panel contenedor)
         BoxLayout:
             orientation: "vertical"
             size_hint: 1, 1
-            padding: ["16dp", "16dp", "16dp", "16dp"]
+            padding: [0, "4dp", 0, 0]
             spacing: "10dp"
-            canvas.before:
-                Color:
-                    rgba: app.sage_container_color
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [28, 28, 28, 28]
 
             MDScrollView:
                 do_scroll_x: False
@@ -36,22 +30,14 @@
                     # Encabezado de Sección
                     BoxLayout:
                         size_hint_y: None
-                        height: "46dp"
+                        height: "48dp"
 
                         BoxLayout:
                             orientation: "vertical"
                             size_hint_x: 1
                             Label:
-                                text: app.stats_period_tag
-                                font_size: "10sp"
-                                bold: True
-                                color: app.category_tag_color
-                                halign: "left"
-                                valign: "middle"
-                                text_size: self.size
-                            Label:
                                 text: "Tus estadísticas"
-                                font_size: "22sp"
+                                font_size: "26sp"
                                 bold: True
                                 color: app.text_primary_color
                                 halign: "left"
@@ -125,7 +111,7 @@
 
                             Label:
                                 text: app.stats_spent_title
-                                font_size: "11sp"
+                                font_size: "12.5sp"
                                 color: app.chart_card_text_dim_color
                                 halign: "left"
                                 text_size: self.size
@@ -138,10 +124,13 @@
                                 text_size: self.size
                             Label:
                                 text: app.stats_spent_sub
-                                font_size: "9.5sp"
+                                font_size: "12sp"
                                 color: app.chart_card_text_dim_color
                                 halign: "left"
+                                valign: "middle"
                                 text_size: self.size
+                                shorten: True
+                                shorten_from: "right"
 
                         # Tarjeta Blanca Productos
                         BoxLayout:
@@ -158,7 +147,7 @@
 
                             Label:
                                 text: "Productos despensa"
-                                font_size: "10.5sp"
+                                font_size: "12sp"
                                 color: app.text_secondary_color
                                 halign: "left"
                                 text_size: self.size
@@ -171,7 +160,7 @@
                                 text_size: self.size
                             Label:
                                 text: app.stats_purchases_str
-                                font_size: "9.5sp"
+                                font_size: "12sp"
                                 color: app.text_secondary_color
                                 halign: "left"
                                 text_size: self.size
@@ -179,12 +168,12 @@
                     # Historial: la última compra y "Ver todas" con el resto del periodo
                     BoxLayout:
                         size_hint_y: None
-                        height: "28dp"
+                        height: "34dp"
                         Label:
-                            text: "ÚLTIMA COMPRA" if app.stats_purchase_count == 1 else "ÚLTIMAS COMPRAS"
-                            font_size: "10sp"
+                            text: "Última compra" if app.stats_purchase_count == 1 else "Últimas compras"
+                            font_size: "16sp"
                             bold: True
-                            color: app.category_tag_color
+                            color: app.text_primary_color
                             halign: "left"
                             valign: "middle"
                             text_size: self.size
@@ -200,7 +189,7 @@
                                 text: f"Ver todas ({app.stats_purchase_count})"
                                 size_hint_x: None
                                 width: self.texture_size[0]
-                                font_size: "12sp"
+                                font_size: "13.5sp"
                                 bold: True
                                 color: app.accent_green_color
                                 disabled_color: app.accent_green_color
@@ -222,12 +211,12 @@
 
                     # Subtítulo: Lo Más Frecuente
                     Label:
-                        text: "LO MÁS COMPRADO"
+                        text: "Lo más comprado"
                         size_hint_y: None
-                        height: "22dp"
-                        font_size: "10sp"
+                        height: "34dp"
+                        font_size: "16sp"
                         bold: True
-                        color: app.category_tag_color
+                        color: app.text_primary_color
                         halign: "left"
                         valign: "middle"
                         text_size: self.size
@@ -256,7 +245,7 @@
                                 text: app.stats_p1_lbl
                                 size_hint_x: None
                                 width: "60dp"
-                                font_size: "11sp"
+                                font_size: "12.5sp"
                                 color: app.text_secondary_color
                                 halign: "right"
                                 text_size: self.size
@@ -289,7 +278,7 @@
                                 text: app.stats_p2_lbl
                                 size_hint_x: None
                                 width: "60dp"
-                                font_size: "11sp"
+                                font_size: "12.5sp"
                                 color: app.text_secondary_color
                                 halign: "right"
                                 text_size: self.size
@@ -322,7 +311,7 @@
                                 text: app.stats_p3_lbl
                                 size_hint_x: None
                                 width: "60dp"
-                                font_size: "11sp"
+                                font_size: "12.5sp"
                                 color: app.text_secondary_color
                                 halign: "right"
                                 text_size: self.size
@@ -365,7 +354,7 @@
                                 text_size: self.size
                             Label:
                                 text: app.stats_status_desc
-                                font_size: "10.5sp"
+                                font_size: "12sp"
                                 color: app.text_secondary_color
                                 halign: "left"
                                 text_size: self.size

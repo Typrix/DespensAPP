@@ -290,3 +290,31 @@
 
 ## Validación
 - Suites anteriores sin fallos y capturas a 400 px en modo claro y oscuro (Estadísticas, modal y apertura desde Inicio).
+
+---
+
+## Entrada / Prompt del Usuario (Diseño nativo y selector de cantidad)
+> "quiero que se cambie el diseño de la aplicacion completa con lo que te dije para que quede mas nativo" · "el selector de cantidad que sea un poco mas natural y no tape toda la pantalla sino que sea algo donde se pueda escoger el tipo de medida y registrarlo" · "cuidado con el contraste de la letra"
+
+## Acciones Realizadas
+1. **Sin panel tipo widget**: las 4 pantallas muestran su contenido directo sobre el fondo (antes iba dentro de un panel redondeado con doble margen). Títulos de sección más grandes y sin etiquetas en mayúsculas.
+2. **Encabezado compacto** (64 dp en vez de 110 dp, logo de 38 dp) y **barra inferior** al estilo Android, con la píldora solo detrás del ícono.
+3. **Botón flotante "+"** abajo a la derecha en Despensa y Listas.
+4. **Diálogos como hoja inferior** (`BaseFormModal`): pegados abajo, a todo el ancho (máximo 560 dp), con barrita para arrastrar y cerrar.
+5. **Selector compacto de cantidad y medida**:
+   - lógica sin Kivy en `controllers/unit_selector.py`: conversión kg/g y L/ml, atajos, redondeo y medida sugerida;
+   - componente `QuantityPicker` (fila de medidas, − y + de 52 dp, número escribible y atajos);
+   - hoja `QuantitySheet`, que se abre al tocar una cantidad en la despensa, en una lista o al finalizar la compra.
+   Reemplaza los menús desplegables de unidad y el campo "Escribir cantidad + Fijar". Al cambiar de medida también se convierte el mínimo de aviso.
+6. **Contraste**:
+   - texto secundario y acento más oscuros en modo claro, y acento más claro en oscuro;
+   - nuevo `accent_fill` para que el texto blanco de los botones se lea en ambos modos;
+   - `legible_color` ajusta rojo, ámbar y verde de los estados hasta 4,5:1;
+   - texto oscuro sobre el ámbar de Pro;
+   - tamaño mínimo de texto de 12 sp y filas, botones y chips más grandes.
+
+## Validación
+- 12 pruebas nuevas en `tests/test_unit_selector.py` (unittest).
+- Prueba funcional con base SQLite y sesión temporales (10 de 10): agregar con medida sugerida, error con texto inválido, cambio de kg a g con mínimo convertido, stock desde el detalle y compra con cantidad editada.
+- Capturas a 400 px en modo claro y oscuro de las 4 pantallas y de los diálogos.
+- Corregido: una etiqueta de la edición del producto crecía sin fin por tener dos `text_size`.

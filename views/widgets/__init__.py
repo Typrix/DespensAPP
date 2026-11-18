@@ -13,6 +13,7 @@ from views.widgets.profile_modal import ProfileModalView
 from views.widgets.remote_banner import RemoteConfigBanner
 from views.widgets.undo_snackbar import show_undo_snackbar, hide_undo_snackbar, show_info_toast
 from views.widgets.empty_state import EmptyState
+from views.widgets.quantity_picker import QuantityPicker, UnitChip, UnitChipRow
 from views.widgets.purchase_row import PurchaseHistoryRow, PurchaseGroupCard, build_purchase_card
 
 __all__ = [
@@ -30,6 +31,9 @@ __all__ = [
     "hide_undo_snackbar",
     "show_info_toast",
     "EmptyState",
+    "QuantityPicker",
+    "UnitChip",
+    "UnitChipRow",
     "PurchaseHistoryRow",
     "PurchaseGroupCard",
     "build_purchase_card",

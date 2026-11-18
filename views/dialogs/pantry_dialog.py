@@ -21,11 +21,11 @@ from controllers.validators import (
     QUANTITY_MAX,
     validate_pantry_form,
     validate_pantry_details,
-    validate_quantity,
     expiration_warning,
     format_number,
     step_for_unit,
 )
+from controllers.unit_selector import suggested_unit
 
 # Re-exportado para compatibilidad con código que lo importaba desde este módulo
 __all__ = [
@@ -67,7 +67,6 @@ class AddPantryItemModal(BaseFormModal):
     """Modal para ingresar un producto a la despensa con umbral numérico y fecha de vencimiento."""
     has_no_expiration = BooleanProperty(False)
     expiration_date_str = StringProperty("")
-    selected_unit = StringProperty(PANTRY_UNITS[0])
     selected_category = StringProperty(DEFAULT_CATEGORY)
     selected_category_icon = StringProperty(category_icon(DEFAULT_CATEGORY))
     warning_text = StringProperty("")
@@ -75,46 +74,26 @@ class AddPantryItemModal(BaseFormModal):
     def __init__(self, callback_add, **kwargs):
         super().__init__(**kwargs)
         self.callback_add = callback_add
-        self.unit_menu = None
         self.category_menu = None
         self._category_picked = False
+        # La medida se sugiere según la categoría hasta que el usuario elige una
+        self._unit_picked = False
+        self._auto_unit = False
+        self.ids.picker.bind(unit=self._on_unit_changed, on_change=lambda *_: setattr(self, "error_text", ""))
         self.ids.field_name.ids.text_input.bind(text=lambda inst, val: self._suggest_category(val))
         self.clear_error_on_input(
             self.ids.field_name.ids.text_input,
-            self.ids.field_quantity.ids.text_input,
             self.ids.field_threshold.ids.text_input,
         )
 
-    def open_unit_menu(self, caller):
-        """Despliega el menú con las unidades predefinidas bajo el campo de unidad."""
-        if self.unit_menu is None:
-            items = [
-                {"text": unit, "on_release": lambda u=unit: self.set_unit(u)}
-                for unit in PANTRY_UNITS
-            ]
-            # El menú se alinea con el recuadro completo del campo (texto + flecha)
-            field_box = caller.parent
-            self.unit_menu = MDDropdownMenu(
-                caller=field_box,
-                items=items,
-                position="bottom",
-                width=field_box.width,
-                max_height=dp(240),
-            )
-        self.unit_menu.open()
-
-    def set_unit(self, unit):
-        """Asigna la unidad seleccionada en el menú desplegable."""
-        self.selected_unit = unit
-        self.error_text = ""
-        if self.unit_menu:
-            self.unit_menu.dismiss()
+    def _on_unit_changed(self, *_):
+        if not self._auto_unit:
+            self._unit_picked = True
 
     def on_dismiss(self):
-        """Cierra los menús desplegables abiertos junto con el modal."""
-        for menu in (self.unit_menu, self.category_menu):
-            if menu:
-                menu.dismiss()
+        """Cierra el menú de categorías junto con el modal."""
+        if self.category_menu:
+            self.category_menu.dismiss()
 
     def open_category_menu(self, caller):
         """Despliega las categorías bajo el campo."""
@@ -129,6 +108,10 @@ class AddPantryItemModal(BaseFormModal):
         self.selected_category_icon = category_icon(category)
         if self.category_menu:
             self.category_menu.dismiss()
+        if not self._unit_picked:
+            self._auto_unit = True
+            self.ids.picker.select_unit(suggested_unit(category))
+            self._auto_unit = False
 
     def _suggest_category(self, name):
         """'Yogur' -> Lácteos; respeta la categoría si el usuario ya la eligió."""
@@ -157,10 +140,14 @@ class AddPantryItemModal(BaseFormModal):
 
     def submit(self):
         """Valida y registra el alimento en el inventario."""
+        picker = self.ids.picker
+        if not picker.is_valid():
+            self.error_text = picker.error_text
+            return
         ok, error, data = validate_pantry_form(
             name=self.ids.field_name.ids.text_input.text,
-            quantity_str=self.ids.field_quantity.ids.text_input.text,
-            unit=self.selected_unit,
+            quantity_str=format_number(picker.quantity),
+            unit=picker.unit,
             threshold_str=self.ids.field_threshold.ids.text_input.text,
             expiration_str=self.expiration_date_str,
             has_no_expiration=self.has_no_expiration,
@@ -229,7 +216,6 @@ class PantryItemDetailModal(BaseFormModal):
         self._lists_menu = None
         self.callback_update_details = callback_update_details
         self._changed = False
-        self._unit_menu = None
         self._category_menu = None
         # Contenedores de vista y edición: se intercambian dentro de 'body'.
         # ids guarda referencias débiles: __self__ retiene el widget mientras está fuera del árbol.
@@ -237,7 +223,6 @@ class PantryItemDetailModal(BaseFormModal):
         self._edit_box = self.ids.edit_box.__self__
         self.ids.body.remove_widget(self._edit_box)
         self.clear_error_on_input(
-            self.ids.exact_qty_input,
             self.ids.edit_name.ids.text_input,
             self.ids.edit_threshold.ids.text_input,
         )
@@ -261,6 +246,10 @@ class PantryItemDetailModal(BaseFormModal):
         self.step = step_for_unit(self.unit)
         self.step_display = format_number(self.step)
         self.quantity_val = float(item.quantity)
+        picker = self.ids.stock_picker
+        picker.unit = self.unit
+        picker.quantity = self.quantity_val
+        picker._sync_text()
         self._refresh_status()
         self._refresh_expiration(item)
 
@@ -316,23 +305,13 @@ class PantryItemDetailModal(BaseFormModal):
         if self.callback_set_qty:
             self.callback_set_qty(self.item_id, new_qty)
 
-    def change_qty(self, direction):
-        """Suma o resta un paso (según la unidad) a la cantidad actual."""
-        self._apply_quantity(self.quantity_val + direction * self.step)
-
-    def set_exact_qty(self):
-        """Fija la cantidad escrita por el usuario (acepta 1,5 / 500 / 1.500)."""
-        value, error = validate_quantity(self.ids.exact_qty_input.text, "La cantidad")
-        if error:
-            self.error_text = error
-            return
-        self.error_text = ""
-        self.ids.exact_qty_input.text = ""
-        self._apply_quantity(value)
+    def on_picker_change(self, quantity):
+        """El selector de stock cambió (−, +, atajo o número escrito): se guarda al instante."""
+        self._apply_quantity(quantity)
 
     def on_dismiss(self):
         """Al cerrar, refresca la despensa y evalúa alertas una sola vez."""
-        for menu in (self._unit_menu, self._category_menu, self._lists_menu):
+        for menu in (self._category_menu, self._lists_menu):
             if menu:
                 menu.dismiss()
         if self._changed and self.callback_finish:
@@ -360,22 +339,9 @@ class PantryItemDetailModal(BaseFormModal):
         self.ids.body.add_widget(self._view_box)
         self.is_editing = False
 
-    def open_edit_unit_menu(self, caller):
-        if self._unit_menu is None:
-            self._unit_menu = MDDropdownMenu(
-                caller=caller,
-                items=[{"text": u, "on_release": lambda u=u: self._set_edit_unit(u)} for u in PANTRY_UNITS],
-                position="bottom",
-                width=dp(140),
-                max_height=dp(240),
-            )
-        self._unit_menu.open()
-
     def _set_edit_unit(self, unit):
         self.edit_unit = unit
         self.error_text = ""
-        if self._unit_menu:
-            self._unit_menu.dismiss()
 
     def open_edit_category_menu(self, caller):
         if self._category_menu is None:
