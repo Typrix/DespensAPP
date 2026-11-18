@@ -175,6 +175,14 @@ class MainApp(MDApp):
         self._aplicar_tema(False)
         return None
 
+    def on_pause(self):
+        """Permite suspender la app en Android cuando se apaga la pantalla sin cerrarla."""
+        return True
+
+    def on_resume(self):
+        """Reanuda la aplicación tras despertar la pantalla en Android."""
+        pass
+
     def on_stop(self):
         """Confirma borrados pendientes, respalda caché offline y cierra la sesión de telemetría."""
         if getattr(self, "undo", None):
@@ -1062,13 +1070,16 @@ class MainApp(MDApp):
 
     def _verificar_notificaciones_periodicas(self, dt=None):
         """Revisa periódicamente el estado de la despensa y ofertas más baratas de otros supermercados."""
-        if hasattr(self, 'auth') and self.auth and self.auth.current_user:
-            if hasattr(self, 'notifications') and self.notifications:
-                uid = self.auth.current_user.id
-                items = self.db.get_pantry_items(uid)
-                self.notifications.check_pantry_items(items)
-                offers = self.db.get_cheaper_offers_for_user(uid)
-                self.notifications.check_price_alerts(offers)
+        try:
+            if hasattr(self, 'auth') and self.auth and self.auth.current_user:
+                if hasattr(self, 'notifications') and self.notifications:
+                    uid = self.auth.current_user.id
+                    items = self.db.get_pantry_items(uid)
+                    self.notifications.check_pantry_items(items)
+                    offers = self.db.get_cheaper_offers_for_user(uid)
+                    self.notifications.check_price_alerts(offers)
+        except Exception as e:
+            print(f"[DespensAPP] Aviso en chequeo periódico: {e}")
 
     def cerrar_sesion_usuario(self):
         """Cierra la sesión, limpia las pantallas y exige inicio de sesión."""

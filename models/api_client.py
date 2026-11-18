@@ -134,16 +134,23 @@ class ApiDatabaseClient:
         self._cache: Dict[str, Tuple[float, Any]] = {}
         self.cache_ttl: float = 15.0
 
-    def _cached_get(self, key: str, loader):
-        """Retorna resultado cacheado en RAM si no ha expirado, evitando peticiones duplicadas."""
+    def _cached_get(self, key: str, loader, default_val=None):
+        """Retorna resultado cacheado en RAM si no ha expirado; ante corte de red usa último valor o default."""
         entry = self._cache.get(key)
         if entry is not None:
             ts, value = entry
             if (time.time() - ts) < self.cache_ttl:
                 return list(value) if isinstance(value, list) else dict(value) if isinstance(value, dict) else value
-        result = loader()
-        self._cache[key] = (time.time(), result)
-        return list(result) if isinstance(result, list) else dict(result) if isinstance(result, dict) else result
+        try:
+            result = loader()
+            self._cache[key] = (time.time(), result)
+            return list(result) if isinstance(result, list) else dict(result) if isinstance(result, dict) else result
+        except Exception as e:
+            print(f"[API] Error de red en lectura ({key}), usando respaldo en memoria: {e}")
+            if entry is not None:
+                _, value = entry
+                return list(value) if isinstance(value, list) else dict(value) if isinstance(value, dict) else value
+            return default_val() if callable(default_val) else default_val
 
     def _invalidate_cache(self):
         """Limpia la caché en memoria tras cualquier operación de escritura."""
@@ -167,14 +174,31 @@ class ApiDatabaseClient:
         headers: Dict[str, str],
     ) -> Dict[str, Any]:
         if self._session is not None:
-            resp = self._session.request(
-                method=method,
-                url=url,
-                data=body,
-                headers=headers,
-                timeout=self.timeout_seconds,
-                verify=self._verify_ssl,
-            )
+            try:
+                resp = self._session.request(
+                    method=method,
+                    url=url,
+                    data=body,
+                    headers=headers,
+                    timeout=self.timeout_seconds,
+                    verify=self._verify_ssl,
+                )
+            except Exception:
+                # Si el servidor o Android cerró el socket inactivo (RemoteDisconnected),
+                # recrear la sesión Keep-Alive y reintentar una vez
+                try:
+                    self._session.close()
+                except Exception:
+                    pass
+                self._session = requests.Session()
+                resp = self._session.request(
+                    method=method,
+                    url=url,
+                    data=body,
+                    headers=headers,
+                    timeout=self.timeout_seconds,
+                    verify=self._verify_ssl,
+                )
             if resp.status_code >= 400:
                 raise urllib.error.HTTPError(url, resp.status_code, resp.reason, resp.headers, None)
             return resp.json() if resp.content else {}
@@ -277,7 +301,7 @@ class ApiDatabaseClient:
         def _load():
             data = self._request("GET", f"/pantry/{user_id}")
             return [it for it in (_build_pantry_item(raw) for raw in data.get("items", [])) if it is not None]
-        return self._cached_get(f"pantry:{user_id}", _load)
+        return self._cached_get(f"pantry:{user_id}", _load, default_val=list)
 
     def get_pantry_item_by_id(self, item_id: int) -> Optional[PantryItem]:
         data = self._request("GET", f"/pantry/item/{item_id}")
@@ -357,7 +381,7 @@ class ApiDatabaseClient:
         def _load():
             data = self._request("GET", f"/lists/{user_id}")
             return [_build_shopping_list(raw) for raw in data.get("lists", [])]
-        return self._cached_get(f"lists:{user_id}", _load)
+        return self._cached_get(f"lists:{user_id}", _load, default_val=list)
 
     def add_shopping_list(
         self,
@@ -396,7 +420,7 @@ class ApiDatabaseClient:
         def _load():
             data = self._request("GET", f"/lists/{list_id}/items")
             return [_build_list_item(raw) for raw in data.get("items", [])]
-        return self._cached_get(f"list_items:{list_id}", _load)
+        return self._cached_get(f"list_items:{list_id}", _load, default_val=list)
 
     def add_shopping_list_item(
         self, list_id: int, name: str, price: float = 0.0, is_checked: bool = False
@@ -475,7 +499,7 @@ class ApiDatabaseClient:
         def _load():
             data = self._request("GET", f"/purchases/{user_id}", params={"since": since})
             return [_build_purchase_record(raw) for raw in data.get("records", [])]
-        return self._cached_get(f"purchases:{user_id}:{since or ''}", _load)
+        return self._cached_get(f"purchases:{user_id}:{since or ''}", _load, default_val=list)
 
     def add_purchase_record(
         self,
@@ -535,7 +559,7 @@ class ApiDatabaseClient:
         def _load():
             data = self._request("GET", f"/prices/cheaper-offers/{user_id}")
             return data.get("offers", [])
-        return self._cached_get(f"offers:{user_id}", _load)
+        return self._cached_get(f"offers:{user_id}", _load, default_val=list)
 
     # ------------------------------------------------------------------
     # Estadísticas y Telemetría
@@ -548,7 +572,7 @@ class ApiDatabaseClient:
                 if stats.get(key):
                     stats[key] = _build_pantry_item(stats[key])
             return stats
-        return self._cached_get(f"stats:{user_id}", _load)
+        return self._cached_get(f"stats:{user_id}", _load, default_val=dict)
 
     def create_session(
         self, user_id: Optional[int] = None, platform: str = "Windows", app_version: str = "1.0.0"
