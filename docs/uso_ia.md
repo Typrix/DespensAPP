@@ -430,3 +430,21 @@ Los chips miden 36dp pero la fila desplazable que los contiene medía 34dp, así
 
 ## Validación
 - Capturas en modo claro y oscuro: chips completos; el último se corta solo en el borde, como pista de que la fila se desliza.
+
+---
+
+## Entrada / Prompt del Usuario (Dashboard actualizado con KPIs)
+> "actualiza el dashboard a la version actual, pone kpis y simulalo con 100 usuarios" / "solo android y ios, aplica"
+
+## Acciones Realizadas
+1. `admin_dashboard/metrics.py`: lee filas crudas (sin correos ni contraseñas) y calcula en Python, igual para SQLite y MySQL:
+   - Activos por día (promedio), 7 y 30 días, "vuelven cada día" (DAU/MAU), sesiones por persona, duración media y mediana.
+   - Retención día 1, días 7–13 y días 30–36; embudo abrir app → anotar en lista → finalizar compra → Pro.
+   - Compras (una compra = misma persona y fecha), gasto, ticket promedio, usuarios Pro, despensa y listas, tiempo por pantalla, plataformas y acciones frecuentes.
+   - Solo días completos (hasta ayer) para que el día en curso no hunda el gráfico.
+2. `server.py`: nuevo `/api/v1/analytics/overview?days=7|30|90`; los endpoints anteriores se mantienen. Con `DESPENSAPP_METRICS_DB=demo` usa solo `demo_metrics.db` (lectura) y nunca crea `DatabaseManager`, así no se conecta a MySQL.
+3. Dashboard rediseñado con la paleta de la app, modo claro/oscuro, selector de periodo y diseño responsivo; la actividad reciente oculta datos personales.
+
+## Validación
+- 8 pruebas en `tests/test_dashboard_metrics.py`.
+- Navegador: escritorio claro y celular oscuro sin scroll horizontal; cambio de periodo a 90 días; modo real leyendo MySQL sin escribir.

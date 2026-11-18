@@ -8,7 +8,7 @@ y sirve el Dashboard Web reactivo en /dashboard.
 import os
 import sys
 from typing import Optional, Dict, Any
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -23,7 +23,7 @@ if BASE_DIR not in sys.path:
 if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 
-from models.database import DatabaseManager
+import metrics
 
 # Inicializar aplicación FastAPI
 app = FastAPI(
@@ -43,9 +43,18 @@ os.makedirs(TEMPLATES_DIR, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
+# Versión de los archivos estáticos: obliga al navegador a no usar una copia vieja del CSS/JS
+ASSET_VERSION = "2"
 
-# Inicializar conexión central a base de datos
-db = DatabaseManager()
+# Fuente de métricas. En modo demo (DESPENSAPP_METRICS_DB=demo) solo se lee la base
+# simulada y nunca se crea DatabaseManager, así no hay conexión a MySQL ni a la base local real.
+if metrics.demo_mode():
+    db = None
+    source = metrics.SqliteSource(metrics.DEMO_DB_PATH, "Datos simulados")
+else:
+    from models.database import DatabaseManager
+    db = DatabaseManager()
+    source = metrics.DatabaseManagerSource(db)
 
 
 # Modelos Pydantic para validación y Swagger
@@ -70,15 +79,17 @@ def root():
 
 @app.get("/dashboard", response_class=HTMLResponse, tags=["Dashboard Web"])
 def render_dashboard(request: Request):
-    """Renderiza el Dashboard Web de Analítica para Desarrolladores."""
-    kpis = db.get_telemetry_kpis()
-    kpis["db_status"] = db.status_message
-    kpis["is_mysql"] = db.is_mysql
-
+    """Renderiza el Dashboard Web de métricas de producto."""
     return templates.TemplateResponse(
         request=request,
         name="index.html",
-        context={"kpis": kpis}
+        context={
+            "is_demo": source.is_demo,
+            "source_label": source.label,
+            "periods": metrics.PERIODS,
+            "default_period": metrics.DEFAULT_PERIOD,
+            "asset_version": ASSET_VERSION,
+        },
     )
 
 
@@ -99,30 +110,38 @@ def get_remote_config():
 # Endpoints de API REST (Telemetría y Métricas)
 # --------------------------------------------------------
 
+@app.get("/api/v1/analytics/overview", tags=["Telemetría"])
+def get_overview(days: int = Query(metrics.DEFAULT_PERIOD, description="Periodo: 7, 30 o 90 días")):
+    """KPIs, retención, embudo, series diarias, pantallas, plataformas y eventos del periodo."""
+    return metrics.collect(source, days=days)
+
+
 @app.get("/api/v1/analytics/kpis", tags=["Telemetría"])
-def get_kpis():
-    """Retorna las métricas consolidadas (KPIs) en tiempo real."""
-    data = db.get_telemetry_kpis()
-    data["db_status"] = db.status_message
-    data["is_mysql"] = db.is_mysql
-    return data
+def get_kpis(days: int = metrics.DEFAULT_PERIOD):
+    """Solo los KPIs del periodo (compatibilidad con clientes anteriores)."""
+    data = metrics.collect(source, days=days)
+    return {**data.get("kpis", {}), "db_status": source.label, "is_demo": source.is_demo}
 
 
 @app.get("/api/v1/analytics/screen-times", tags=["Telemetría"])
-def get_screen_times():
-    """Retorna la distribución de minutos y visitas por pantalla."""
-    return db.get_telemetry_screen_times()
+def get_screen_times(days: int = metrics.DEFAULT_PERIOD):
+    """Minutos, visitas y participación por pantalla en el periodo."""
+    return metrics.collect(source, days=days).get("screens", [])
 
 
 @app.get("/api/v1/analytics/recent-events", tags=["Telemetría"])
-def get_recent_events(limit: int = 25):
-    """Retorna los últimos eventos registrados por la aplicación móvil."""
-    return db.get_telemetry_recent_events(limit=limit)
+def get_recent_events(limit: int = 15):
+    """Últimos eventos registrados (sin datos personales)."""
+    if not source.available():
+        return []
+    return metrics.recent_events(source, limit=limit)
 
 
 @app.post("/api/v1/telemetry/event", tags=["Telemetría"])
 def ingest_event(payload: TelemetryEventPayload):
     """Endpoint receptor de eventos HTTP en segundo plano."""
+    if db is None:
+        return JSONResponse(status_code=409, content={"detail": "El modo demo no recibe eventos."})
     event_id = db.log_event(
         session_id=payload.session_id,
         user_id=payload.user_id,
@@ -140,8 +159,9 @@ def health_check():
     return {
         "status": "online",
         "service": "DespensAPP Analytics Server",
-        "database": db.status_message,
-        "is_mysql": db.is_mysql
+        "database": source.label,
+        "is_mysql": bool(db and db.is_mysql),
+        "is_demo": source.is_demo,
     }
 
 
