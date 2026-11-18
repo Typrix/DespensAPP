@@ -354,3 +354,18 @@ El precio se leía con `parse_number`, pensada para cantidades: el punto solo cu
 ## Validación
 - 6 pruebas nuevas en `tests/test_checkout.py`; 24 de 24 en total.
 - Prueba funcional con base temporal: tachar no mueve filas, 1,5 kg guardado en la lista, resumen sin edición con total $12.640 y Arroz 3 → 3,5 kg.
+
+---
+
+## Entrada / Prompt del Usuario (Validación del correo)
+> "arregla la validacion del correo"
+
+## Causa raíz
+El registro no revisaba el formato del correo y la edición de la cuenta solo pedía una "@" y un punto, por lo que aceptaba "ana b@correo.cl" o "ana@correo.".
+
+## Acciones Realizadas
+1. `validate_email` en `controllers/validators.py`: normaliza (minúsculas, sin espacios al borde) y exige usuario@dominio.ext sin espacios, con dominio válido y extensión de 2+ letras.
+2. Registro y edición de la cuenta usan `validate_email`; el inicio de sesión solo normaliza y pide "@", para no bloquear cuentas antiguas.
+
+## Validación
+- 2 pruebas en `tests/test_email.py` (14 casos); 24 de 24 en total. Prueba funcional: correos inválidos rechazados al editar la cuenta y al entrar.

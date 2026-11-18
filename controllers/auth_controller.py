@@ -10,6 +10,7 @@ import json
 import hashlib
 from typing import Optional, Tuple
 
+from controllers.validators import validate_email
 from models.user import User
 from models.database import DatabaseManager
 
@@ -223,13 +224,13 @@ class AuthController:
             return False, "No hay una sesión activa para actualizar."
 
         clean_name = (name or "").strip()
-        clean_email = (email or "").strip().lower()
+        clean_email, email_error = validate_email(email)
         clean_pass = (new_password or "").strip()
 
         if not clean_name:
             return False, "El nombre no puede estar vacío."
-        if not clean_email or "@" not in clean_email or "." not in clean_email.split("@")[-1]:
-            return False, "Ingresa un correo electrónico válido."
+        if email_error:
+            return False, email_error
         if clean_pass and len(clean_pass) < 4:
             return False, "La nueva contraseña debe tener al menos 4 caracteres."
 
@@ -283,7 +284,10 @@ class AuthController:
 
     def login(self, email: str, password: str) -> Tuple[bool, str]:
         """Inicia sesión con correo y contraseña, respetando cambios de perfil y contraseña guardados."""
-        email = email.strip().lower()
+        # Al entrar solo se normaliza (sin el chequeo estricto) para no bloquear cuentas antiguas
+        email = (email or "").strip().lower()
+        if "@" not in email or " " in email:
+            return False, "Ingresa un correo válido, por ejemplo nombre@correo.cl."
         pwd_hash = self.hash_password(password)
 
         # 1. Verificar si la cuenta fue actualizada localmente (nuevo correo o nueva contraseña)
@@ -336,6 +340,9 @@ class AuthController:
         if not self.db.is_mysql:
             return False, "⚠️ Conexión requerida: Para registrar una nueva cuenta necesitas estar conectado a la base de datos central (MySQL)."
 
+        email, email_error = validate_email(email)
+        if email_error:
+            return False, email_error
         if len(password.strip()) < 4:
             return False, "La contraseña debe tener al menos 4 caracteres."
         pwd_hash = self.hash_password(password)
